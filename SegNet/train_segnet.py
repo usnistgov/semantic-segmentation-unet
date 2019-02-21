@@ -32,27 +32,25 @@ parser = argparse.ArgumentParser(prog='train_segnet', description='Script which 
 parser.add_argument('--batch_size', dest='batch_size', type=int,
                     help='training batch size', default=8)
 parser.add_argument('--number_classes', dest='number_classes', type=int, default=2)
-parser.add_argument('--epoch_count', dest='epoch_count', type=int,
-                    help='number of epochs to train the model for', default=100)
-parser.add_argument('--train_data_folder', dest='train_data_folder', type=str, required=True)
-parser.add_argument('--test_data_folder', dest='test_data_folder', type=str, required=True)
-parser.add_argument('--number_training_examples', dest='number_training_examples', type=int, default=None)
 parser.add_argument('--output_dir', dest='output_folder', type=str,
                     help='Folder where outputs will be saved (Required)', required=True)
 parser.add_argument('--gradient_update_location', dest='gradient_update_location', type=str,
                     help="Where to perform gradient averaging and update. Options: ['cpu', 'gpu:#']. Use the GPU if you have a fully connected topology, cpu otherwise.", default='gpu:0')
-
+parser.add_argument('--train_database', dest='train_database_filepath', type=str,
+                    help='lmdb database to use for (Required)', required=True)
+parser.add_argument('--test_database', dest='test_database_filepath', type=str,
+                    help='lmdb database to use for testing (Required)', required=True)
+parser.add_argument('--terminate_after_num_epochs_without_test_loss_improvement', dest='terminate_after_num_epochs_without_test_loss_improvement', type=int, help='Perform early stopping when the test loss does not improve for N epochs.', default=10)
 
 args = parser.parse_args()
 
 batch_size = args.batch_size
-epoch_count = args.epoch_count
-train_data_folder = args.train_data_folder
-test_data_folder = args.test_data_folder
 output_folder = args.output_folder
 gradient_update_location = args.gradient_update_location
-number_training_examples = args.number_training_examples
 number_classes = args.number_classes
+terminate_after_num_epochs_without_test_loss_improvement = args.terminate_after_num_epochs_without_test_loss_improvement
+train_lmdb_filepath = args.train_database
+test_lmdb_filepath = args.test_database
 
 
 # verify gradient_update_location is valid
@@ -70,18 +68,16 @@ if not valid_location:
 
 print('Arguments:')
 print('batch_size = {}'.format(batch_size))
-print('epoch_count = {}'.format(epoch_count))
-print('train_data_folder = {}'.format(train_data_folder))
-print('test_data_folder = {}'.format(test_data_folder))
+print('train_database = {}'.format(train_lmdb_filepath))
+print('test_database = {}'.format(test_lmdb_filepath))
 print('output folder = {}'.format(output_folder))
 print('gradient_update_location = {}'.format(gradient_update_location))
-print('number_training_examples = {}'.format(number_training_examples))
 print('number_classes = {}'.format(number_classes))
 
 
 import numpy as np
 import tensorflow as tf
-import segnet_model
+import segnet_model_gpu
 import shutil
 import imagereader
 import csv
@@ -171,28 +167,18 @@ def initialize_uninitialized(sess):
 def train_model():
 
     print('Setting up test image reader')
-    test_img_folder = os.path.join(test_data_folder, 'images')
-    test_msk_folder = os.path.join(test_data_folder, 'masks')
-    test_reader = imagereader.ImageReader(test_img_folder, test_msk_folder, batch_size=batch_size,
+    test_reader = imagereader.ImageReader(test_lmdb_filepath, batch_size=batch_size,
                                           use_augmentation=False, shuffle=False, num_workers=READER_COUNT)
     print('Test Reader has {} batches'.format(test_reader.get_epoch_size()))
 
     print('Setting up training image reader')
-    train_img_folder = os.path.join(train_data_folder, 'images')
-    train_msk_folder = os.path.join(train_data_folder, 'masks')
-    train_reader = imagereader.ImageReader(train_img_folder, train_msk_folder, batch_size=batch_size,
-                                           use_augmentation=True, shuffle=True, num_workers=READER_COUNT, sample_to_N_images=number_training_examples)
-    if len(train_reader.get_fn_list()) > number_training_examples:
-        print('Required number of examples do not exist')
-        sys.exit(1)
+    train_reader = imagereader.ImageReader(train_lmdb_filepath, batch_size=batch_size,
+                                           use_augmentation=True, shuffle=True, num_workers=READER_COUNT)
     print('Train Reader has {} batches'.format(train_reader.get_epoch_size()))
 
     if os.path.exists(output_folder):
         shutil.rmtree(output_folder)
     os.makedirs(output_folder)
-
-    # write csv list of filenames used for training
-    save_text_csv_file(output_folder, train_reader.get_fn_list(), 'training_images.csv')
 
     # start the input queues
     try:
@@ -206,8 +192,9 @@ def train_model():
 
             print('Creating Input Train Dataset')
             # wrap the input queues into a Dataset
-            image_shape = tf.TensorShape((batch_size, train_reader.imageHeight, train_reader.imageWidth, 1))
-            label_shape = tf.TensorShape((batch_size, train_reader.imageHeight, train_reader.imageWidth))
+            img_size = train_reader.get_image_size()
+            image_shape = tf.TensorShape((batch_size, img_size[0], img_size[1], 1))
+            label_shape = tf.TensorShape((batch_size, img_size[0], img_size[1]))
             train_dataset = tf.data.Dataset.from_generator(train_reader.generator, output_types=(tf.float32, tf.int32), output_shapes=(image_shape, label_shape))
             train_dataset = train_dataset.prefetch(2*NUM_GPUS) # prefetch N batches
             # train_iterator = train_dataset.make_initializable_iterator()
@@ -232,14 +219,14 @@ def train_model():
                 for i in range(NUM_GPUS):
                     print('Building tower for GPU:{}'.format(i))
                     with tf.device('/gpu:%d' % i):
-                        with tf.name_scope('%s_%d' % (segnet_model.TOWER_NAME, i)) as scope:
+                        with tf.name_scope('%s_%d' % (segnet_model_gpu.TOWER_NAME, i)) as scope:
                             # Dequeues one batch for the GPU
                             image_batch, label_batch = iter.get_next()
 
                             # Calculate the loss for one tower of the CIFAR model. This function
                             # constructs the entire CIFAR model but shares the variables across
                             # all towers.
-                            loss_op, accuracy_op = segnet_model.tower_loss(image_batch, label_batch, number_classes, is_training_placeholder)
+                            loss_op, accuracy_op = segnet_model_gpu.tower_loss(image_batch, label_batch, number_classes, is_training_placeholder)
                             ops_per_gpu['gpu{}-loss'.format(i)] = loss_op
                             ops_per_gpu['gpu{}-accuracy'.format(i)] = accuracy_op
 
@@ -256,7 +243,7 @@ def train_model():
             # We must calculate the mean of each gradient. Note that this is the
             # synchronization point across all towers.
             print('Setting up Average Gradient')
-            grads = segnet_model.average_gradients(tower_grads)
+            grads = segnet_model_gpu.average_gradients(tower_grads)
 
             # create merged accuracy stats
             print('Setting up Averaged Accuracy')

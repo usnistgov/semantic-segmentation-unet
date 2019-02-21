@@ -10,8 +10,7 @@ import augment
 import os
 import skimage.io
 import skimage.transform
-from isg_ai_pb2 import ImageYoloBoxesPair
-import yolov3
+from isg_ai_pb2 import ImageMaskPair
 
 
 def zscore_normalize(image_data):
@@ -40,12 +39,12 @@ class ImageReader:
         self.use_augmentation = use_augmentation
         self.queue_starvation = False
         if balance_classes:
-            raise Exception('Class balancing currently not implemented')
+            raise NotImplementedError('Class balancing currently not implemented')
 
         if not os.path.exists(self.image_db):
             print('Could not load database file: ')
             print(self.image_db)
-            raise Exception("Missing Database")
+            raise IOError("Missing Database")
 
         self.shuffle = shuffle
 
@@ -65,7 +64,7 @@ class ImageReader:
                 self.keys_flat.append(key)
 
                 if datum is None:
-                    datum = ImageYoloBoxesPair()  # create a datum for decoding serialized caffe_pb2 objects
+                    datum = ImageMaskPair()  # create a datum for decoding serialized caffe_pb2 objects
                     # extract the serialized image from the database
                     value = lmdb_txn.get(key)
                     # convert from serialized representation
@@ -133,72 +132,10 @@ class ImageReader:
         return image_data
 
     @staticmethod
-    def __format_boxes(boxes, img_size):
-        # reshape into tensor [grid_size, grid_size, num_anchors, 5 + num_classes]
-
-        anchors = np.asarray(yolov3.ANCHORS, dtype=np.float32)
-        num_anchors = len(anchors)
-        num_classes = yolov3.NUMBER_CLASSES
-
-
-
-        grid_sizes = []
-        grid_sizes.append(int(img_size / yolov3.NETWORK_DOWNSAMPLE_FACTOR))
-        grid_sizes.append(int(img_size / (yolov3.NETWORK_DOWNSAMPLE_FACTOR / 2)))
-        grid_sizes.append(int(img_size / (yolov3.NETWORK_DOWNSAMPLE_FACTOR / 4)))
-        num_layers = len(grid_sizes)
-
-        label = []
-        for l in range(num_layers):
-            # leading 1 dimension is the batch, later these will be concatentated together along that dimension
-            label.append(np.zeros((1, grid_sizes[l], grid_sizes[l], num_anchors, (5 + num_classes)), dtype=np.float32))
-
-        if boxes is None:
-            return label
-
-        boxes = boxes.astype(np.float32)
-
-        box_xy = boxes[:, 0:2]
-        box_wh = boxes[:, 2:4]
-
-        # move box x,y to middle from upper left
-        box_xy = np.floor(box_xy + ((box_wh-1) / 2.0))
-        boxes[:, 0:2] = box_xy
-        boxes[:, 2:4] = box_wh
-
-        anchors_max = anchors / 2.0
-        anchors_min = -anchors_max
-        # set the center of all boxes as the origin of their coordinates
-        # and correct their coordinates
-        box_wh = np.expand_dims(box_wh, -2)
-        boxes_max = box_wh / 2.0
-        boxes_min = -boxes_max
-
-        intersect_mins = np.maximum(boxes_min, anchors_min)
-        intersect_maxs = np.minimum(boxes_max, anchors_max)
-        intersect_wh = np.maximum(intersect_maxs - intersect_mins, 0.)
-        intersect_area = intersect_wh[..., 0] * intersect_wh[..., 1]
-        box_area = box_wh[..., 0] * box_wh[..., 1]
-
-        anchor_area = anchors[:, 0] * anchors[:, 1]
-        iou = intersect_area / (box_area + anchor_area - intersect_area)
-        # Find best anchor for each true box
-
-        best_anchor = np.argmax(iou, axis=-1)
-
-        for t, n in enumerate(best_anchor):
-            for l in range(num_layers):
-                i = np.floor(boxes[t, 0] / img_size * grid_sizes[l]).astype('int32')
-                j = np.floor(boxes[t, 1] / img_size * grid_sizes[l]).astype('int32')
-
-                c = boxes[t, 4].astype('int32')
-
-                # first dimension is the batch
-                label[l][0, j, i, n, 0:4] = boxes[t, 0:4]
-                label[l][0, j, i, n, 4] = 1.0
-                label[l][0, j, i, n, 5 + c] = 1.0
-
-        return label
+    def __format_label(label_data):
+        # # reshape into tensor (NCHW)
+        image_data = label_data.reshape((-1, label_data.shape[0], label_data.shape[1]))
+        return image_data
 
     def __get_next_key(self):
         if self.shuffle:
@@ -226,7 +163,7 @@ class ImageReader:
         termimation_flag = False  # flag to control the worker shutdown
         self.key_idx = self.idQ.get()  # setup non-shuffle index to stride across flat keys properly
         try:
-            datum = ImageYoloBoxesPair()  # create a datum for decoding serialized caffe_pb2 objects
+            datum = ImageMaskPair()  # create a datum for decoding serialized caffe_pb2 objects
 
             local_lmdb_txn = self.lmdb_txns[self.key_idx]
 
@@ -243,9 +180,7 @@ class ImageReader:
 
                 # allocate tensors for the current batch
                 pixel_tensor = list()
-                label_tensor_1 = list()
-                label_tensor_2 = list()
-                label_tensor_3 = list()
+                label_tensor = list()
 
                 # build a batch selecting the labels using round robin through the shuffled order
                 for i in range(self.batchsize):
@@ -260,20 +195,16 @@ class ImageReader:
                     I = np.fromstring(datum.image, dtype=np.uint8)
                     # reshape the numpy array using the dimensions recorded in the datum
                     I = I.reshape(datum.img_height, datum.img_width)
-                    assert (datum.img_height == datum.img_width), 'Images must be same width and height'
 
-                    Boxes = None
-                    # construct mask from list of boxes
-                    if datum.box_count > 0:
-                        # convert from string to numpy array
-                        Boxes = np.fromstring(datum.boxes, dtype=np.int32)
-                        # reshape the numpy array using the dimensions recorded in the datum
-                        Boxes = Boxes.reshape(datum.box_count, 5)
-                        # boxes are [x, y, width, height, class-id]
+                    # convert from string to numpy array
+                    M = np.fromstring(datum.mask, dtype=np.uint8)
+                    # reshape the numpy array using the dimensions recorded in the datum
+                    M = M.reshape(datum.img_height, datum.img_width)
 
                     if self.use_augmentation:
                         # setup the image data augmentation parameters
                         reflection_flag = True
+                        rotation_flag = True
                         jitter_augmentation_severity = 0.1  # x% of a FOV
                         noise_augmentation_severity = 0.02  # vary noise by x% of the dynamic range present in the image
                         scale_augmentation_severity = 0.1 # vary size by x%
@@ -283,8 +214,9 @@ class ImageReader:
                         I = I.astype(np.float32)
 
                         # perform image data augmentation
-                        I, Boxes = augment.augment_image_box_pair(I, Boxes,
+                        I, M = augment.augment_image(I, M,
                             reflection_flag=reflection_flag,
+                            rotation_flag=rotation_flag,
                               jitter_augmentation_severity=jitter_augmentation_severity,
                               noise_augmentation_severity=noise_augmentation_severity,
                               scale_augmentation_severity=scale_augmentation_severity,
@@ -293,26 +225,19 @@ class ImageReader:
                     # format the image into a tensor
                     I = self.__format_image(I)
                     I = zscore_normalize(I)
-
-                    # convert the boxes into the format expected by yolov3
-                    label = self.__format_boxes(Boxes, datum.img_height)
-                    label_1, label_2, label_3 = label
+                    M = self.__format_label(M)
 
                     # append the image and label to the batch being built
                     pixel_tensor.append(I)
-                    label_tensor_1.append(label_1)
-                    label_tensor_2.append(label_2)
-                    label_tensor_3.append(label_3)
+                    label_tensor.append(M)
 
                 # convert the list of images into a numpy array tensor ready for tensorflow
                 pixel_tensor = np.concatenate(pixel_tensor, axis=0).astype(np.float32)
-                label_tensor_1 = np.concatenate(label_tensor_1, axis=0).astype(np.float32)
-                label_tensor_2 = np.concatenate(label_tensor_2, axis=0).astype(np.float32)
-                label_tensor_3 = np.concatenate(label_tensor_3, axis=0).astype(np.float32)
+                label_tensor = np.concatenate(label_tensor, axis=0).astype(np.int32)
 
                 # add the batch in the output queue
                 # this put block until there is space in the output queue (size 50)
-                self.outQ.put((pixel_tensor, label_tensor_1, label_tensor_2, label_tensor_3))
+                self.outQ.put((pixel_tensor, label_tensor))
 
         except Exception as e:
             print('***************** Reader Error *****************')
