@@ -95,6 +95,8 @@ def main():
 
     img_filepath_list = [os.path.join(image_folder, fn) for fn in os.listdir(image_folder) if fn.endswith('.tif')]
 
+    img_filepath_list = img_filepath_list[:100]
+
     sess, input_op, logits_op = load_model(checkpoint_filepath, gpu_id, number_classes, tile_size)
 
     print('Starting inference of file list')
@@ -104,7 +106,7 @@ def main():
         print('{}/{} : {}'.format(i, len(img_filepath_list), slide_name))
 
         segmented_mask = _inference(img_filepath, sess, input_op, logits_op, tile_size)
-        if 0 < np.max(segmented_mask) <= 255:
+        if 0 <= np.max(segmented_mask) <= 255:
             segmented_mask = segmented_mask.astype(np.uint8)
         if 255 < np.max(segmented_mask) < 65536:
             segmented_mask = segmented_mask.astype(np.uint16)
