@@ -3,8 +3,6 @@ import tensorflow as tf
 NUMBER_CHANNELS = 1  # grayscale
 
 BASELINE_FEATURE_DEPTH = 64
-INPUT_NODE_NAME = ''
-OUTPUT_NODE_NAME = ''
 
 # If a model is trained with multiple GPUs, prefix all Op names with tower_name
 # to differentiate the operations. Note that this prefix is removed from the
@@ -153,7 +151,7 @@ def add_inference_ops(inputs, is_training, number_classes):
             conv10_1 = conv_layer(unpooled, BASELINE_FEATURE_DEPTH, kernel, is_training)
 
         logits = conv_layer(conv10_1, number_classes, 1, is_training, name='logits') # 1x1 kernel to convert feature map into class map
-
+        # logits is [NHWC]
     return logits
 
 
@@ -161,8 +159,9 @@ def add_loss_ops(logits, labels, number_classes=2):
     # Calculate the average cross entropy loss across the batch.
     labels = tf.cast(labels, tf.int32)
     labels_one_hot = tf.one_hot(labels, depth=number_classes)
+    labels_one_hot = tf.stop_gradient(labels_one_hot)
 
-    # compute loss
+    # compute loss, channels is expected to be the last dimension by softmax_cross_entropy_with_logits_v2
     loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits_v2(labels=labels_one_hot, logits=logits))
 
     return loss
@@ -273,8 +272,8 @@ def build_towered_model(train_reader, test_reader, gpu_ids, learning_rate, numbe
                     # Dequeues one batch for the GPU
                     image_batch, label_batch = iter.get_next()
 
-                    # Calculate the loss for one tower of the CIFAR model. This function
-                    # constructs the entire CIFAR model but shares the variables across
+                    # Calculate the loss for one tower of the model. This function
+                    # constructs the entire model but shares the variables across
                     # all towers.
                     loss_op, accuracy_op = tower_loss(image_batch, label_batch, number_classes, is_training_placeholder)
                     ops_per_gpu['gpu{}-loss'.format(i)] = loss_op

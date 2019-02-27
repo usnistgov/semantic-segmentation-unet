@@ -176,7 +176,7 @@ def train_model():
             train_accuracy = list()
             test_loss = list()
             test_accuracy = list()
-            test_loss.append(1)
+            test_loss.append(np.inf)
             test_accuracy.append(0)
 
             train_epoch_size = train_reader.get_epoch_size()

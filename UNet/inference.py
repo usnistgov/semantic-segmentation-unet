@@ -1,7 +1,7 @@
 import argparse
 import os
 import tensorflow as tf
-import segnet_model
+import unet_model
 import numpy as np
 import imagereader
 
@@ -9,13 +9,13 @@ import imagereader
 def load_model(checkpoint_filepath, gpu_id, number_classes, tile_size):
     print('Creating model')
     with tf.Graph().as_default(), tf.device('/cpu:0'):
-        input_op = tf.placeholder(tf.float32, shape=(1, tile_size, tile_size, 1))
+        input_op = tf.placeholder(tf.float32, shape=(1, 1, tile_size, tile_size))
 
         # Calculate the gradients for each model tower.
         with tf.variable_scope(tf.get_variable_scope()):
             with tf.device('/gpu:%d' % gpu_id):
-                with tf.name_scope('%s_%d' % (segnet_model.TOWER_NAME, gpu_id)) as scope:
-                    logits_op = segnet_model.add_inference_ops(input_op, is_training=False, number_classes=number_classes)
+                with tf.name_scope('%s_%d' % (unet_model.TOWER_NAME, gpu_id)) as scope:
+                    logits_op = unet_model.add_inference_ops(input_op, is_training=False, number_classes=number_classes)
 
         # Start running operations on the Graph. allow_soft_placement must be set to
         # True to build towers on GPU, as some of the ops do not have GPU
@@ -47,19 +47,19 @@ def _inference(img_filepath, sess, input_op, logits_op, tile_size):
         raise Exception('Invalid input shape, does not match specified network tile size.')
 
     batch_data = img.astype(np.float32)
-    batch_data = batch_data.reshape((1, img.shape[0], img.shape[1], 1))
+    batch_data = batch_data.reshape((1, 1, img.shape[0], img.shape[1]))
 
     # normalize with whole image stats
     batch_data = imagereader.zscore_normalize(batch_data)
 
     [logits] = sess.run([logits_op], feed_dict={input_op: batch_data})
-    pred = np.squeeze(np.argmax(logits, axis=-1).astype(np.int32))
+    pred = np.squeeze(np.argmax(logits, axis=3).astype(np.int32))
 
     return pred
 
 
 def main():
-    parser = argparse.ArgumentParser(prog='inference', description='Script to detect stars with the selected segnet model')
+    parser = argparse.ArgumentParser(prog='inference', description='Script to detect stars with the selected unet model')
 
     parser.add_argument('--gpu', dest='gpu_id', type=int, help='which gpu to use for training (can only use a single gpu)', default=0)
     parser.add_argument('--tile_size', dest='tile_size', type=int, help='image tile size the network is expecting', default=256)
