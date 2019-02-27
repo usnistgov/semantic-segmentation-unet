@@ -32,6 +32,10 @@ def imread(fp):
     return skimage.io.imread(fp, as_gray=True)
 
 
+def imwrite(img, fp):
+    skimage.io.imsave(fp, img)
+
+
 class ImageReader:
 
     def __init__(self, img_db, batch_size, use_augmentation=True, balance_classes=False, shuffle=True, num_workers=1):

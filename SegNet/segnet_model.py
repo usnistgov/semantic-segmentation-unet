@@ -3,6 +3,8 @@ import tensorflow as tf
 NUMBER_CHANNELS = 1  # grayscale
 
 BASELINE_FEATURE_DEPTH = 64
+INPUT_NODE_NAME = ''
+OUTPUT_NODE_NAME = ''
 
 # If a model is trained with multiple GPUs, prefix all Op names with tower_name
 # to differentiate the operations. Note that this prefix is removed from the
@@ -243,6 +245,7 @@ def build_input_iterators(train_reader, test_reader, batch_prefetch_count):
     test_init_op = iter.make_initializer(test_dataset)
 
     return train_init_op, test_init_op, iter
+
 
 def build_towered_model(train_reader, test_reader, gpu_ids, learning_rate, number_classes):
     is_training_placeholder = tf.placeholder(tf.bool, name='is_training')
