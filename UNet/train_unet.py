@@ -130,10 +130,8 @@ def plot(output_folder, name, train_val, test_val, epoch_size, log_scale=True):
 
 
 def train_model():
-    # create the output directory, removing any old results that existed
-    if os.path.exists(output_folder):
-        shutil.rmtree(output_folder)
-    os.makedirs(output_folder)
+    if not os.path.exists(output_folder):
+        os.makedirs(output_folder)
 
     print('Setting up test image reader')
     test_reader = imagereader.ImageReader(test_lmdb_filepath, batch_size=batch_size, use_augmentation=False, shuffle=False, num_workers=READER_COUNT)
