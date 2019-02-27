@@ -162,4 +162,67 @@ A few of the arguments require explanation.
 - `test_every_n_steps`: typically, you run test/validation every epoch. However, I am often building models with very small amounts of data (e.g. 500 images). With an actual batch size of 32, that allows me 15 gradient updates per epoch. The model does not change that fast, so I impose a fixed global step count between test so that I don't spend all of my GPU time running the test data. A good value for this is typically 1000.
 - `early_stopping`: this is an integer specifying the early stopping criteria. If the model test loss does not improve after this number of epochs (epoch defined as `test_every_n_steps steps` updates) training is terminated because we have moved into overfitting the training dataset.
 - `gradient_update_location`: whether to perform gradient averaging on the CPU or GPU. See the above discussion about GPU connection topology.
-- `restore_checkpoint_filepath`: if you provide a filepath to a previous training of the same model, the training script will load the model weights, restoring that checkpoint before continuing to train. The filepath to the checkpoint should be like '~/Semantic-Segmentation/UNet/model/checkpoint/model.ckpt-6' do not include the '.index', '.meta', or '.data' component of the checkpoint filepath. 
+- `restore_checkpoint_filepath`: if you provide a filepath to a previous training of the same model, the training script will load the model weights, restoring that checkpoint before continuing to train. The filepath to the checkpoint should be like "~/Semantic-Segmentation/UNet/model/checkpoint/model.ckpt-6" do not include the ".index", ".meta", or ".data" component of the checkpoint filepath.
+
+
+# Image Readers
+One of the defining features of this codebase is the parallel (python multiprocess) image reading from lightning memory mapped databases. 
+
+There are typically 1 or more reader threads feeding each GPU. 
+
+Each ImageReader class instance:
+- selects the next image (potentially at random from the shuffled dataset)
+- loads images from a shared lmdb read-only reference
+- determines the image augmentation parameters from by defining augmentation limits
+- applies the augmentation transformation to the image and mask pair
+- add the augmented image to the batch that reader is building
+- once a batch is constructed, the imagereader adds it to the output queue shared among all of the imagereaders
+
+The training script setups of python generators which just get a reference to the output batch queue data and pass it into tensorflow. One of the largest bottlenecks in deep learning is keeping the GPUs fed. By performing the image reading and data augmentation asynchronously all the main python training thread has to do is get a reference to the next batch (which is waiting in memory) and pass it to tensorflow to be copied to the GPUs.
+
+If the imagereaders do not have enough bandwidth to keep up with the GPUs you can increase the number of readers per gpu, though 1 or 2 readers per gpus is often enough. 
+
+You will know whether the image readers are keeping up with the GPUs. When the imagereader output queue is getting empty a warning is printed to the log:
+
+```
+Input Queue Starvation !!!!
+```
+
+along with the matching message letting you know when the imagereaders have caught back up:
+
+```
+Input Queue Starvation Over
+```
+
+# Image Augmentation
+
+For each image being read from the lmdb, a unique set of augmentation parameters are defined. 
+
+the `augment` class supports:
+
+| Transformation  | Parameterization |
+| ------------- | ------------- |
+| reflection (x, y) | Bernoulli  |
+| rotation  | Uniform |
+| jitter (x, y)  | Percent of Image Size  |
+| scale (x,y)  | Percent Change |
+| noise  | Percent Change of Current Image Dynamic Range  |
+| blur  | Uniform Selection of Kernel Size |
+| pixel intensity  | Percent Change of Current Image Dynamic Range |
+
+
+These augmentation transformations are generally configured based on domain expertise and stay fixed per dataset.
+
+Currently the only method for modifying them is to open the `imagereader.py` file and edit the augmentation parameters contained within the code block:
+
+```
+if self.use_augmentation:
+    # setup the image data augmentation parameters
+    reflection_flag = True
+    rotation_flag = True
+    jitter_augmentation_severity = 0.1  # x% of a FOV
+    noise_augmentation_severity = 0.02  # vary noise by x% of the dynamic range present in the image
+    scale_augmentation_severity = 0.1 # vary size by x%
+    blur_max_sigma = 2 # pixels
+    # intensity_augmentation_severity = 0.05
+``` 
