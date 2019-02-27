@@ -19,7 +19,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   name='isg_ai.proto',
   package='isg_ai',
   syntax='proto2',
-  serialized_pb=_b('\n\x0cisg_ai.proto\x12\x06isg_ai\"\x9b\x01\n\rImageMaskPair\x12\x10\n\x08\x63hannels\x18\x01 \x01(\x05\x12\x12\n\nimg_height\x18\x02 \x01(\x05\x12\x11\n\timg_width\x18\x03 \x01(\x05\x12\r\n\x05image\x18\x04 \x01(\x0c\x12\x12\n\nmsk_height\x18\x05 \x01(\x05\x12\x11\n\tmsk_width\x18\x06 \x01(\x05\x12\x0c\n\x04mask\x18\x07 \x01(\x0c\x12\r\n\x05label\x18\x08 \x01(\x05\"\x89\x01\n\x0eImageBoxesPair\x12\x10\n\x08\x63hannels\x18\x01 \x01(\x05\x12\x12\n\nimg_height\x18\x02 \x01(\x05\x12\x11\n\timg_width\x18\x03 \x01(\x05\x12\r\n\x05image\x18\x04 \x01(\x0c\x12\x11\n\tbox_count\x18\x05 \x01(\x05\x12\r\n\x05\x62oxes\x18\x06 \x01(\x0c\x12\r\n\x05label\x18\x07 \x01(\x05\"i\n\x0fImageNumberPair\x12\x10\n\x08\x63hannels\x18\x01 \x01(\x05\x12\x12\n\nimg_height\x18\x02 \x01(\x05\x12\x11\n\timg_width\x18\x03 \x01(\x05\x12\r\n\x05image\x18\x04 \x01(\x0c\x12\x0e\n\x06number\x18\x05 \x01(\x05\"~\n\x12ImageYoloBoxesPair\x12\x10\n\x08\x63hannels\x18\x01 \x01(\x05\x12\x12\n\nimg_height\x18\x02 \x01(\x05\x12\x11\n\timg_width\x18\x03 \x01(\x05\x12\r\n\x05image\x18\x04 \x01(\x0c\x12\x11\n\tbox_count\x18\x05 \x01(\x05\x12\r\n\x05\x62oxes\x18\x06 \x01(\x0c')
+  serialized_pb=_b('\n\x0cisg_ai.proto\x12\x06isg_ai\"\x8a\x01\n\rImageMaskPair\x12\x10\n\x08\x63hannels\x18\x01 \x01(\x05\x12\x12\n\nimg_height\x18\x02 \x01(\x05\x12\x11\n\timg_width\x18\x03 \x01(\x05\x12\x10\n\x08img_type\x18\x04 \x01(\t\x12\x11\n\tmask_type\x18\x05 \x01(\t\x12\r\n\x05image\x18\x06 \x01(\x0c\x12\x0c\n\x04mask\x18\x07 \x01(\x0c\"\xad\x01\n\x0eImageBoxesPair\x12\x10\n\x08\x63hannels\x18\x01 \x01(\x05\x12\x12\n\nimg_height\x18\x02 \x01(\x05\x12\x11\n\timg_width\x18\x03 \x01(\x05\x12\r\n\x05image\x18\x04 \x01(\x0c\x12\x11\n\tbox_count\x18\x05 \x01(\x05\x12\r\n\x05\x62oxes\x18\x06 \x01(\x0c\x12\r\n\x05label\x18\x07 \x01(\x05\x12\x10\n\x08img_type\x18\x08 \x01(\t\x12\x10\n\x08\x62ox_type\x18\t \x01(\t\"\x8d\x01\n\x0fImageNumberPair\x12\x10\n\x08\x63hannels\x18\x01 \x01(\x05\x12\x12\n\nimg_height\x18\x02 \x01(\x05\x12\x11\n\timg_width\x18\x03 \x01(\x05\x12\r\n\x05image\x18\x04 \x01(\x0c\x12\x0e\n\x06number\x18\x05 \x01(\x0c\x12\x10\n\x08img_type\x18\x06 \x01(\t\x12\x10\n\x08num_type\x18\x07 \x01(\t\"\xa2\x01\n\x12ImageYoloBoxesPair\x12\x10\n\x08\x63hannels\x18\x01 \x01(\x05\x12\x12\n\nimg_height\x18\x02 \x01(\x05\x12\x11\n\timg_width\x18\x03 \x01(\x05\x12\r\n\x05image\x18\x04 \x01(\x0c\x12\x11\n\tbox_count\x18\x05 \x01(\x05\x12\r\n\x05\x62oxes\x18\x06 \x01(\x0c\x12\x10\n\x08img_type\x18\x07 \x01(\t\x12\x10\n\x08\x62ox_type\x18\x08 \x01(\t')
 )
 
 
@@ -54,23 +54,23 @@ _IMAGEMASKPAIR = _descriptor.Descriptor(
       is_extension=False, extension_scope=None,
       options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='image', full_name='isg_ai.ImageMaskPair.image', index=3,
-      number=4, type=12, cpp_type=9, label=1,
+      name='img_type', full_name='isg_ai.ImageMaskPair.img_type', index=3,
+      number=4, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='mask_type', full_name='isg_ai.ImageMaskPair.mask_type', index=4,
+      number=5, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='image', full_name='isg_ai.ImageMaskPair.image', index=5,
+      number=6, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      options=None, file=DESCRIPTOR),
-    _descriptor.FieldDescriptor(
-      name='msk_height', full_name='isg_ai.ImageMaskPair.msk_height', index=4,
-      number=5, type=5, cpp_type=1, label=1,
-      has_default_value=False, default_value=0,
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      options=None, file=DESCRIPTOR),
-    _descriptor.FieldDescriptor(
-      name='msk_width', full_name='isg_ai.ImageMaskPair.msk_width', index=5,
-      number=6, type=5, cpp_type=1, label=1,
-      has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None, file=DESCRIPTOR),
@@ -78,13 +78,6 @@ _IMAGEMASKPAIR = _descriptor.Descriptor(
       name='mask', full_name='isg_ai.ImageMaskPair.mask', index=6,
       number=7, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      options=None, file=DESCRIPTOR),
-    _descriptor.FieldDescriptor(
-      name='label', full_name='isg_ai.ImageMaskPair.label', index=7,
-      number=8, type=5, cpp_type=1, label=1,
-      has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None, file=DESCRIPTOR),
@@ -101,7 +94,7 @@ _IMAGEMASKPAIR = _descriptor.Descriptor(
   oneofs=[
   ],
   serialized_start=25,
-  serialized_end=180,
+  serialized_end=163,
 )
 
 
@@ -161,6 +154,20 @@ _IMAGEBOXESPAIR = _descriptor.Descriptor(
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='img_type', full_name='isg_ai.ImageBoxesPair.img_type', index=7,
+      number=8, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='box_type', full_name='isg_ai.ImageBoxesPair.box_type', index=8,
+      number=9, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None, file=DESCRIPTOR),
   ],
   extensions=[
   ],
@@ -173,8 +180,8 @@ _IMAGEBOXESPAIR = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=183,
-  serialized_end=320,
+  serialized_start=166,
+  serialized_end=339,
 )
 
 
@@ -215,8 +222,22 @@ _IMAGENUMBERPAIR = _descriptor.Descriptor(
       options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
       name='number', full_name='isg_ai.ImageNumberPair.number', index=4,
-      number=5, type=5, cpp_type=1, label=1,
-      has_default_value=False, default_value=0,
+      number=5, type=12, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b(""),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='img_type', full_name='isg_ai.ImageNumberPair.img_type', index=5,
+      number=6, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='num_type', full_name='isg_ai.ImageNumberPair.num_type', index=6,
+      number=7, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None, file=DESCRIPTOR),
@@ -232,8 +253,8 @@ _IMAGENUMBERPAIR = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=322,
-  serialized_end=427,
+  serialized_start=342,
+  serialized_end=483,
 )
 
 
@@ -286,6 +307,20 @@ _IMAGEYOLOBOXESPAIR = _descriptor.Descriptor(
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='img_type', full_name='isg_ai.ImageYoloBoxesPair.img_type', index=6,
+      number=7, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='box_type', full_name='isg_ai.ImageYoloBoxesPair.box_type', index=7,
+      number=8, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None, file=DESCRIPTOR),
   ],
   extensions=[
   ],
@@ -298,8 +333,8 @@ _IMAGEYOLOBOXESPAIR = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=429,
-  serialized_end=555,
+  serialized_start=486,
+  serialized_end=648,
 )
 
 DESCRIPTOR.message_types_by_name['ImageMaskPair'] = _IMAGEMASKPAIR

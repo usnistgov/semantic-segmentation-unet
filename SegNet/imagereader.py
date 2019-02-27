@@ -90,6 +90,9 @@ class ImageReader:
     def get_image_size(self):
         return self.image_size
 
+    def get_batch_size(self):
+        return self.batchsize
+
     def startup(self):
         self.workers = None
         self.done = False
@@ -128,7 +131,7 @@ class ImageReader:
     @staticmethod
     def __format_image(image_data):
         # reshape into tensor (NCHW)
-        image_data = image_data.reshape((-1, 1, image_data.shape[0], image_data.shape[1]))
+        image_data = image_data.reshape((-1, image_data.shape[0], image_data.shape[1], 1))
         return image_data
 
     @staticmethod
@@ -192,12 +195,12 @@ class ImageReader:
                     datum.ParseFromString(value)
 
                     # convert from string to numpy array
-                    I = np.fromstring(datum.image, dtype=np.uint8)
+                    I = np.fromstring(datum.image, dtype=datum.img_type)
                     # reshape the numpy array using the dimensions recorded in the datum
                     I = I.reshape(datum.img_height, datum.img_width)
 
                     # convert from string to numpy array
-                    M = np.fromstring(datum.mask, dtype=np.uint8)
+                    M = np.fromstring(datum.mask, dtype=datum.mask_type)
                     # reshape the numpy array using the dimensions recorded in the datum
                     M = M.reshape(datum.img_height, datum.img_width)
 

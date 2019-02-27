@@ -258,6 +258,8 @@ def augment_image(img, mask=None, rotation_flag=False, reflection_flag=False,
 def apply_affine_transformation_boxes(boxes, input_shape, reflect_x, reflect_y, jitter_x, jitter_y, scale_x, scale_y):
     # Boxes are [N, 5] with the columns being [x, y, w, h, class-id]
 
+    if boxes.shape[0] == 0: return
+
     # convert Boxes to [x_st, y_st, x_end, y_end]
     class_id = boxes[:, 4]
     x_st = boxes[:, 0]
