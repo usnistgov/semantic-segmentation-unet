@@ -3,7 +3,6 @@ import numpy as np
 import os
 import skimage
 import skimage.transform
-import csv
 from isg_ai_pb2 import ImageMaskPair
 import shutil
 import lmdb
@@ -13,11 +12,11 @@ import random
 # Define the inputs
 # ****************************************************
 
-output_filepath = '/scratch/small-data-cnns/data/semantic-segmentation/'
+output_filepath = '../data/'
 database_common_name = 'HES'
 
-image_filepath = '/scratch/small-data-cnns/source_data/HES_raw/' # contains the filtered HES with foreground
-mask_filepath = '/scratch/small-data-cnns/source_data/hes_orig/validate/mask/'
+image_filepath = '../data/images/'
+mask_filepath = '../data/masks/'
 
 
 # ****************************************************
@@ -65,7 +64,6 @@ def generate_database(img_list, database_name):
         block_key = img_file_name.replace('.tif','')
 
         img = read_image(os.path.join(image_filepath, img_file_name))
-        img = img.astype(np.uint16)
         msk = read_image(os.path.join(mask_filepath, img_file_name))
         msk[msk > 0] = 1 # make binary (from labeled mask)
 
@@ -82,6 +80,9 @@ def generate_database(img_list, database_name):
 
 
 if __name__ == "__main__":
+    image_filepath = os.path.abspath(image_filepath)
+    output_filepath = os.path.abspath(output_filepath)
+
     if not os.path.exists(output_filepath):
         os.mkdir(output_filepath)
     # find the image files for which annotations exist
@@ -90,20 +91,16 @@ if __name__ == "__main__":
     # in place shuffle
     random.shuffle(img_files)
 
-    number_examples = 100
-
     idx = int(0.5 * len(img_files))
     train_img_files = img_files[0:idx]
-    train_img_files = train_img_files[0:number_examples]
     test_img_files = img_files[idx:]
-    test_img_files = test_img_files[0:number_examples]
 
     print('building train database')
-    database_name = 'train-{}-{}.lmdb'.format(database_common_name, number_examples)
+    database_name = 'train-{}.lmdb'.format(database_common_name)
     generate_database(train_img_files, database_name)
 
     print('building test database')
-    database_name = 'test-{}-{}.lmdb'.format(database_common_name, number_examples)
+    database_name = 'test-{}.lmdb'.format(database_common_name)
     generate_database(test_img_files, database_name)
 
 
