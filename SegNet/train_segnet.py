@@ -30,8 +30,9 @@ print('Reader Count: {}'.format(READER_COUNT))
 # Setup the Argument parsing
 parser = argparse.ArgumentParser(prog='train_segnet', description='Script which trains a segnet model')
 
-parser.add_argument('--batch_size', dest='batch_size', type=int, help='training batch size', default=8)
+parser.add_argument('--batch_size', dest='batch_size', type=int, help='training batch size', default=4)
 parser.add_argument('--number_classes', dest='number_classes', type=int, default=2)
+parser.add_argument('--tile_size', dest='tile_size', type=int, help='image tile size the network is expecting', default=256)
 parser.add_argument('--learning_rate', dest='learning_rate', type=float, default=1e-4)
 parser.add_argument('--output_dir', dest='output_folder', type=str, help='Folder where outputs will be saved (Required)', required=True)
 parser.add_argument('--test_every_n_steps', dest='test_every_n_steps', type=int, help='number of gradient update steps to take between test epochs', default=1000)
@@ -44,6 +45,7 @@ parser.add_argument('--restore_checkpoint_filepath', dest='restore_checkpoint_fi
 
 args = parser.parse_args()
 batch_size = args.batch_size
+tile_size = args.tile_size
 output_folder = args.output_folder
 gradient_update_location = args.gradient_update_location
 number_classes = args.number_classes
@@ -72,6 +74,7 @@ if not valid_location:
 print('Arguments:')
 print('batch_size = {}'.format(batch_size))
 print('number_classes = {}'.format(number_classes))
+print('tile_size = {}'.format(tile_size))
 print('learning_rate = {}'.format(learning_rate))
 print('test_every_n_steps = {}'.format(test_every_n_steps))
 
@@ -94,15 +97,6 @@ import imagereader
 
 def save_csv_file(output_folder, data, filename):
     np.savetxt(os.path.join(output_folder, filename), np.asarray(data), fmt='%.6g', delimiter=",")
-
-
-def save_conf_csv_file(output_folder, TP, TN, FP, FN, filename):
-    a = np.reshape(np.asarray(TP), (len(TP), 1))
-    b = np.reshape(np.asarray(TN), (len(TN), 1))
-    c = np.reshape(np.asarray(FP), (len(FP), 1))
-    d = np.reshape(np.asarray(FN), (len(FN), 1))
-    dat = np.hstack((a, b, c, d))
-    np.savetxt(os.path.join(output_folder, filename), dat, fmt='%.6g', delimiter=",", header='TP, TN, FP, FN')
 
 
 def save_text_csv_file(output_folder, data, filename):
@@ -136,15 +130,6 @@ def plot(output_folder, name, train_val, test_val, epoch_size, log_scale=True):
     plt.close(fig)
 
 
-def initialize_uninitialized(sess):
-    global_vars = tf.global_variables()
-    is_not_initialized = sess.run([tf.is_variable_initialized(var) for var in global_vars])
-    not_initialized_vars = [v for (v, f) in zip(global_vars, is_not_initialized) if not f]
-
-    if len(not_initialized_vars):
-        sess.run(tf.variables_initializer(not_initialized_vars))
-
-
 def train_model():
     # create the output directory, removing any old results that existed
     if os.path.exists(output_folder):
@@ -166,7 +151,7 @@ def train_model():
 
         print('Creating model')
         with tf.Graph().as_default(), tf.device('/' + gradient_update_location):
-            train_init_op, test_init_op, train_op, loss_op, accuracy_op, is_training_placeholder = segnet_model.build_towered_model(train_reader, test_reader, GPU_IDS, learning_rate, number_classes)
+            train_init_op, test_init_op, train_op, loss_op, accuracy_op, is_training_placeholder = segnet_model.build_towered_model(train_reader, test_reader, GPU_IDS, learning_rate, number_classes, tile_size)
 
             print('Starting Session')
             # Start running operations on the Graph. allow_soft_placement must be set to
@@ -212,7 +197,7 @@ def train_model():
                     _, loss_val, accuracy_val = sess.run([train_op, loss_op, accuracy_op], feed_dict={is_training_placeholder: True})
                     train_loss.append(loss_val)
                     train_accuracy.append(accuracy_val)
-                    print('Train Epoch: {} Batch {}: loss = {}'.format(epoch, step, loss_val))
+                    print('Train Epoch: {} Batch {}/{}: loss = {}'.format(epoch, step, adj_batch_count, loss_val))
                 print('Train Epoch: {} : Accuracy = {}'.format(epoch, np.mean(train_accuracy[-train_epoch_size:])))
 
                 sess.run(test_init_op)
@@ -223,7 +208,7 @@ def train_model():
                     loss_val, accuracy_val = sess.run([loss_op, accuracy_op], feed_dict={is_training_placeholder: False})
                     epoch_test_loss.append(loss_val)
                     epoch_test_accuracy.append(accuracy_val)
-                    print('Train Epoch: {} Batch {}: loss = {}'.format(epoch, step, loss_val))
+                    print('Train Epoch: {} Batch {}/{}: loss = {}'.format(epoch, step, adj_batch_count, loss_val))
                 test_loss.append(np.mean(epoch_test_loss))
                 test_accuracy.append(np.mean(epoch_test_accuracy))
                 print('Test Epoch: {} : Accuracy = {}'.format(epoch, test_accuracy[-1]))
@@ -238,7 +223,7 @@ def train_model():
 
                 # save tf checkpoint
                 saver = tf.train.Saver(tf.global_variables())
-                checkpoint_filepath = os.path.join(output_folder, 'checkpoint', 'model.ckpt')
+                checkpoint_filepath = os.path.join(output_folder, 'checkpoint', 'model.ckpt-{}'.format(epoch))
                 saver.save(sess, checkpoint_filepath)
 
                 # determine early stopping

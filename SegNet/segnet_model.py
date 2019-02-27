@@ -221,9 +221,14 @@ def average_gradients(tower_grads):
   return average_grads
 
 
-def build_input_iterators(train_reader, test_reader, batch_prefetch_count):
+def build_input_iterators(train_reader, test_reader, batch_prefetch_count, tile_size):
     img_size = train_reader.get_image_size()
     batch_size = train_reader.get_batch_size()
+
+    if img_size[0] != tile_size or img_size[1] != tile_size:
+        print('Image Size: {}, {}'.format(img_size[0], img_size[1]))
+        print('Expected Size: {}, {}'.format(tile_size, tile_size))
+        raise Exception('Invalid input shape, does not match specified network tile size.')
 
     print('Creating Input Train Dataset')
     # wrap the input queues into a Dataset
@@ -247,12 +252,12 @@ def build_input_iterators(train_reader, test_reader, batch_prefetch_count):
     return train_init_op, test_init_op, iter
 
 
-def build_towered_model(train_reader, test_reader, gpu_ids, learning_rate, number_classes):
+def build_towered_model(train_reader, test_reader, gpu_ids, learning_rate, number_classes, tile_size):
     is_training_placeholder = tf.placeholder(tf.bool, name='is_training')
 
     num_gpus = len(gpu_ids)
     batch_prefetch_count = num_gpus
-    train_init_op, test_init_op, iter = build_input_iterators(train_reader, test_reader, batch_prefetch_count)
+    train_init_op, test_init_op, iter = build_input_iterators(train_reader, test_reader, batch_prefetch_count, tile_size)
 
     # configure the Adam optimizer for network training with the specified learning reate
     optimizer = tf.train.AdamOptimizer(learning_rate)
