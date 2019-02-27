@@ -7,19 +7,8 @@ from isg_ai_pb2 import ImageMaskPair
 import shutil
 import lmdb
 import random
+import argparse
 
-
-# Define the inputs
-# ****************************************************
-
-output_filepath = '../data/'
-database_common_name = 'HES'
-
-image_filepath = '../data/images/'
-mask_filepath = '../data/masks/'
-
-
-# ****************************************************
 
 def read_image(fp):
     img = skimage.io.imread(fp, as_gray=True)
@@ -47,7 +36,7 @@ def write_img_to_db(txn, img, msk, key_str):
     return
 
 
-def generate_database(img_list, database_name):
+def generate_database(img_list, database_name, image_filepath, mask_filepath):
     output_image_lmdb_file = os.path.join(output_filepath, database_name)
 
     if os.path.exists(output_image_lmdb_file):
@@ -80,27 +69,48 @@ def generate_database(img_list, database_name):
 
 
 if __name__ == "__main__":
-    image_filepath = os.path.abspath(image_filepath)
+    # Define the inputs
+    # ****************************************************
+
+    # Setup the Argument parsing
+    parser = argparse.ArgumentParser(prog='build_lmdb', description='Script which converts two folders of images and masks into a pair of lmdb databases for training.')
+
+    parser.add_argument('--image_folder', dest='image_folder', type=str, help='filepath to the folder containing the images', default='../data/images/')
+    parser.add_argument('--mask_folder', dest='mask_folder', type=str, help='filepath to the folder containing the masks', default='../data/masks/')
+    parser.add_argument('--output_filepath', dest='output_filepath', type=str, help='filepath to the folder where the outputs will be placed', default='../data/')
+    parser.add_argument('--dataset_name', dest='dataset_name', type=str, help='name of the dataset to be used in creating the lmdb files', default='HES')
+    parser.add_argument('--train_fraction', dest='train_fraction', type=float, help='what fraction of the dataset to use for training', default=0.8)
+
+    args = parser.parse_args()
+    image_folder = args.image_folder
+    mask_folder = args.mask_folder
+    output_filepath = args.output_filepath
+    dataset_name = args.dataset_name
+    train_fraction = args.train_fraction
+
+    # ****************************************************
+
+    image_folder = os.path.abspath(image_folder)
     output_filepath = os.path.abspath(output_filepath)
 
     if not os.path.exists(output_filepath):
         os.mkdir(output_filepath)
     # find the image files for which annotations exist
-    img_files = [f for f in os.listdir(image_filepath) if f.endswith('.tif')]
+    img_files = [f for f in os.listdir(image_folder) if f.endswith('.tif')]
 
     # in place shuffle
     random.shuffle(img_files)
 
-    idx = int(0.5 * len(img_files))
+    idx = int(train_fraction * len(img_files))
     train_img_files = img_files[0:idx]
     test_img_files = img_files[idx:]
 
     print('building train database')
-    database_name = 'train-{}.lmdb'.format(database_common_name)
-    generate_database(train_img_files, database_name)
+    database_name = 'train-{}.lmdb'.format(dataset_name)
+    generate_database(train_img_files, database_name, image_folder, mask_folder)
 
     print('building test database')
-    database_name = 'test-{}.lmdb'.format(database_common_name)
-    generate_database(test_img_files, database_name)
+    database_name = 'test-{}.lmdb'.format(dataset_name)
+    generate_database(test_img_files, database_name, image_folder, mask_folder)
 
 

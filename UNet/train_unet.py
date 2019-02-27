@@ -4,7 +4,7 @@ mpl.use('Agg')
 import matplotlib.pyplot as plt
 
 import argparse
-import os, sys
+import os
 
 
 
