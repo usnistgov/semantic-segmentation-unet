@@ -147,6 +147,7 @@ def train_model():
         test_reader.startup()
 
         print('Creating model')
+        # TODO move this gradient update information into the model createion function
         with tf.Graph().as_default(), tf.device('/' + gradient_update_location):
             train_init_op, test_init_op, train_op, loss_op, accuracy_op, is_training_placeholder = unet_model.build_towered_model(train_reader, test_reader, GPU_IDS, learning_rate, number_classes, tile_size)
 
