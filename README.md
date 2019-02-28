@@ -213,16 +213,15 @@ the `augment` class supports:
 
 These augmentation transformations are generally configured based on domain expertise and stay fixed per dataset.
 
-Currently the only method for modifying them is to open the `imagereader.py` file and edit the augmentation parameters contained within the code block:
+Currently the only method for modifying them is to open the `imagereader.py` file and edit the augmentation parameters contained within the code block within the imagereader `__init__`:
 
 ```
-if self.use_augmentation:
-    # setup the image data augmentation parameters
-    reflection_flag = True
-    rotation_flag = True
-    jitter_augmentation_severity = 0.1  # x% of a FOV
-    noise_augmentation_severity = 0.02  # vary noise by x% of the dynamic range present in the image
-    scale_augmentation_severity = 0.1 # vary size by x%
-    blur_max_sigma = 2 # pixels
-    # intensity_augmentation_severity = 0.05
+# setup the image data augmentation parameters
+self._reflection_flag = True
+self._rotation_flag = True
+self._jitter_augmentation_severity = 0.1  # x% of a FOV
+self._noise_augmentation_severity = 0.02  # vary noise by x% of the dynamic range present in the image
+self._scale_augmentation_severity = 0.1  # vary size by x%
+self._blur_max_sigma = 2  # pixels
+# self._intensity_augmentation_severity = 0.05
 ``` 

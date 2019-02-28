@@ -52,6 +52,17 @@ class ImageReader:
 
         self.shuffle = shuffle
 
+        # setup the image data augmentation parameters
+        self._reflection_flag = True
+        self._rotation_flag = True
+        self._jitter_augmentation_severity = 0.1  # x% of a FOV
+        self._noise_augmentation_severity = 0.02  # vary noise by x% of the dynamic range present in the image
+        self._scale_augmentation_severity = 0.1  # vary size by x%
+        self._blur_max_sigma = 2  # pixels
+        # self._intensity_augmentation_severity = 0.05
+
+
+
         random.seed()
 
         # get a list of keys from the lmdb
@@ -209,25 +220,16 @@ class ImageReader:
                     M = M.reshape(datum.img_height, datum.img_width)
 
                     if self.use_augmentation:
-                        # setup the image data augmentation parameters
-                        reflection_flag = True
-                        rotation_flag = True
-                        jitter_augmentation_severity = 0.1  # x% of a FOV
-                        noise_augmentation_severity = 0.02  # vary noise by x% of the dynamic range present in the image
-                        scale_augmentation_severity = 0.1 # vary size by x%
-                        blur_max_sigma = 2 # pixels
-                        # intensity_augmentation_severity = 0.05
-
                         I = I.astype(np.float32)
 
                         # perform image data augmentation
                         I, M = augment.augment_image(I, M,
-                            reflection_flag=reflection_flag,
-                            rotation_flag=rotation_flag,
-                              jitter_augmentation_severity=jitter_augmentation_severity,
-                              noise_augmentation_severity=noise_augmentation_severity,
-                              scale_augmentation_severity=scale_augmentation_severity,
-                              blur_augmentation_max_sigma=blur_max_sigma)
+                            reflection_flag=self._reflection_flag,
+                            rotation_flag=self._rotation_flag,
+                              jitter_augmentation_severity=self._jitter_augmentation_severity,
+                              noise_augmentation_severity=self._noise_augmentation_severity,
+                              scale_augmentation_severity=self._scale_augmentation_severity,
+                              blur_augmentation_max_sigma=self._blur_max_sigma)
 
                     # format the image into a tensor
                     I = self.__format_image(I)
