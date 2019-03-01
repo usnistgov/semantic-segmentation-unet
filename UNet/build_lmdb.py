@@ -21,6 +21,9 @@ def write_img_to_db(txn, img, msk, key_str):
     if type(msk) is not np.ndarray:
         raise Exception("Img must be numpy array to store into db")
 
+    # get the list of labels in the image
+    labels = np.unique(msk)
+
     datum = ImageMaskPair()
     datum.channels = 1
     datum.img_height = img.shape[0]
@@ -31,6 +34,8 @@ def write_img_to_db(txn, img, msk, key_str):
 
     datum.image = img.tobytes()
     datum.mask = msk.tobytes()
+
+    datum.labels = labels.tobytes()
 
     txn.put(key_str.encode('ascii'), datum.SerializeToString())
     return
@@ -54,7 +59,6 @@ def generate_database(img_list, database_name, image_filepath, mask_filepath):
 
         img = read_image(os.path.join(image_filepath, img_file_name))
         msk = read_image(os.path.join(mask_filepath, img_file_name))
-        msk[msk > 0] = 1 # make binary (from labeled mask)
 
         key_str = '{}_{:08d}'.format(block_key, txn_nb)
         txn_nb += 1

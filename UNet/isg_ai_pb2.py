@@ -19,7 +19,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   name='isg_ai.proto',
   package='isg_ai',
   syntax='proto2',
-  serialized_pb=_b('\n\x0cisg_ai.proto\x12\x06isg_ai\"\x8a\x01\n\rImageMaskPair\x12\x10\n\x08\x63hannels\x18\x01 \x01(\x05\x12\x12\n\nimg_height\x18\x02 \x01(\x05\x12\x11\n\timg_width\x18\x03 \x01(\x05\x12\x10\n\x08img_type\x18\x04 \x01(\t\x12\x11\n\tmask_type\x18\x05 \x01(\t\x12\r\n\x05image\x18\x06 \x01(\x0c\x12\x0c\n\x04mask\x18\x07 \x01(\x0c\"\xad\x01\n\x0eImageBoxesPair\x12\x10\n\x08\x63hannels\x18\x01 \x01(\x05\x12\x12\n\nimg_height\x18\x02 \x01(\x05\x12\x11\n\timg_width\x18\x03 \x01(\x05\x12\r\n\x05image\x18\x04 \x01(\x0c\x12\x11\n\tbox_count\x18\x05 \x01(\x05\x12\r\n\x05\x62oxes\x18\x06 \x01(\x0c\x12\r\n\x05label\x18\x07 \x01(\x05\x12\x10\n\x08img_type\x18\x08 \x01(\t\x12\x10\n\x08\x62ox_type\x18\t \x01(\t\"\x8d\x01\n\x0fImageNumberPair\x12\x10\n\x08\x63hannels\x18\x01 \x01(\x05\x12\x12\n\nimg_height\x18\x02 \x01(\x05\x12\x11\n\timg_width\x18\x03 \x01(\x05\x12\r\n\x05image\x18\x04 \x01(\x0c\x12\x0e\n\x06number\x18\x05 \x01(\x0c\x12\x10\n\x08img_type\x18\x06 \x01(\t\x12\x10\n\x08num_type\x18\x07 \x01(\t\"\xa2\x01\n\x12ImageYoloBoxesPair\x12\x10\n\x08\x63hannels\x18\x01 \x01(\x05\x12\x12\n\nimg_height\x18\x02 \x01(\x05\x12\x11\n\timg_width\x18\x03 \x01(\x05\x12\r\n\x05image\x18\x04 \x01(\x0c\x12\x11\n\tbox_count\x18\x05 \x01(\x05\x12\r\n\x05\x62oxes\x18\x06 \x01(\x0c\x12\x10\n\x08img_type\x18\x07 \x01(\t\x12\x10\n\x08\x62ox_type\x18\x08 \x01(\t')
+  serialized_pb=_b('\n\x0cisg_ai.proto\x12\x06isg_ai\"\x9a\x01\n\rImageMaskPair\x12\x10\n\x08\x63hannels\x18\x01 \x01(\x05\x12\x12\n\nimg_height\x18\x02 \x01(\x05\x12\x11\n\timg_width\x18\x03 \x01(\x05\x12\x10\n\x08img_type\x18\x04 \x01(\t\x12\x11\n\tmask_type\x18\x05 \x01(\t\x12\r\n\x05image\x18\x06 \x01(\x0c\x12\x0c\n\x04mask\x18\x07 \x01(\x0c\x12\x0e\n\x06labels\x18\x08 \x01(\x0c\"\xad\x01\n\x0eImageBoxesPair\x12\x10\n\x08\x63hannels\x18\x01 \x01(\x05\x12\x12\n\nimg_height\x18\x02 \x01(\x05\x12\x11\n\timg_width\x18\x03 \x01(\x05\x12\r\n\x05image\x18\x04 \x01(\x0c\x12\x11\n\tbox_count\x18\x05 \x01(\x05\x12\r\n\x05\x62oxes\x18\x06 \x01(\x0c\x12\r\n\x05label\x18\x07 \x01(\x05\x12\x10\n\x08img_type\x18\x08 \x01(\t\x12\x10\n\x08\x62ox_type\x18\t \x01(\t\"\x8d\x01\n\x0fImageNumberPair\x12\x10\n\x08\x63hannels\x18\x01 \x01(\x05\x12\x12\n\nimg_height\x18\x02 \x01(\x05\x12\x11\n\timg_width\x18\x03 \x01(\x05\x12\r\n\x05image\x18\x04 \x01(\x0c\x12\x0e\n\x06number\x18\x05 \x01(\x0c\x12\x10\n\x08img_type\x18\x06 \x01(\t\x12\x10\n\x08num_type\x18\x07 \x01(\t\"\xa2\x01\n\x12ImageYoloBoxesPair\x12\x10\n\x08\x63hannels\x18\x01 \x01(\x05\x12\x12\n\nimg_height\x18\x02 \x01(\x05\x12\x11\n\timg_width\x18\x03 \x01(\x05\x12\r\n\x05image\x18\x04 \x01(\x0c\x12\x11\n\tbox_count\x18\x05 \x01(\x05\x12\r\n\x05\x62oxes\x18\x06 \x01(\x0c\x12\x10\n\x08img_type\x18\x07 \x01(\t\x12\x10\n\x08\x62ox_type\x18\x08 \x01(\t')
 )
 
 
@@ -81,6 +81,13 @@ _IMAGEMASKPAIR = _descriptor.Descriptor(
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='labels', full_name='isg_ai.ImageMaskPair.labels', index=7,
+      number=8, type=12, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b(""),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None, file=DESCRIPTOR),
   ],
   extensions=[
   ],
@@ -94,7 +101,7 @@ _IMAGEMASKPAIR = _descriptor.Descriptor(
   oneofs=[
   ],
   serialized_start=25,
-  serialized_end=163,
+  serialized_end=179,
 )
 
 
@@ -180,8 +187,8 @@ _IMAGEBOXESPAIR = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=166,
-  serialized_end=339,
+  serialized_start=182,
+  serialized_end=355,
 )
 
 
@@ -253,8 +260,8 @@ _IMAGENUMBERPAIR = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=342,
-  serialized_end=483,
+  serialized_start=358,
+  serialized_end=499,
 )
 
 
@@ -333,8 +340,8 @@ _IMAGEYOLOBOXESPAIR = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=486,
-  serialized_end=648,
+  serialized_start=502,
+  serialized_end=664,
 )
 
 DESCRIPTOR.message_types_by_name['ImageMaskPair'] = _IMAGEMASKPAIR

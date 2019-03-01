@@ -37,6 +37,7 @@ parser.add_argument('--tile_size', dest='tile_size', type=int, help='image tile 
 parser.add_argument('--learning_rate', dest='learning_rate', type=float, default=1e-4)
 parser.add_argument('--output_dir', dest='output_folder', type=str, help='Folder where outputs will be saved (Required)', required=True)
 parser.add_argument('--test_every_n_steps', dest='test_every_n_steps', type=int, help='number of gradient update steps to take between test epochs', default=100)
+parser.add_argument('--balance_classes', dest='balance_classes', type=int, help='whether to balance classes [0 = false, 1 = true]', default=0)
 
 parser.add_argument('--train_database', dest='train_database_filepath', type=str, help='lmdb database to use for (Required)', required=True)
 parser.add_argument('--test_database', dest='test_database_filepath', type=str, help='lmdb database to use for testing (Required)', required=True)
@@ -56,6 +57,7 @@ test_lmdb_filepath = args.test_database_filepath
 learning_rate = args.learning_rate
 restore_checkpoint_filepath = args.restore_checkpoint_filepath
 test_every_n_steps = args.test_every_n_steps
+balance_classes = args.balance_classes
 
 # verify gradient_update_location is valid
 valid_location = False
@@ -76,6 +78,7 @@ print('number_classes = {}'.format(number_classes))
 print('tile_size = {}'.format(tile_size))
 print('learning_rate = {}'.format(learning_rate))
 print('test_every_n_steps = {}'.format(test_every_n_steps))
+print('balance_classes = {}'.format(balance_classes))
 
 print('train_database = {}'.format(train_lmdb_filepath))
 print('test_database = {}'.format(test_lmdb_filepath))
@@ -134,11 +137,11 @@ def train_model():
         os.makedirs(output_folder)
 
     print('Setting up test image reader')
-    test_reader = imagereader.ImageReader(test_lmdb_filepath, batch_size=batch_size, use_augmentation=False, shuffle=False, num_workers=READER_COUNT)
+    test_reader = imagereader.ImageReader(test_lmdb_filepath, batch_size=batch_size, use_augmentation=False, shuffle=False, num_workers=READER_COUNT, balance_classes=False)
     print('Test Reader has {} batches'.format(test_reader.get_epoch_size()))
 
     print('Setting up training image reader')
-    train_reader = imagereader.ImageReader(train_lmdb_filepath, batch_size=batch_size, use_augmentation=True, shuffle=True, num_workers=READER_COUNT)
+    train_reader = imagereader.ImageReader(train_lmdb_filepath, batch_size=batch_size, use_augmentation=True, shuffle=True, num_workers=READER_COUNT, balance_classes=balance_classes)
     print('Train Reader has {} batches'.format(train_reader.get_epoch_size()))
 
     try: # if any erros happen we want to catch them and shut down the multiprocess readers
@@ -147,7 +150,6 @@ def train_model():
         test_reader.startup()
 
         print('Creating model')
-        # TODO move this gradient update information into the model createion function
         with tf.Graph().as_default(), tf.device('/' + gradient_update_location):
             train_init_op, test_init_op, train_op, loss_op, accuracy_op, is_training_placeholder = unet_model.build_towered_model(train_reader, test_reader, GPU_IDS, learning_rate, number_classes, tile_size)
 
@@ -206,7 +208,7 @@ def train_model():
                     loss_val, accuracy_val = sess.run([loss_op, accuracy_op], feed_dict={is_training_placeholder: False})
                     epoch_test_loss.append(loss_val)
                     epoch_test_accuracy.append(accuracy_val)
-                    print('Train Epoch: {} Batch {}/{}: loss = {}'.format(epoch, step, adj_batch_count, loss_val))
+                    print('Test Epoch: {} Batch {}/{}: loss = {}'.format(epoch, step, adj_batch_count, loss_val))
                 test_loss.append(np.mean(epoch_test_loss))
                 test_accuracy.append(np.mean(epoch_test_accuracy))
                 print('Test Epoch: {} : Accuracy = {}'.format(epoch, test_accuracy[-1]))

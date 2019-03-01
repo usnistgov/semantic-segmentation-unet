@@ -19,6 +19,8 @@ message ImageMaskPair {
 
   // the actual mask data, in bytes
   optional bytes mask = 7;
+  // list of labels present in the mask
+  optional bytes labels = 8;
 }
 
 message ImageBoxesPair {

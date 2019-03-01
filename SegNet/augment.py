@@ -25,6 +25,18 @@ def augment_image_box_pair(img, boxes, rotation_flag=False, reflection_flag=Fals
     # check that the input image and mask are 2D images
     assert len(img.shape) == 2
 
+    # convert input Nones to expected
+    if jitter_augmentation_severity is None:
+        jitter_augmentation_severity = 0
+    if noise_augmentation_severity is None:
+        noise_augmentation_severity = 0
+    if scale_augmentation_severity is None:
+        scale_augmentation_severity = 0
+    if blur_augmentation_max_sigma is None:
+        blur_augmentation_max_sigma = 0
+    if intensity_augmentation_severity is None:
+        intensity_augmentation_severity = 0
+
     # confirm that severity is a float between [0,1]
     assert 0 <= jitter_augmentation_severity < 1
     assert 0 <= noise_augmentation_severity < 1
@@ -138,11 +150,22 @@ def augment_image(img, mask=None, rotation_flag=False, reflection_flag=False,
     # ensure input images are np arrays
     img = np.asarray(img, dtype=np.float32)
 
-
     debug_worst_possible_transformation = False # useful for debuging how bad images can get
 
     # check that the input image and mask are 2D images
     assert len(img.shape) == 2
+
+    # convert input Nones to expected
+    if jitter_augmentation_severity is None:
+        jitter_augmentation_severity = 0
+    if noise_augmentation_severity is None:
+        noise_augmentation_severity = 0
+    if scale_augmentation_severity is None:
+        scale_augmentation_severity = 0
+    if blur_augmentation_max_sigma is None:
+        blur_augmentation_max_sigma = 0
+    if intensity_augmentation_severity is None:
+        intensity_augmentation_severity = 0
 
     # confirm that severity is a float between [0,1]
     assert 0 <= jitter_augmentation_severity < 1

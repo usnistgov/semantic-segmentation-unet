@@ -76,9 +76,7 @@ class ImageReader:
             raise IOError("Missing Database")
 
         # get a list of keys from the lmdb
-
         self.keys_flat = list()
-
         self.keys = list()
         for i in range(self.nb_classes):
             self.keys.append(list())
@@ -94,6 +92,8 @@ class ImageReader:
         with self.lmdb_env.begin(write=False) as lmdb_txn:
             cursor = lmdb_txn.cursor()
 
+            # move cursor to the first element
+            cursor.first()
             # get the first serialized value from the database and convert from serialized representation
             datum.ParseFromString(cursor.value())
             # record the image size
@@ -105,20 +105,18 @@ class ImageReader:
 
                 if self.balance_classes:
                     datum.ParseFromString(val)
+                    # get list of classes the current sample has
                     # convert from string to numpy array
-                    M = np.fromstring(datum.mask, dtype=datum.mask_type)
-                    # reshape the numpy array using the dimensions recorded in the datum
-                    M = M.reshape(datum.img_height, datum.img_width)
-                    u = np.unique(M)
+                    cur_labels = np.fromstring(datum.labels, dtype=datum.mask_type)
+                    # walk through the list of labels, adding that image to each label bin
+                    for l in cur_labels:
+                        self.keys[l].append(key)
 
-
-
-
-
-
-
-
-
+        print('Dataset has {} examples'.format(len(self.keys_flat)))
+        if self.balance_classes:
+            print('Dataset Example Count by Class:')
+            for i in range(len(self.keys)):
+                print('  class: {} count: {}'.format(i, len(self.keys[i])))
 
     def get_epoch_size(self):
         # tie epoch size to the number of images

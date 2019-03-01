@@ -37,66 +37,86 @@ def imwrite(img, fp):
 
 
 class ImageReader:
+    # setup the image data augmentation parameters
+    _reflection_flag = True
+    _rotation_flag = True
+    _jitter_augmentation_severity = 0.1  # x% of a FOV
+    _noise_augmentation_severity = 0.02  # vary noise by x% of the dynamic range present in the image
+    _scale_augmentation_severity = 0.1  # vary size by x%
+    _blur_max_sigma = 2  # pixels
+    _intensity_augmentation_severity = None # vary intensity by x% of the dynamic range present in the image
 
-    def __init__(self, img_db, batch_size, use_augmentation=True, balance_classes=False, shuffle=True, num_workers=1):
+    def __init__(self, img_db, batch_size, use_augmentation=True, balance_classes=False, shuffle=True, num_workers=1, num_classes=2):
+        random.seed()
+
+        # copy inputs to class variables
         self.image_db = img_db
         self.use_augmentation = use_augmentation
-        self.queue_starvation = False
-        if balance_classes:
-            raise NotImplementedError('Class balancing currently not implemented')
+        self.balance_classes = balance_classes
+        self.shuffle = shuffle
+        self.batchsize = batch_size
+        self.nb_workers = num_workers
+        self.nb_classes = num_classes
 
+        # init class state
+        self.queue_starvation = False
+        self.maxOutQSize = num_workers * 10
+        self.workers = None
+        self.done = False
+
+        # setup queue mechanism
+        self.terminateQ = multiprocessing.Queue(maxsize=self.nb_workers)  # limit output queue size
+        self.outQ = multiprocessing.Queue(maxsize=self.maxOutQSize)  # limit output queue size
+        self.idQ = multiprocessing.Queue(maxsize=self.nb_workers)
+
+        # confirm that the input database exists
         if not os.path.exists(self.image_db):
             print('Could not load database file: ')
             print(self.image_db)
             raise IOError("Missing Database")
 
-        self.shuffle = shuffle
-
-        # setup the image data augmentation parameters
-        self._reflection_flag = True
-        self._rotation_flag = True
-        self._jitter_augmentation_severity = 0.1  # x% of a FOV
-        self._noise_augmentation_severity = 0.02  # vary noise by x% of the dynamic range present in the image
-        self._scale_augmentation_severity = 0.1  # vary size by x%
-        self._blur_max_sigma = 2  # pixels
-        # self._intensity_augmentation_severity = 0.05
-
-
-
-        random.seed()
-
         # get a list of keys from the lmdb
         self.keys_flat = list()
+        self.keys = list()
+        for i in range(self.nb_classes):
+            self.keys.append(list())
 
         self.lmdb_env = lmdb.open(self.image_db, map_size=int(2e10), readonly=True) # 20 GB
         self.lmdb_txns = list()
 
-        datum = None
+        self.number_classes = 1
+
+        datum = ImageMaskPair()  # create a datum for decoding serialized protobuf objects
         print('Initializing image database')
+
         with self.lmdb_env.begin(write=False) as lmdb_txn:
             cursor = lmdb_txn.cursor()
-            for key, _ in cursor:
+
+            # move cursor to the first element
+            cursor.first()
+            # get the first serialized value from the database and convert from serialized representation
+            datum.ParseFromString(cursor.value())
+            # record the image size
+            self.image_size = [datum.img_height, datum.img_width]
+
+            # iterate over the database getting the keys
+            for key, val in cursor:
                 self.keys_flat.append(key)
 
-                if datum is None:
-                    datum = ImageMaskPair()  # create a datum for decoding serialized caffe_pb2 objects
-                    # extract the serialized image from the database
-                    value = lmdb_txn.get(key)
-                    # convert from serialized representation
-                    datum.ParseFromString(value)
+                if self.balance_classes:
+                    datum.ParseFromString(val)
+                    # get list of classes the current sample has
+                    # convert from string to numpy array
+                    cur_labels = np.fromstring(datum.labels, dtype=datum.mask_type)
+                    # walk through the list of labels, adding that image to each label bin
+                    for l in cur_labels:
+                        self.keys[l].append(key)
 
-        self.image_size = [datum.img_height, datum.img_width]
-
-        self.batchsize = batch_size
-        self.nb_workers = num_workers
-        # setup queue
-        self.terminateQ = multiprocessing.Queue(maxsize=self.nb_workers)  # limit output queue size
-        self.maxOutQSize = 100
-        self.outQ = multiprocessing.Queue(maxsize=self.maxOutQSize)  # limit output queue size
-        self.idQ = multiprocessing.Queue(maxsize=self.nb_workers)
-
-        self.workers = None
-        self.done = False
+        print('Dataset has {} examples'.format(len(self.keys_flat)))
+        if self.balance_classes:
+            print('Dataset Example Count by Class:')
+            for i in range(len(self.keys)):
+                print('  class: {} count: {}'.format(i, len(self.keys[i])))
 
     def get_epoch_size(self):
         # tie epoch size to the number of images
@@ -157,18 +177,17 @@ class ImageReader:
 
     def __get_next_key(self):
         if self.shuffle:
-            # if self.balance_classes:
-            #     # select a class to add at random from the set of classes
-            #     label_idx = random.randint(0, self.number_labels - 1)  # randint has inclusive endpoints
-            #     # randomly select an example from the database of the required label
-            #     nb_examples = len(self.keys[label_idx])
-            #     img_idx = random.randint(0, nb_examples - 1)
-            #     # lookup the database key for loading the image data
-            #     fn = self.keys[label_idx][img_idx]
-            # else:
-
-            # select a key at random from the list (does not account for class imbalance)
-            fn = self.keys_flat[random.randint(0, len(self.keys_flat) - 1)]
+            if self.balance_classes:
+                # select a class to add at random from the set of classes
+                label_idx = random.randint(0, self.nb_classes - 1)  # randint has inclusive endpoints
+                # randomly select an example from the database of the required label
+                nb_examples = len(self.keys[label_idx])
+                img_idx = random.randint(0, nb_examples - 1)
+                # lookup the database key for loading the image data
+                fn = self.keys[label_idx][img_idx]
+            else:
+                # select a key at random from the list (does not account for class imbalance)
+                fn = self.keys_flat[random.randint(0, len(self.keys_flat) - 1)]
         else:  # no shuffle
             # without shuffle you cannot balance classes
             fn = self.keys_flat[self.key_idx]
@@ -224,12 +243,13 @@ class ImageReader:
 
                         # perform image data augmentation
                         I, M = augment.augment_image(I, M,
-                            reflection_flag=self._reflection_flag,
-                            rotation_flag=self._rotation_flag,
-                              jitter_augmentation_severity=self._jitter_augmentation_severity,
-                              noise_augmentation_severity=self._noise_augmentation_severity,
-                              scale_augmentation_severity=self._scale_augmentation_severity,
-                              blur_augmentation_max_sigma=self._blur_max_sigma)
+                                                     reflection_flag=self._reflection_flag,
+                                                     rotation_flag=self._rotation_flag,
+                                                     jitter_augmentation_severity=self._jitter_augmentation_severity,
+                                                     noise_augmentation_severity=self._noise_augmentation_severity,
+                                                     scale_augmentation_severity=self._scale_augmentation_severity,
+                                                     blur_augmentation_max_sigma=self._blur_max_sigma,
+                                                     intensity_augmentation_severity=self._intensity_augmentation_severity)
 
                     # format the image into a tensor
                     I = self.__format_image(I)
