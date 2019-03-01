@@ -38,6 +38,7 @@ parser.add_argument('--learning_rate', dest='learning_rate', type=float, default
 parser.add_argument('--output_dir', dest='output_folder', type=str, help='Folder where outputs will be saved (Required)', required=True)
 parser.add_argument('--test_every_n_steps', dest='test_every_n_steps', type=int, help='number of gradient update steps to take between test epochs', default=100)
 parser.add_argument('--balance_classes', dest='balance_classes', type=int, help='whether to balance classes [0 = false, 1 = true]', default=0)
+parser.add_argument('--use_augmentation', dest='use_augmentation', type=int, help='whether to use data augmentation [0 = false, 1 = true]', default=1)
 
 parser.add_argument('--train_database', dest='train_database_filepath', type=str, help='lmdb database to use for (Required)', required=True)
 parser.add_argument('--test_database', dest='test_database_filepath', type=str, help='lmdb database to use for testing (Required)', required=True)
@@ -58,6 +59,7 @@ learning_rate = args.learning_rate
 restore_checkpoint_filepath = args.restore_checkpoint_filepath
 test_every_n_steps = args.test_every_n_steps
 balance_classes = args.balance_classes
+use_augmentation = args.use_augmentation
 
 # verify gradient_update_location is valid
 valid_location = False
@@ -79,6 +81,7 @@ print('tile_size = {}'.format(tile_size))
 print('learning_rate = {}'.format(learning_rate))
 print('test_every_n_steps = {}'.format(test_every_n_steps))
 print('balance_classes = {}'.format(balance_classes))
+print('use_augmentation = {}'.format(use_augmentation))
 
 print('train_database = {}'.format(train_lmdb_filepath))
 print('test_database = {}'.format(test_lmdb_filepath))
@@ -141,7 +144,7 @@ def train_model():
     print('Test Reader has {} batches'.format(test_reader.get_epoch_size()))
 
     print('Setting up training image reader')
-    train_reader = imagereader.ImageReader(train_lmdb_filepath, batch_size=batch_size, use_augmentation=True, shuffle=True, num_workers=READER_COUNT, balance_classes=balance_classes)
+    train_reader = imagereader.ImageReader(train_lmdb_filepath, batch_size=batch_size, use_augmentation=use_augmentation, shuffle=True, num_workers=READER_COUNT, balance_classes=balance_classes)
     print('Train Reader has {} batches'.format(train_reader.get_epoch_size()))
 
     try: # if any erros happen we want to catch them and shut down the multiprocess readers
