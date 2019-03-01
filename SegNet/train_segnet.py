@@ -139,11 +139,11 @@ def train_model():
         os.makedirs(output_folder)
 
     print('Setting up test image reader')
-    test_reader = imagereader.ImageReader(test_lmdb_filepath, batch_size=batch_size, use_augmentation=False, shuffle=False, num_workers=READER_COUNT, balance_classes=False)
+    test_reader = imagereader.ImageReader(test_lmdb_filepath, batch_size=batch_size, use_augmentation=False, shuffle=False, num_workers=READER_COUNT, balance_classes=False, number_classes=number_classes)
     print('Test Reader has {} batches'.format(test_reader.get_epoch_size()))
 
     print('Setting up training image reader')
-    train_reader = imagereader.ImageReader(train_lmdb_filepath, batch_size=batch_size, use_augmentation=use_augmentation, shuffle=True, num_workers=READER_COUNT, balance_classes=balance_classes)
+    train_reader = imagereader.ImageReader(train_lmdb_filepath, batch_size=batch_size, use_augmentation=use_augmentation, shuffle=True, num_workers=READER_COUNT, balance_classes=balance_classes, number_classes=number_classes)
     print('Train Reader has {} batches'.format(train_reader.get_epoch_size()))
 
     try: # if any erros happen we want to catch them and shut down the multiprocess readers

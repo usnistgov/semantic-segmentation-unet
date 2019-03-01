@@ -46,7 +46,7 @@ class ImageReader:
     _blur_max_sigma = 2  # pixels
     _intensity_augmentation_severity = None # vary intensity by x% of the dynamic range present in the image
 
-    def __init__(self, img_db, batch_size, use_augmentation=True, balance_classes=False, shuffle=True, num_workers=1, num_classes=2):
+    def __init__(self, img_db, batch_size, use_augmentation=True, balance_classes=False, shuffle=True, num_workers=1, number_classes=2):
         random.seed()
 
         # copy inputs to class variables
@@ -56,7 +56,7 @@ class ImageReader:
         self.shuffle = shuffle
         self.batchsize = batch_size
         self.nb_workers = num_workers
-        self.nb_classes = num_classes
+        self.nb_classes = number_classes
 
         # init class state
         self.queue_starvation = False
