@@ -6,7 +6,7 @@
 #SBATCH --job-name=unet
 #SBATCH -o unet_%N.%j.out
 #SBATCH --mail-user=mmajursk@nist.gov
-#SBATCH --mail-type=FAIL,TIME_LIMIT
+#SBATCH --mail-type=FAIL
 
 timestamp="$(date +%Y-%m-%dT%H:%M:%S)"
 experiment_name="unet-infer-${timestamp}"

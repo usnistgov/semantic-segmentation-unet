@@ -7,7 +7,7 @@
 #SBATCH --job-name=segnet
 #SBATCH -o segnet_%N.%j.out
 #SBATCH --mail-user=mmajursk@nist.gov
-#SBATCH --mail-type=FAIL,TIME_LIMIT
+#SBATCH --mail-type=FAIL
 
 timestamp="$(date +%Y-%m-%dT%H:%M:%S)"
 experiment_name="segnet-${timestamp}"
