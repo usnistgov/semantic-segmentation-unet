@@ -39,7 +39,9 @@ def load_model(checkpoint_filepath, gpu_id, number_classes):
 
 def _inference(img_filepath, sess, input_op, logits_op):
 
+    print('Loading image: {}'.format(img_filepath))
     img = imagereader.imread(img_filepath)
+    print('  img.shape={}'.format(img.shape))
 
     batch_data = img.astype(np.float32)
     batch_data = batch_data.reshape((1, 1, img.shape[0], img.shape[1]))
