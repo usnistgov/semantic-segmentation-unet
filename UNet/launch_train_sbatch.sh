@@ -8,6 +8,7 @@
 #SBATCH -o unet_%N.%j.out
 #SBATCH --mail-user=mmajursk@nist.gov
 #SBATCH --mail-type=FAIL
+#SBATCH --time=48:0:0
 
 
 timestamp="$(date +%Y-%m-%dT%H:%M:%S)"
