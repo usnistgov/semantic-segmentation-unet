@@ -29,7 +29,7 @@ def zscore_normalize(image_data):
 
 
 def imread(fp):
-    return skimage.io.imread(fp, as_gray=True)
+    return skimage.io.imread(fp, as_grey=True)
 
 
 def imwrite(img, fp):

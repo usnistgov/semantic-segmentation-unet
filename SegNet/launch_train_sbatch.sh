@@ -1,9 +1,13 @@
 #!/usr/bin/bash
+#SBATCH --partition=gpu
 #SBATCH --nodes=1
 #SBATCH --cpus-per-task=160
 #SBATCH --gres=gpu:4
+#SBATCH --exclusive
 #SBATCH --job-name=segnet
 #SBATCH -o segnet_%N.%j.out
+#SBATCH --mail-user=mmajursk@nist.gov
+#SBATCH --mail-type=FAIL,TIME_LIMIT
 
 timestamp="$(date +%Y-%m-%dT%H:%M:%S)"
 experiment_name="segnet-${timestamp}"

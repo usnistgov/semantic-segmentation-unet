@@ -6,10 +6,10 @@ import numpy as np
 import imagereader
 
 
-def load_model(checkpoint_filepath, gpu_id, number_classes, tile_size):
+def load_model(checkpoint_filepath, gpu_id, number_classes):
     print('Creating model')
     with tf.Graph().as_default(), tf.device('/cpu:0'):
-        input_op = tf.placeholder(tf.float32, shape=(1, tile_size, tile_size, 1))
+        input_op = tf.placeholder(tf.float32, shape=(1, None, None, 1))
 
         # Calculate the gradients for each model tower.
         with tf.variable_scope(tf.get_variable_scope()):
@@ -37,14 +37,9 @@ def load_model(checkpoint_filepath, gpu_id, number_classes, tile_size):
     return sess, input_op, logits_op
 
 
-def _inference(img_filepath, sess, input_op, logits_op, tile_size):
+def _inference(img_filepath, sess, input_op, logits_op):
 
     img = imagereader.imread(img_filepath)
-
-    if img.shape[0] != tile_size or img.shape[1] != tile_size:
-        print('Image Size: {}, {}'.format(img.shape[0], img.shape[1]))
-        print('Expected Size: {}, {}'.format(tile_size, tile_size))
-        raise Exception('Invalid input shape, does not match specified network tile size.')
 
     batch_data = img.astype(np.float32)
     batch_data = batch_data.reshape((1, img.shape[0], img.shape[1], 1))
@@ -62,7 +57,6 @@ def main():
     parser = argparse.ArgumentParser(prog='inference', description='Script to detect stars with the selected segnet model')
 
     parser.add_argument('--gpu', dest='gpu_id', type=int, help='which gpu to use for training (can only use a single gpu)', default=0)
-    parser.add_argument('--tile_size', dest='tile_size', type=int, help='image tile size the network is expecting', default=256)
     parser.add_argument('--checkpoint_filepath', dest='checkpoint_filepath', type=str, help='Checkpoint filepath to the  model to use', required=True)
     parser.add_argument('--image_folder', dest='image_folder', type=str, help='filepath to the folder containing tif images to inference (Required)', required=True)
     parser.add_argument('--output_folder', dest='output_folder', type=str, required=True)
@@ -75,11 +69,9 @@ def main():
     image_folder = args.image_folder
     output_folder = args.output_folder
     number_classes = args.number_classes
-    tile_size = args.tile_size
 
     print('Arguments:')
     print('number_classes = {}'.format(number_classes))
-    print('tile_size = {}'.format(tile_size))
     print('gpu_id = {}'.format(gpu_id))
     print('checkpoint_filepath = {}'.format(checkpoint_filepath))
     print('image_folder = {}'.format(image_folder))
@@ -97,7 +89,7 @@ def main():
 
     img_filepath_list = img_filepath_list[:100]
 
-    sess, input_op, logits_op = load_model(checkpoint_filepath, gpu_id, number_classes, tile_size)
+    sess, input_op, logits_op = load_model(checkpoint_filepath, gpu_id, number_classes)
 
     print('Starting inference of file list')
     for i in range(len(img_filepath_list)):
@@ -105,7 +97,7 @@ def main():
         _, slide_name = os.path.split(img_filepath)
         print('{}/{} : {}'.format(i, len(img_filepath_list), slide_name))
 
-        segmented_mask = _inference(img_filepath, sess, input_op, logits_op, tile_size)
+        segmented_mask = _inference(img_filepath, sess, input_op, logits_op)
         if 0 <= np.max(segmented_mask) <= 255:
             segmented_mask = segmented_mask.astype(np.uint8)
         if 255 < np.max(segmented_mask) < 65536:

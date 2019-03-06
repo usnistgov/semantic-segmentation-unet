@@ -223,17 +223,19 @@ def train_model():
                 save_csv_file(output_folder, test_loss, 'test_loss.csv')
                 save_csv_file(output_folder, test_accuracy, 'test_accuracy.csv')
 
-                # save tf checkpoint
-                saver = tf.train.Saver(tf.global_variables())
-                checkpoint_filepath = os.path.join(output_folder, 'checkpoint', 'model.ckpt-{}'.format(epoch))
-                saver.save(sess, checkpoint_filepath)
-
                 # determine early stopping
                 print('Best Current Epoch Selection:')
                 print('Test Loss:')
                 print(test_loss)
                 best_epoch = np.argmin(test_loss)
                 print('Best epoch: {}'.format(best_epoch))
+                # determine if to record a new checkpoint based on best test loss
+                if (len(test_loss) - 1) == best_epoch:
+                    # save tf checkpoint
+                    saver = tf.train.Saver(tf.global_variables())
+                    checkpoint_filepath = os.path.join(output_folder, 'checkpoint', 'model.ckpt')
+                    saver.save(sess, checkpoint_filepath)
+
                 # break
                 if len(test_loss) - best_epoch > terminate_after_num_epochs_without_test_loss_improvement:
                     break  # break the epoch loop
