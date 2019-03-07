@@ -10,7 +10,7 @@
 #SBATCH --mail-type=FAIL
 #SBATCH --time=48:0:0
 
-timestamp="$(date +%Y-%m-%dT%H-%M-%S)"
+timestamp="$(date +%Y%m%dT%H%M%S)"
 experiment_name="segnet-${timestamp}"
 echo "Experiment: $experiment_name"
 
