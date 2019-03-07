@@ -11,7 +11,7 @@
 #SBATCH --time=48:0:0
 
 
-timestamp="$(date +%Y-%m-%dT%H:%M:%S)"
+timestamp="$(date +%Y-%m-%dT%H-%M-%S)"
 experiment_name="unet-${timestamp}"
 echo "Experiment: $experiment_name"
 

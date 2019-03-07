@@ -9,7 +9,7 @@
 #SBATCH --mail-type=FAIL
 #SBATCH --time=12:0:0
 
-timestamp="$(date +%Y-%m-%dT%H:%M:%S)"
+timestamp="$(date +%Y-%m-%dT%H-%M-%S)"
 experiment_name="unet-infer-${timestamp}"
 echo "Experiment: $experiment_name"
 working_dir="/scratch/pnb/unet/$experiment_name"
