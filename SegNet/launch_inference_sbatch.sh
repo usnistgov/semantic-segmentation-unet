@@ -13,11 +13,25 @@ timestamp="$(date +%Y-%m-%dT%H:%M:%S)"
 experiment_name="segnet-infer-${timestamp}"
 echo "Experiment: $experiment_name"
 
+working_dir="/scratch/pnb/segnet/$experiment_name"
+
+# define the handler function
+# note that this is not executed here, but rather
+# when the associated signal is sent
+term_handler()
+{
+        echo "function term_handler called.  Cleaning up and Exiting"
+        rm -rf ${working_dir}
+        exit -1
+}
+
+# associate the function "term_handler" with the TERM signal
+trap 'term_handler' TERM
+
 # this is the root directory for results
 wrk_directory="/wrk/pnb"
 
 # make working directory
-working_dir="/scratch/pnb/unet/$experiment_name"
 mkdir -p ${working_dir}
 echo "Created Directory: $working_dir"
 

@@ -14,6 +14,21 @@ timestamp="$(date +%Y-%m-%dT%H:%M:%S)"
 experiment_name="segnet-${timestamp}"
 echo "Experiment: $experiment_name"
 
+working_dir="/scratch/pnb/segnet/$experiment_name"
+
+# define the handler function
+# note that this is not executed here, but rather
+# when the associated signal is sent
+term_handler()
+{
+        echo "function term_handler called.  Cleaning up and Exiting"
+        rm -rf ${working_dir}
+        exit -1
+}
+
+# associate the function "term_handler" with the TERM signal
+trap 'term_handler' TERM
+
 wrk_directory="/wrk/mmajursk/small-data-cnns/SegNet"
 
 # job configuration
