@@ -41,27 +41,28 @@ def _inference(img_filepath, sess, input_op, logits_op):
 
     print('Loading image: {}'.format(img_filepath))
     img = imagereader.imread(img_filepath)
+    img = img.astype(np.float32)
+
+    # normalize with whole image stats
+    img = imagereader.zscore_normalize(img)
+
     print('  img.shape={}'.format(img.shape))
     pad_x = 0
     pad_y = 0
 
     if img.shape[0] % 16 != 0:
         pad_y = (16 - img.shape[0] % 16)
-        print('image height needs to be a multiple of 16, padding with zeros')
+        print('image height needs to be a multiple of 16, padding with reflect')
     if img.shape[1] % 16 != 0:
         pad_x = (16 - img.shape[1] % 16)
-        print('image width needs to be a multiple of 16, padding with zeros')
+        print('image width needs to be a multiple of 16, padding with reflect')
     if pad_x > 0 or pad_y > 0:
         img = np.pad(img, pad_width=((0, pad_y), (0, pad_x)), mode='reflect')
 
-    batch_data = img.astype(np.float32)
-    batch_data = batch_data.reshape((1, 1, img.shape[0], img.shape[1]))
-
-    # normalize with whole image stats
-    batch_data = imagereader.zscore_normalize(batch_data)
+    batch_data = img.reshape((1, img.shape[0], img.shape[1], 1))
 
     [logits] = sess.run([logits_op], feed_dict={input_op: batch_data})
-    pred = np.squeeze(np.argmax(logits, axis=3).astype(np.int32))
+    pred = np.squeeze(np.argmax(logits, axis=-1).astype(np.int32))
 
     if pad_x > 0:
         pred = pred[:, 0:-pad_x]
