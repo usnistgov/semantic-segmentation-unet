@@ -25,6 +25,9 @@ GPU_IDS = list(range(NUM_GPUS))
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"  # so the IDs match nvidia-smi
 # define the number of disk readers (which are each single threaded) to match the number of GPUs, so we have one single threaded reader per gpu
 READER_COUNT = NUM_GPUS
+if len(GPU_IDS) == 0:
+    GPU_IDS = -1
+    READER_COUNT = 1
 print('Reader Count: {}'.format(READER_COUNT))
 
 
@@ -62,16 +65,21 @@ balance_classes = args.balance_classes
 use_augmentation = args.use_augmentation
 
 # verify gradient_update_location is valid
-valid_location = False
-if gradient_update_location == 'cpu':
-    # if the GPUs do not have a fully connected topology (e.g. NVLink), its faster to perform gradient averaging on the CPU
-    valid_location = True
-    gradient_update_location = gradient_update_location + ':0' # append the useless id number
-for id in GPU_IDS:
-    if gradient_update_location == 'gpu:{}'.format(id):
+if GPU_IDS == -1:
+    # no gpu found, so average on cpu
+    gradient_update_location = 'cpu:0'
+    print('Found no GPUs overwriting gradient averaging location request to use cpu')
+else:
+    valid_location = False
+    if gradient_update_location == 'cpu':
+        # if the GPUs do not have a fully connected topology (e.g. NVLink), its faster to perform gradient averaging on the CPU
         valid_location = True
-if not valid_location:
-    raise Exception("Invalid option for 'gradient_update_location': {}".format(gradient_update_location))
+        gradient_update_location = gradient_update_location + ':0' # append the useless id number
+    for id in GPU_IDS:
+        if gradient_update_location == 'gpu:{}'.format(id):
+            valid_location = True
+    if not valid_location:
+        raise Exception("Invalid option for 'gradient_update_location': {}".format(gradient_update_location))
 
 
 print('Arguments:')
@@ -95,7 +103,6 @@ print('restore_checkpoint_filepath = {}'.format(restore_checkpoint_filepath))
 import numpy as np
 import tensorflow as tf
 import unet_model
-import shutil
 import imagereader
 
 
@@ -147,7 +154,7 @@ def train_model():
     train_reader = imagereader.ImageReader(train_lmdb_filepath, batch_size=batch_size, use_augmentation=use_augmentation, shuffle=True, num_workers=READER_COUNT, balance_classes=balance_classes, number_classes=number_classes)
     print('Train Reader has {} batches'.format(train_reader.get_epoch_size()))
 
-    try: # if any erros happen we want to catch them and shut down the multiprocess readers
+    try: # if any errors happen we want to catch them and shut down the multiprocess readers
         print('Starting Readers')
         train_reader.startup()
         test_reader.startup()
