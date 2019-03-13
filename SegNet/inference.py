@@ -42,6 +42,17 @@ def _inference(img_filepath, sess, input_op, logits_op):
     print('Loading image: {}'.format(img_filepath))
     img = imagereader.imread(img_filepath)
     print('  img.shape={}'.format(img.shape))
+    pad_x = 0
+    pad_y = 0
+
+    if img.shape[0] % 16 != 0:
+        pad_y = (16 - img.shape[0] % 16)
+        print('image height needs to be a multiple of 16, padding with zeros')
+    if img.shape[1] % 16 != 0:
+        pad_x = (16 - img.shape[1] % 16)
+        print('image width needs to be a multiple of 16, padding with zeros')
+    if pad_x > 0 or pad_y > 0:
+        img = np.pad(img, pad_width=((0, pad_y), (0, pad_x)), mode='reflect')
 
     batch_data = img.astype(np.float32)
     batch_data = batch_data.reshape((1, img.shape[0], img.shape[1], 1))
@@ -51,6 +62,11 @@ def _inference(img_filepath, sess, input_op, logits_op):
 
     [logits] = sess.run([logits_op], feed_dict={input_op: batch_data})
     pred = np.squeeze(np.argmax(logits, axis=-1).astype(np.int32))
+
+    if pad_x > 0:
+        pred = pred[:, 0:-pad_x]
+    if pad_y > 0:
+        pred = pred[0:-pad_y, :]
 
     return pred
 
@@ -80,8 +96,8 @@ def main():
     print('output_folder = {}'.format(output_folder))
 
     os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"  # so the IDs match nvidia-smi
-    str_gpu_ids = str(gpu_id)
-    os.environ["CUDA_VISIBLE_DEVICES"] = str_gpu_ids
+    if gpu_id != -1:
+        os.environ["CUDA_VISIBLE_DEVICES"] = str(gpu_id)
 
     # create output filepath
     if not os.path.exists(output_folder):
