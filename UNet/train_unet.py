@@ -48,6 +48,7 @@ parser.add_argument('--test_database', dest='test_database_filepath', type=str, 
 parser.add_argument('--early_stopping', dest='terminate_after_num_epochs_without_test_loss_improvement', type=int, help='Perform early stopping when the test loss does not improve for N epochs.', default=10)
 parser.add_argument('--gradient_update_location', dest='gradient_update_location', type=str, help="Where to perform gradient averaging and update. Options: ['cpu', 'gpu:#']. Use the GPU if you have a fully connected topology, cpu otherwise.", default='gpu:0')
 parser.add_argument('--restore_checkpoint_filepath', dest='restore_checkpoint_filepath', type=str, help='checkpoint to resume from', default=None)
+parser.add_argument('--restore_var_common_name', dest='restore_var_common_name', type=str, default=None)
 
 args = parser.parse_args()
 batch_size = args.batch_size
@@ -63,6 +64,7 @@ restore_checkpoint_filepath = args.restore_checkpoint_filepath
 test_every_n_steps = args.test_every_n_steps
 balance_classes = args.balance_classes
 use_augmentation = args.use_augmentation
+restore_var_common_name = args.restore_var_common_name
 
 # verify gradient_update_location is valid
 if GPU_IDS == -1:
@@ -98,6 +100,7 @@ print('output folder = {}'.format(output_folder))
 print('gradient_update_location = {}'.format(gradient_update_location))
 print('early_stopping count = {}'.format(terminate_after_num_epochs_without_test_loss_improvement))
 print('restore_checkpoint_filepath = {}'.format(restore_checkpoint_filepath))
+print('restore_var_common_name = {}'.format(restore_var_common_name))
 
 
 import numpy as np
@@ -177,6 +180,14 @@ def train_model():
                 vars = tf.global_variables()
                 vars = [v for v in vars if 'Adam' not in v._shared_name]  # remove Adam variables
                 vars = [v for v in vars if 'logits' not in v._shared_name]  # remove output layer variables
+                vars = [v for v in vars if 'batch_normalization' not in v._shared_name]  # remove output layer variables
+
+                vars = [v for v in vars if restore_var_common_name in v._shared_name]  # remove output layer variables
+                print('*********************************')
+                print('Restoring Vars')
+                for v in vars:
+                    print('{}   {}'.format(v._shared_name, v.shape))
+                print('*********************************')
 
                 saver = tf.train.Saver(vars)
                 saver.restore(sess, restore_checkpoint_filepath)
