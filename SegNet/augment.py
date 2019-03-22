@@ -273,6 +273,7 @@ def augment_image(img, mask=None, rotation_flag=False, reflection_flag=False,
     img = np.asarray(img, dtype=np.float32)
     if mask is not None:
         mask = np.asarray(mask, dtype=np.float32)
+        mask = np.round(mask)
         return img, mask
     else:
         return img
