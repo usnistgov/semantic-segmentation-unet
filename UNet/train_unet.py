@@ -25,9 +25,6 @@ GPU_IDS = list(range(NUM_GPUS))
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"  # so the IDs match nvidia-smi
 # define the number of disk readers (which are each single threaded) to match the number of GPUs, so we have one single threaded reader per gpu
 READER_COUNT = NUM_GPUS
-if len(GPU_IDS) == 0:
-    GPU_IDS = -1
-    READER_COUNT = 1
 print('Reader Count: {}'.format(READER_COUNT))
 
 
@@ -67,21 +64,16 @@ use_augmentation = args.use_augmentation
 restore_var_common_name = args.restore_var_common_name
 
 # verify gradient_update_location is valid
-if GPU_IDS == -1:
-    # no gpu found, so average on cpu
-    gradient_update_location = 'cpu:0'
-    print('Found no GPUs overwriting gradient averaging location request to use cpu')
-else:
-    valid_location = False
-    if gradient_update_location == 'cpu':
-        # if the GPUs do not have a fully connected topology (e.g. NVLink), its faster to perform gradient averaging on the CPU
+valid_location = False
+if gradient_update_location == 'cpu':
+    # if the GPUs do not have a fully connected topology (e.g. NVLink), its faster to perform gradient averaging on the CPU
+    valid_location = True
+    gradient_update_location = gradient_update_location + ':0' # append the useless id number
+for id in GPU_IDS:
+    if gradient_update_location == 'gpu:{}'.format(id):
         valid_location = True
-        gradient_update_location = gradient_update_location + ':0' # append the useless id number
-    for id in GPU_IDS:
-        if gradient_update_location == 'gpu:{}'.format(id):
-            valid_location = True
-    if not valid_location:
-        raise Exception("Invalid option for 'gradient_update_location': {}".format(gradient_update_location))
+if not valid_location:
+    raise Exception("Invalid option for 'gradient_update_location': {}".format(gradient_update_location))
 
 
 print('Arguments:')
@@ -121,7 +113,7 @@ def save_text_csv_file(output_folder, data, filename):
             csvfile.write('\n')
 
 
-def plot(output_folder, name, train_val, test_val, epoch_size, log_scale=True):
+def plot(output_folder, name, train_val, test_val, epoch_size, log_scale=False):
     mpl.rcParams['agg.path.chunksize'] = 10000  # fix for error in plotting large numbers of points
 
     train_val = np.asarray(train_val)
@@ -135,7 +127,7 @@ def plot(output_folder, name, train_val, test_val, epoch_size, log_scale=True):
     ax = plt.gca()
     ax.scatter(iterations, train_val, c='b', s=dot_size)
     ax.plot(test_iterations, test_val, 'r-', marker='o', markersize=12)
-    plt.ylim((np.min(train_val), np.max(train_val)))
+    plt.ylim((min(np.min(train_val), np.min(test_val)), max(np.max(train_val), np.max(test_val))))
     if log_scale:
         ax.set_yscale('log')
     plt.ylabel('{}'.format(name))
@@ -234,7 +226,7 @@ def train_model():
                 test_accuracy.append(np.mean(epoch_test_accuracy))
                 print('Test Epoch: {} : Accuracy = {}'.format(epoch, test_accuracy[-1]))
 
-                plot(output_folder, 'loss', train_loss, test_loss, train_epoch_size)
+                plot(output_folder, 'loss', train_loss, test_loss, train_epoch_size, log_scale=True)
                 plot(output_folder, 'accuracy', train_accuracy, test_accuracy, train_epoch_size, log_scale=False)
 
                 save_csv_file(output_folder, train_accuracy, 'train_accuracy.csv')
