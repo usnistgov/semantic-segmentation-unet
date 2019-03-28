@@ -13,7 +13,7 @@ timestamp="$(date +%Y%m%dT%H%M%S)"
 experiment_name="segnet-infer-${timestamp}"
 echo "Experiment: $experiment_name"
 
-working_dir="/scratch/pnb/segnet/$experiment_name"
+working_dir="/scratch/${SLURM_JOB_ID}"
 
 # define the handler function
 # note that this is not executed here, but rather
@@ -54,8 +54,19 @@ echo "data copy to node complete"
 echo "Working directory contains: "
 ls ${working_dir}
 
+# # **********************
+# # Conda setup
+# module load anaconda3
+# conda create --name tf python=3.6
+# conda activate tf
+
+# conda install tensorflow-gpu
+# conda install scikit-image
+# conda install scikit-learn
+# pip install lmdb
 # load any modules
-module load powerAI/tensorflow
+module load anaconda3
+conda activate tf
 echo "Modules loaded"
 
 
