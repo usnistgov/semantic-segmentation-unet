@@ -59,7 +59,7 @@ def _inference(img_filepath, sess, input_op, logits_op):
     if pad_x > 0 or pad_y > 0:
         img = np.pad(img, pad_width=((0, pad_y), (0, pad_x)), mode='reflect')
 
-    batch_data = img.reshape((1, img.shape[0], img.shape[1], 1))
+    batch_data = img.reshape((1, 1, img.shape[0], img.shape[1]))
 
     [logits] = sess.run([logits_op], feed_dict={input_op: batch_data})
     pred = np.squeeze(np.argmax(logits, axis=-1).astype(np.int32))

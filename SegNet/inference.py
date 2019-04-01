@@ -6,10 +6,10 @@ import numpy as np
 import imagereader
 
 
-def load_model(checkpoint_filepath, gpu_id, number_classes):
+def load_model(checkpoint_filepath, gpu_id, number_classes, tile_size):
     print('Creating model')
     with tf.Graph().as_default(), tf.device('/cpu:0'):
-        input_op = tf.placeholder(tf.float32, shape=(1, None, None, 1))
+        input_op = tf.placeholder(tf.float32, shape=(1, tile_size, tile_size, 1))
 
         # Calculate the gradients for each model tower.
         with tf.variable_scope(tf.get_variable_scope()):
@@ -80,6 +80,7 @@ def main():
     parser.add_argument('--image_folder', dest='image_folder', type=str, help='filepath to the folder containing tif images to inference (Required)', required=True)
     parser.add_argument('--output_folder', dest='output_folder', type=str, required=True)
     parser.add_argument('--number_classes', dest='number_classes', type=int, default=2)
+    parser.add_argument('--tile_size', dest='tile_size', type=int, help='image tile size the network is expecting', default=256)
 
     args = parser.parse_args()
 
@@ -88,6 +89,7 @@ def main():
     image_folder = args.image_folder
     output_folder = args.output_folder
     number_classes = args.number_classes
+    tile_size = args.tile_size
 
     print('Arguments:')
     print('number_classes = {}'.format(number_classes))
@@ -95,6 +97,7 @@ def main():
     print('checkpoint_filepath = {}'.format(checkpoint_filepath))
     print('image_folder = {}'.format(image_folder))
     print('output_folder = {}'.format(output_folder))
+    print('tile_size = {}'.format(tile_size))
 
     os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"  # so the IDs match nvidia-smi
     if gpu_id != -1:
@@ -108,7 +111,7 @@ def main():
 
     img_filepath_list = img_filepath_list[:100]
 
-    sess, input_op, logits_op = load_model(checkpoint_filepath, gpu_id, number_classes)
+    sess, input_op, logits_op = load_model(checkpoint_filepath, gpu_id, number_classes, tile_size)
 
     print('Starting inference of file list')
     for i in range(len(img_filepath_list)):

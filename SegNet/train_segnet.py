@@ -38,7 +38,7 @@ parser.add_argument('--number_classes', dest='number_classes', type=int, default
 parser.add_argument('--tile_size', dest='tile_size', type=int, help='image tile size the network is expecting', default=256)
 parser.add_argument('--learning_rate', dest='learning_rate', type=float, default=1e-4)
 parser.add_argument('--output_dir', dest='output_folder', type=str, help='Folder where outputs will be saved (Required)', required=True)
-parser.add_argument('--test_every_n_steps', dest='test_every_n_steps', type=int, help='number of gradient update steps to take between test epochs', default=1000)
+parser.add_argument('--test_every_n_steps', dest='test_every_n_steps', type=int, help='number of gradient update steps to take between test epochs', default=100)
 parser.add_argument('--balance_classes', dest='balance_classes', type=int, help='whether to balance classes [0 = false, 1 = true]', default=0)
 parser.add_argument('--use_augmentation', dest='use_augmentation', type=int, help='whether to use data augmentation [0 = false, 1 = true]', default=1)
 
@@ -231,23 +231,24 @@ def train_model():
                 save_csv_file(output_folder, test_loss, 'test_loss.csv')
                 save_csv_file(output_folder, test_accuracy, 'test_accuracy.csv')
 
-                # determine early stopping
-                print('Best Current Epoch Selection:')
-                print('Test Loss:')
-                print(test_loss)
-                best_epoch = np.argmin(test_loss)
-                print('Best epoch: {}'.format(best_epoch))
                 # determine if to record a new checkpoint based on best test loss
-                if (len(test_loss) - 1) == best_epoch:
+                if (len(test_loss) - 1) == np.argmin(test_loss):
                     # save tf checkpoint
+                    print('Test loss improved: {}, saving checkpoint'.format(np.min(test_loss)))
                     saver = tf.train.Saver(tf.global_variables())
                     checkpoint_filepath = os.path.join(output_folder, 'checkpoint', 'model.ckpt')
                     saver.save(sess, checkpoint_filepath)
 
-                # break
-                if len(test_loss) - best_epoch > terminate_after_num_epochs_without_test_loss_improvement:
-                    break  # break the epoch loop
-                epoch = epoch + 1
+                # determine early stopping
+                CONVERGENCE_TOLERANCE = 1e-8
+                print('Best Current Epoch Selection:')
+                print('Test Loss:')
+                print(test_loss)
+                min_test_loss = np.min(test_loss)
+                error_from_best = np.abs(test_loss - min_test_loss)
+                error_from_best[error_from_best < CONVERGENCE_TOLERANCE] = 0
+                best_epoch = np.where(error_from_best == 0)[0] # first time since that value has happened
+                print('Best epoch: {}'.format(best_epoch))
 
     finally: # if any erros happened during training, shut down the disk readers
         print('Shutting down train_reader')

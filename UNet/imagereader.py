@@ -83,8 +83,6 @@ class ImageReader:
         self.lmdb_env = lmdb.open(self.image_db, map_size=int(2e10), readonly=True) # 20 GB
         self.lmdb_txns = list()
 
-        self.number_classes = 1
-
         datum = ImageMaskPair()  # create a datum for decoding serialized protobuf objects
         print('Initializing image database')
 
