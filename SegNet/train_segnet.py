@@ -250,6 +250,10 @@ def train_model():
                 best_epoch = np.where(error_from_best == 0)[0] # first time since that value has happened
                 print('Best epoch: {}'.format(best_epoch))
 
+                if len(test_loss) - best_epoch > terminate_after_num_epochs_without_test_loss_improvement:
+                    break  # break the epoch loop
+                epoch = epoch + 1
+
     finally: # if any erros happened during training, shut down the disk readers
         print('Shutting down train_reader')
         train_reader.shutdown()
