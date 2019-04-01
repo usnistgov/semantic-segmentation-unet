@@ -5,8 +5,6 @@
 #SBATCH --gres=gpu:1
 #SBATCH --job-name=unet
 #SBATCH -o unet_%N.%j.out
-#SBATCH --mail-user=mmajursk@nist.gov
-#SBATCH --mail-type=FAIL
 #SBATCH --time=12:0:0
 
 timestamp="$(date +%Y%m%dT%H%M%S)"
@@ -53,19 +51,7 @@ echo "data copy to node complete"
 echo "Working directory contains: "
 ls ${working_dir}
 
-# # **********************
-# # Conda setup
-# module load anaconda3
-# conda create --name tf python=3.6
-# conda activate tf
-
-# conda install tensorflow-gpu
-# conda install scikit-image
-# conda install scikit-learn
-# pip install lmdb
-# load any modules
-module load anaconda3
-conda activate tf
+module load powerAI/tensorflow-1.5.4
 echo "Modules loaded"
 
 

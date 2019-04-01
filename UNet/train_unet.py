@@ -127,7 +127,7 @@ def plot(output_folder, name, train_val, test_val, epoch_size, log_scale=False):
     ax = plt.gca()
     ax.scatter(iterations, train_val, c='b', s=dot_size)
     ax.plot(test_iterations, test_val, 'r-', marker='o', markersize=12)
-    plt.ylim((min(np.min(train_val), np.min(test_val)), max(np.max(train_val), np.max(test_val))))
+    plt.ylim((min(np.min(train_val), np.min(test_val[np.isfinite(test_val)])), max(np.max(train_val), np.max(test_val[np.isfinite(test_val)]))))
     if log_scale:
         ax.set_yscale('log')
     plt.ylabel('{}'.format(name))
@@ -190,7 +190,7 @@ def train_model():
             test_loss = list()
             test_accuracy = list()
             test_loss.append(np.inf)
-            test_accuracy.append(0)
+            test_accuracy.append(np.nan)
 
             train_epoch_size = train_reader.get_epoch_size()
             train_epoch_size = test_every_n_steps

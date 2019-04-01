@@ -82,7 +82,7 @@ if __name__ == "__main__":
     parser.add_argument('--image_folder', dest='image_folder', type=str, help='filepath to the folder containing the images', default='../data/images/')
     parser.add_argument('--mask_folder', dest='mask_folder', type=str, help='filepath to the folder containing the masks', default='../data/masks/')
     parser.add_argument('--output_filepath', dest='output_filepath', type=str, help='filepath to the folder where the outputs will be placed', default='../data/')
-    parser.add_argument('--dataset_name', dest='dataset_name', type=str, help='name of the dataset to be used in creating the lmdb files', default='HES')
+    parser.add_argument('--dataset_name', dest='dataset_name', type=str, help='name of the dataset to be used in creating the lmdb files', default='hes')
     parser.add_argument('--train_fraction', dest='train_fraction', type=float, help='what fraction of the dataset to use for training', default=0.8)
 
     args = parser.parse_args()

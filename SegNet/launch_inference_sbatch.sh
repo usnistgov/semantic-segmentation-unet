@@ -5,14 +5,11 @@
 #SBATCH --gres=gpu:1
 #SBATCH --job-name=segnet
 #SBATCH -o segnet_%N.%j.out
-#SBATCH --mail-user=mmajursk@nist.gov
-#SBATCH --mail-type=FAIL
 #SBATCH --time=12:0:0
 
 timestamp="$(date +%Y%m%dT%H%M%S)"
 experiment_name="segnet-infer-${timestamp}"
 echo "Experiment: $experiment_name"
-
 working_dir="/scratch/${SLURM_JOB_ID}"
 
 # define the handler function
@@ -41,7 +38,7 @@ mkdir -p ${results_dir}
 echo "Results Directory: $results_dir"
 
 # job configuration
-checkpoint_filepath=${wrk_directory}/segnet-2019-03-01T15\:05\:08/checkpoint/model.ckpt
+checkpoint_filepath=${wrk_directory}/unet-aug-2019-03-01T15\:05\:08/checkpoint/model.ckpt-37
 infer_folder="rawTiles"
 image_folder=${wrk_directory}/data/${infer_folder}/
 number_classes=4
@@ -54,19 +51,7 @@ echo "data copy to node complete"
 echo "Working directory contains: "
 ls ${working_dir}
 
-# # **********************
-# # Conda setup
-# module load anaconda3
-# conda create --name tf python=3.6
-# conda activate tf
-
-# conda install tensorflow-gpu
-# conda install scikit-image
-# conda install scikit-learn
-# pip install lmdb
-# load any modules
-module load anaconda3
-conda activate tf
+module load powerAI/tensorflow-1.5.4
 echo "Modules loaded"
 
 
