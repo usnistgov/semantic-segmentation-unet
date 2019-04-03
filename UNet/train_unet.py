@@ -250,7 +250,7 @@ def train_model():
                 min_test_loss = np.min(test_loss)
                 error_from_best = np.abs(test_loss - min_test_loss)
                 error_from_best[error_from_best < CONVERGENCE_TOLERANCE] = 0
-                best_epoch = np.where(error_from_best == 0)[0] # first time since that value has happened
+                best_epoch = np.where(error_from_best == 0)[0][0] # unpack numpy array, select first time since that value has happened
                 print('Best epoch: {}'.format(best_epoch))
 
                 if len(test_loss) - best_epoch > terminate_after_num_epochs_without_test_loss_improvement:
