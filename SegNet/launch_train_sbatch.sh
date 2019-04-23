@@ -23,12 +23,12 @@ test_lmdb_file="test-hes.lmdb"
 input_data_directory="/wrk/mmajursk/small-data-cnns/SegNet"
 output_directory="/wrk/mmajursk/small-data-cnns/SegNet"
 
+experiment_name="segnet-$(date +%Y%m%dT%H%M%S)"
+
 # MODIFY THESE OPTIONS
 # **************************
 
 
-timestamp="$(date +%Y%m%dT%H%M%S)"
-experiment_name="segnet-${timestamp}"
 echo "Experiment: $experiment_name"
 scratch_dir="/scratch/${SLURM_JOB_ID}"
 

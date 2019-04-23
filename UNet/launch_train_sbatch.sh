@@ -5,12 +5,11 @@
 
 #SBATCH --partition=gpu
 #SBATCH --nodes=1
-#SBATCH --cpus-per-task=160
-#SBATCH --gres=gpu:4
-#SBATCH --exclusive
+#SBATCH --cpus-per-task=20
+#SBATCH --gres=gpu:1
 #SBATCH --job-name=unet
 #SBATCH -o unet_%N.%j.out
-#SBATCH --time=48:0:0
+#SBATCH --time=24:0:0
 
 
 # job configuration
@@ -23,12 +22,11 @@ test_lmdb_file="test-hes.lmdb"
 input_data_directory="/wrk/mmajursk/small-data-cnns/UNet"
 output_directory="/wrk/mmajursk/small-data-cnns/UNet"
 
+experiment_name="unet-$(date +%Y%m%dT%H%M%S)"
+
 # MODIFY THESE OPTIONS
 # **************************
 
-
-timestamp="$(date +%Y%m%dT%H%M%S)"
-experiment_name="unet-${timestamp}"
 echo "Experiment: $experiment_name"
 scratch_dir="/scratch/${SLURM_JOB_ID}"
 
