@@ -1,12 +1,11 @@
 #!/usr/bin/bash
 #SBATCH --partition=gpu
 #SBATCH --nodes=1
-#SBATCH --cpus-per-task=160
-#SBATCH --gres=gpu:4
-#SBATCH --exclusive
+#SBATCH --cpus-per-task=20
+#SBATCH --gres=gpu:1
 #SBATCH --job-name=unet
 #SBATCH -o unet_%N.%j.out
-#SBATCH --time=48:0:0
+#SBATCH --time=24:0:0
 
 
 timestamp="$(date +%Y%m%dT%H%M%S)"
@@ -20,18 +19,18 @@ working_dir="/scratch/${SLURM_JOB_ID}"
 term_handler()
 {
         echo "function term_handler called.  Cleaning up and Exiting"
-        rm -rf ${working_dir}
+        # Do nothing since working directory cleanup is handled for you
         exit -1
 }
 
 # associate the function "term_handler" with the TERM signal
 trap 'term_handler' TERM
 
-wrk_directory="/wrk/mmajursk/small-data-cnns/UNet"
+wrk_directory="/wrk/mmajursk/tf_tutorial/UNet"
 
 # job configuration
 test_every_n_steps=1000
-batch_size=8 # 4x across the gpus
+batch_size=16 # Nx across the gpus
 
 # make working directory
 mkdir -p ${working_dir}
@@ -62,9 +61,5 @@ cp -r . "$results_dir/src"
 # launch training script with required options
 echo "Launching Training Script"
 python train_unet.py --test_every_n_steps=${test_every_n_steps} --batch_size=${batch_size} --train_database="$working_dir/$train_lmdb_file" --test_database="$working_dir/$test_lmdb_file" --output_dir="$results_dir" | tee "$results_dir/log.txt"
-
-# cleanup (delete src, data)
-echo "Performing Node Cleanup"
-rm -rf ${working_dir}
 
 echo "Job completed"
