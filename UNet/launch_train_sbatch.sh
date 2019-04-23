@@ -26,10 +26,10 @@ term_handler()
 # associate the function "term_handler" with the TERM signal
 trap 'term_handler' TERM
 
-wrk_directory="/wrk/mmajursk/tf_tutorial/UNet"
+wrk_directory="/wrk/mmajursk/tf_tutorial/"
 
 # job configuration
-test_every_n_steps=1000
+test_every_n_steps=250
 batch_size=16 # Nx across the gpus
 
 # make working directory
@@ -38,10 +38,14 @@ echo "Created Directory: $working_dir"
 
 # copy data to node
 echo "Copying data to Node"
-train_lmdb_file="train-hes.lmdb"
-test_lmdb_file="test-hes.lmdb"
-cp -r ${wrk_directory}/${train_lmdb_file} ${working_dir}/${train_lmdb_file}
-cp -r ${wrk_directory}/${test_lmdb_file} ${working_dir}/${test_lmdb_file}
+train_lmdb_file="train-hes-large.lmdb"
+test_lmdb_file="test-hes-large.lmdb"
+cp -r /wrk/mmajursk/tf_tutorial/data/${train_lmdb_file} ${working_dir}/${train_lmdb_file}
+cp -r /wrk/mmajursk/tf_tutorial/data/${test_lmdb_file} ${working_dir}/${test_lmdb_file}
+# train_lmdb_file="train-hes.lmdb"
+# test_lmdb_file="test-hes.lmdb"
+#cp -r ${wrk_directory}/data/${train_lmdb_file} ${working_dir}/${train_lmdb_file}
+#cp -r ${wrk_directory}/data/${test_lmdb_file} ${working_dir}/${test_lmdb_file}
 echo "data copy to node complete"
 echo "Working directory contains: "
 ls ${working_dir}
