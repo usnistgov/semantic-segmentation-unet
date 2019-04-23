@@ -5,8 +5,8 @@
 
 #SBATCH --partition=gpu
 #SBATCH --nodes=1
-#SBATCH --cpus-per-task=20
-#SBATCH --gres=gpu:1
+#SBATCH --cpus-per-task=160
+#SBATCH --gres=gpu:4
 #SBATCH --job-name=unet
 #SBATCH -o unet_%N.%j.out
 #SBATCH --time=24:0:0
