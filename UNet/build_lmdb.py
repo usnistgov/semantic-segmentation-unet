@@ -41,6 +41,22 @@ def write_img_to_db(txn, img, msk, key_str):
     return
 
 
+def enforce_size_multiple16(img):
+    h = img.shape[0]
+    w = img.shape[1]
+
+    tgt_h = int(np.floor(h / 16) * 16)
+    tgt_w = int(np.floor(w / 16) * 16)
+
+    dh = h - tgt_h
+    dw = w - tgt_w
+
+    img = img[int(dh/2):, int(dw/2):]
+    img = img[0:tgt_h, 0:tgt_w]
+
+    return img
+
+
 def generate_database(img_list, database_name, image_filepath, mask_filepath):
     output_image_lmdb_file = os.path.join(output_filepath, database_name)
 
@@ -59,6 +75,9 @@ def generate_database(img_list, database_name, image_filepath, mask_filepath):
 
         img = read_image(os.path.join(image_filepath, img_file_name))
         msk = read_image(os.path.join(mask_filepath, img_file_name))
+
+        img = enforce_size_multiple16(img)
+        msk = enforce_size_multiple16(msk)
 
         key_str = '{}_{:08d}'.format(block_key, txn_nb)
         txn_nb += 1

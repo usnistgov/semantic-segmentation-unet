@@ -33,7 +33,6 @@ parser = argparse.ArgumentParser(prog='train_unet', description='Script which tr
 
 parser.add_argument('--batch_size', dest='batch_size', type=int, help='training batch size', default=4)
 parser.add_argument('--number_classes', dest='number_classes', type=int, default=2)
-parser.add_argument('--tile_size', dest='tile_size', type=int, help='image tile size the network is expecting', default=256)
 parser.add_argument('--learning_rate', dest='learning_rate', type=float, default=1e-4)
 parser.add_argument('--output_dir', dest='output_folder', type=str, help='Folder where outputs will be saved (Required)', required=True)
 parser.add_argument('--test_every_n_steps', dest='test_every_n_steps', type=int, help='number of gradient update steps to take between test epochs', default=100)
@@ -49,7 +48,6 @@ parser.add_argument('--restore_var_common_name', dest='restore_var_common_name',
 
 args = parser.parse_args()
 batch_size = args.batch_size
-tile_size = args.tile_size
 output_folder = args.output_folder
 gradient_update_location = args.gradient_update_location
 number_classes = args.number_classes
@@ -79,7 +77,6 @@ if not valid_location:
 print('Arguments:')
 print('batch_size = {}'.format(batch_size))
 print('number_classes = {}'.format(number_classes))
-print('tile_size = {}'.format(tile_size))
 print('learning_rate = {}'.format(learning_rate))
 print('test_every_n_steps = {}'.format(test_every_n_steps))
 print('balance_classes = {}'.format(balance_classes))
@@ -156,7 +153,7 @@ def train_model():
 
         print('Creating model')
         with tf.Graph().as_default(), tf.device('/' + gradient_update_location):
-            train_init_op, test_init_op, train_op, loss_op, accuracy_op, is_training_placeholder = unet_model.build_towered_model(train_reader, test_reader, GPU_IDS, learning_rate, number_classes, tile_size)
+            train_init_op, test_init_op, train_op, loss_op, accuracy_op, is_training_placeholder = unet_model.build_towered_model(train_reader, test_reader, GPU_IDS, learning_rate, number_classes)
 
             print('Starting Session')
             # Start running operations on the Graph. allow_soft_placement must be set to
