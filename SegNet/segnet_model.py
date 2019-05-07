@@ -220,14 +220,16 @@ def average_gradients(tower_grads):
   return average_grads
 
 
-def build_input_iterators(train_reader, test_reader, batch_prefetch_count, tile_size):
+def build_input_iterators(train_reader, test_reader, batch_prefetch_count):
     img_size = train_reader.get_image_size()
     batch_size = train_reader.get_batch_size()
 
-    if img_size[0] % 16 != 0:
-        raise IOError('Input Image tile height needs to be a multiple of 16 to allow integer sized downscaled feature maps')
-    if img_size[1] % 16 != 0:
-        raise IOError('Input Image tile width needs to be a multiple of 16 to allow integer sized downscaled feature maps')
+    print('ImageReader has images of shape: ({},{})'.format(img_size[0], img_size[1]))
+    factor = 32
+    if img_size[0] % factor != 0:
+        raise IOError('Input Image tile height needs to be a multiple of {} to allow integer sized downscaled feature maps'.format(factor))
+    if img_size[1] % factor != 0:
+        raise IOError('Input Image tile width needs to be a multiple of {} to allow integer sized downscaled feature maps'.format(factor))
 
     print('Creating Input Train Dataset')
     # wrap the input queues into a Dataset

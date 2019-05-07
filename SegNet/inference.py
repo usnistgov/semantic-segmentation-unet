@@ -6,10 +6,30 @@ import numpy as np
 import imagereader
 
 
-def load_model(checkpoint_filepath, gpu_id, number_classes, tile_size):
+def translate_image_size(img_size):
+    h = img_size[0]
+    w = img_size[1]
+
+    factor = 32
+    pad_x = 0
+    pad_y = 0
+    if h % factor != 0:
+        pad_y = (factor - h % factor)
+        print('image height needs to be a multiple of {}, padding with reflect'.format(factor))
+    if w % factor != 0:
+        pad_x = (factor - w % factor)
+        print('image width needs to be a multiple of {}, padding with reflect'.format(factor))
+
+    tgt_h = int(h + pad_y)
+    tgt_w = int(w + pad_x)
+
+    return [tgt_h, tgt_w]
+
+
+def load_model(checkpoint_filepath, gpu_id, number_classes, model_input_h, model_input_w):
     print('Creating model')
     with tf.Graph().as_default(), tf.device('/cpu:0'):
-        input_op = tf.placeholder(tf.float32, shape=(1, tile_size, tile_size, 1))
+        input_op = tf.placeholder(tf.float32, shape=(1, model_input_h, model_input_w, 1))
 
         # Calculate the gradients for each model tower.
         with tf.variable_scope(tf.get_variable_scope()):
@@ -56,7 +76,7 @@ def _inference(img_filepath, sess, input_op, logits_op):
         print('image height needs to be a multiple of {}, padding with reflect'.format(factor))
     if img.shape[1] % factor != 0:
         pad_x = (factor - img.shape[1] % factor)
-        print('image width needs to be a multiple of {}}, padding with reflect'.format(factor))
+        print('image width needs to be a multiple of {}, padding with reflect'.format(factor))
     if pad_x > 0 or pad_y > 0:
         img = np.pad(img, pad_width=((0, pad_y), (0, pad_x)), mode='reflect')
 
@@ -81,7 +101,8 @@ def main():
     parser.add_argument('--image_folder', dest='image_folder', type=str, help='filepath to the folder containing tif images to inference (Required)', required=True)
     parser.add_argument('--output_folder', dest='output_folder', type=str, required=True)
     parser.add_argument('--number_classes', dest='number_classes', type=int, default=2)
-    parser.add_argument('--tile_size', dest='tile_size', type=int, help='image tile size the network is expecting', default=256)
+    parser.add_argument('--image_height', dest='image_height', type=int, required=True, help='Image height from the data used when training the model')
+    parser.add_argument('--image_width', dest='image_width', type=int, required=True, help='Image width from the data used when training the model')
 
     args = parser.parse_args()
 
@@ -90,7 +111,8 @@ def main():
     image_folder = args.image_folder
     output_folder = args.output_folder
     number_classes = args.number_classes
-    tile_size = args.tile_size
+    image_height = args.image_height
+    image_width = args.image_width
 
     print('Arguments:')
     print('number_classes = {}'.format(number_classes))
@@ -98,7 +120,8 @@ def main():
     print('checkpoint_filepath = {}'.format(checkpoint_filepath))
     print('image_folder = {}'.format(image_folder))
     print('output_folder = {}'.format(output_folder))
-    print('tile_size = {}'.format(tile_size))
+    print('image_height = {}'.format(image_height))
+    print('image_width = {}'.format(image_width))
 
     os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"  # so the IDs match nvidia-smi
     if gpu_id != -1:
@@ -112,7 +135,9 @@ def main():
 
     img_filepath_list = img_filepath_list[:100]
 
-    sess, input_op, logits_op = load_model(checkpoint_filepath, gpu_id, number_classes, tile_size)
+    model_input_h, model_input_w = translate_image_size([image_height, image_width])
+    print('Input image size: ({},{}) converts to a model with inputs of shape: ({},{})'.format(image_height, image_width, model_input_h, model_input_w))
+    sess, input_op, logits_op = load_model(checkpoint_filepath, gpu_id, number_classes, model_input_h, model_input_w)
 
     print('Starting inference of file list')
     for i in range(len(img_filepath_list)):

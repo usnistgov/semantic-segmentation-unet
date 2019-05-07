@@ -1,16 +1,36 @@
 #!/usr/bin/bash
+
+# **************************
+# MODIFY THESE OPTIONS
+
 #SBATCH --partition=gpu
 #SBATCH --nodes=1
-#SBATCH --cpus-per-task=20
+#SBATCH --cpus-per-task=40
 #SBATCH --gres=gpu:1
+#SBATCH --exclusive
 #SBATCH --job-name=segnet
 #SBATCH -o segnet_%N.%j.out
-#SBATCH --time=12:0:0
+#SBATCH --time=48:0:0
 
-timestamp="$(date +%Y%m%dT%H%M%S)"
-experiment_name="segnet-infer-${timestamp}"
+
+# job configuration
+batch_size=2 # 4x across the gpus
+number_classes=4
+
+image_folder="/wrk/mmajursk/Concrete_Feldman/data/rawFOV"
+output_directory="/wrk/mmajursk/Concrete_Feldman/output"
+img_height=712
+img_width=950
+
+checkpoint_filepath="/wrk/mmajursk/Concrete_Feldman/segnet-20190507T141113/checkpoint/model.ckpt"
+
+experiment_name="segnet-$(date +%Y%m%dT%H%M%S)"
+
+# MODIFY THESE OPTIONS
+# **************************
+
+
 echo "Experiment: $experiment_name"
-working_dir="/scratch/${SLURM_JOB_ID}"
 
 # define the handler function
 # note that this is not executed here, but rather
@@ -18,49 +38,23 @@ working_dir="/scratch/${SLURM_JOB_ID}"
 term_handler()
 {
         echo "function term_handler called.  Cleaning up and Exiting"
-        rm -rf ${working_dir}
+        # Do nothing
         exit -1
 }
 
 # associate the function "term_handler" with the TERM signal
 trap 'term_handler' TERM
 
-# this is the root directory for results
-wrk_directory="/wrk/pnb"
-
-# make working directory
-mkdir -p ${working_dir}
-echo "Created Directory: $working_dir"
-
-#make results directory
-results_dir="$wrk_directory/$experiment_name"
-mkdir -p ${results_dir}
-echo "Results Directory: $results_dir"
-
-# job configuration
-checkpoint_filepath=${wrk_directory}/unet-aug-2019-03-01T15\:05\:08/checkpoint/model.ckpt-37
-infer_folder="rawTiles"
-image_folder=${wrk_directory}/data/${infer_folder}/
-number_classes=4
-echo "job config: checkpoint_filepath=" $checkpoint_filepath " image_folder=" $image_folder " output_folder=" $results_dir " number_classes=" ${number_classes}
-
-# copy data to node
-echo "Copying data to Node"
-cp -r ${wrk_directory}/data/${infer_folder}/ ${working_dir}/
-echo "data copy to node complete"
-echo "Working directory contains: "
-ls ${working_dir}
 
 module load powerAI/tensorflow-1.5.4
 echo "Modules loaded"
 
+mkdir -p ${output_directory}
+echo "Output Directory: $output_directory"
 
-# launch inference script with required options
-echo "Launching Inference Script"
-python inference.py --gpu=0 --checkpoint_filepath="$checkpoint_filepath" --image_folder="$image_folder" --output_folder="$results_dir" --number_classes=${number_classes} | tee "$results_dir/log.txt"
 
-# cleanup (delete src, data)
-echo "Performing Node Cleanup"
-rm -rf ${working_dir}
+# launch training script with required options
+echo "Launching Script"
+python inference.py --gpu=0 --checkpoint_filepath="$checkpoint_filepath" --image_folder="$image_folder" --output_folder="$output_directory" --number_classes=${number_classes} --image_height=${img_height} --image_width=${img_width}
 
 echo "Job completed"
