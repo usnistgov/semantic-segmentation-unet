@@ -50,12 +50,13 @@ def _inference(img_filepath, sess, input_op, logits_op):
     pad_x = 0
     pad_y = 0
 
-    if img.shape[0] % 16 != 0:
-        pad_y = (16 - img.shape[0] % 16)
-        print('image height needs to be a multiple of 16, padding with reflect')
-    if img.shape[1] % 16 != 0:
-        pad_x = (16 - img.shape[1] % 16)
-        print('image width needs to be a multiple of 16, padding with reflect')
+    factor = 32
+    if img.shape[0] % factor != 0:
+        pad_y = (factor - img.shape[0] % factor)
+        print('image height needs to be a multiple of {}, padding with reflect'.format(factor))
+    if img.shape[1] % factor != 0:
+        pad_x = (factor - img.shape[1] % factor)
+        print('image width needs to be a multiple of {}}, padding with reflect'.format(factor))
     if pad_x > 0 or pad_y > 0:
         img = np.pad(img, pad_width=((0, pad_y), (0, pad_x)), mode='reflect')
 
