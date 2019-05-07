@@ -45,8 +45,9 @@ def enforce_size_multiple16(img):
     h = img.shape[0]
     w = img.shape[1]
 
-    tgt_h = int(np.floor(h / 16) * 16)
-    tgt_w = int(np.floor(w / 16) * 16)
+    factor = 32
+    tgt_h = int(np.floor(h / factor) * factor)
+    tgt_w = int(np.floor(w / factor) * factor)
 
     dh = h - tgt_h
     dw = w - tgt_w
