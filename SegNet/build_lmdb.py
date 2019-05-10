@@ -41,10 +41,11 @@ def write_img_to_db(txn, img, msk, key_str):
     return
 
 
-def enforce_size_multiple16(img):
+def enforce_size_multiple(img):
     h = img.shape[0]
     w = img.shape[1]
 
+    # this function crops the input image down slightly to be a size multiple of 16
     factor = 32
     tgt_h = int(np.floor(h / factor) * factor)
     tgt_w = int(np.floor(w / factor) * factor)
@@ -58,8 +59,8 @@ def enforce_size_multiple16(img):
     return img
 
 
-def generate_database(img_list, database_name, image_filepath, mask_filepath):
-    output_image_lmdb_file = os.path.join(output_filepath, database_name)
+def generate_database(img_list, database_name, image_filepath, mask_filepath, output_folder):
+    output_image_lmdb_file = os.path.join(output_folder, database_name)
 
     if os.path.exists(output_image_lmdb_file):
         print('Deleting existing database')
@@ -77,8 +78,8 @@ def generate_database(img_list, database_name, image_filepath, mask_filepath):
         img = read_image(os.path.join(image_filepath, img_file_name))
         msk = read_image(os.path.join(mask_filepath, img_file_name))
 
-        img = enforce_size_multiple16(img)
-        msk = enforce_size_multiple16(msk)
+        img = enforce_size_multiple(img)
+        msk = enforce_size_multiple(msk)
 
         key_str = '{}_{:08d}'.format(block_key, txn_nb)
         txn_nb += 1
@@ -99,31 +100,44 @@ if __name__ == "__main__":
     # Setup the Argument parsing
     parser = argparse.ArgumentParser(prog='build_lmdb', description='Script which converts two folders of images and masks into a pair of lmdb databases for training.')
 
-    parser.add_argument('--image_folder', dest='image_folder', type=str, help='filepath to the folder containing the images', default='../data/images/')
-    parser.add_argument('--mask_folder', dest='mask_folder', type=str, help='filepath to the folder containing the masks', default='../data/masks/')
-    parser.add_argument('--output_filepath', dest='output_filepath', type=str, help='filepath to the folder where the outputs will be placed', default='../data/')
-    parser.add_argument('--dataset_name', dest='dataset_name', type=str, help='name of the dataset to be used in creating the lmdb files', default='hes')
-    parser.add_argument('--train_fraction', dest='train_fraction', type=float, help='what fraction of the dataset to use for training', default=0.8)
+    parser.add_argument('--image_folder', dest='image_folder', type=str, help='filepath to the folder containing the images', required=True)
+    parser.add_argument('--mask_folder', dest='mask_folder', type=str, help='filepath to the folder containing the masks', required=True)
+    parser.add_argument('--output_folder', dest='output_folder', type=str, help='filepath to the folder where the outputs will be placed', required=True)
+    parser.add_argument('--dataset_name', dest='dataset_name', type=str, help='name of the dataset to be used in creating the lmdb files', required=True)
+    parser.add_argument('--train_fraction', dest='train_fraction', type=float, help='what fraction of the dataset to use for training (0.0, 1.0)', default=0.8)
+    parser.add_argument('--image_format', dest='image_format', type=str, help='format (extension) of the input images. E.g {tif, jpg, png)', default='tif')
+    parser.add_argument('--annotation_count', dest='annotation_count', type=str, help='Number of annotations to sample randomly without replacement from images on disk to add to lmdb database (use inf to select all)', default='inf')
 
     args = parser.parse_args()
     image_folder = args.image_folder
     mask_folder = args.mask_folder
-    output_filepath = args.output_filepath
+    output_folder = args.output_folder
     dataset_name = args.dataset_name
     train_fraction = args.train_fraction
+    image_format = args.image_format
+    annotation_count = args.annotation_count
+    annotation_count = np.asarray(annotation_count, dtype=np.float32)
+
+    if image_format.startswith('.'):
+        # remove leading period
+        image_format = image_format[1:]
 
     # ****************************************************
 
     image_folder = os.path.abspath(image_folder)
-    output_filepath = os.path.abspath(output_filepath)
+    output_folder = os.path.abspath(output_folder)
 
-    if not os.path.exists(output_filepath):
-        os.mkdir(output_filepath)
+    if not os.path.exists(output_folder):
+        os.mkdir(output_folder)
     # find the image files for which annotations exist
-    img_files = [f for f in os.listdir(image_folder) if f.endswith('.tif')]
+    img_files = [f for f in os.listdir(mask_folder) if f.endswith('.{}'.format(image_format))]
 
     # in place shuffle
     random.shuffle(img_files)
+
+    if np.isfinite(annotation_count):
+        annotation_count = min(int(annotation_count), len(img_files))
+        img_files = img_files[0:annotation_count]
 
     idx = int(train_fraction * len(img_files))
     train_img_files = img_files[0:idx]
@@ -131,10 +145,10 @@ if __name__ == "__main__":
 
     print('building train database')
     database_name = 'train-{}.lmdb'.format(dataset_name)
-    generate_database(train_img_files, database_name, image_folder, mask_folder)
+    generate_database(train_img_files, database_name, image_folder, mask_folder, output_folder)
 
     print('building test database')
     database_name = 'test-{}.lmdb'.format(dataset_name)
-    generate_database(test_img_files, database_name, image_folder, mask_folder)
+    generate_database(test_img_files, database_name, image_folder, mask_folder, output_folder)
 
 

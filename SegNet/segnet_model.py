@@ -256,10 +256,7 @@ def build_input_iterators(train_reader, test_reader, batch_prefetch_count):
 def build_towered_model(train_reader, test_reader, gpu_ids, learning_rate, number_classes):
     is_training_placeholder = tf.placeholder(tf.bool, name='is_training')
 
-    if gpu_ids == -1:
-        num_gpus = 1
-    else:
-        num_gpus = len(gpu_ids)
+    num_gpus = len(gpu_ids)
     batch_prefetch_count = len(gpu_ids)
     train_init_op, test_init_op, iter = build_input_iterators(train_reader, test_reader, batch_prefetch_count)
 
@@ -270,20 +267,19 @@ def build_towered_model(train_reader, test_reader, gpu_ids, learning_rate, numbe
     tower_grads = []
     ops_per_gpu = {}
     with tf.variable_scope(tf.get_variable_scope()):
-        if gpu_ids == -1:
-            print('Building tower for CPU:0')
-            with tf.device('/cpu:0'):
-                with tf.name_scope('%s_%d' % (TOWER_NAME, 0)) as scope:
+        for i in gpu_ids:
+            print('Building tower for GPU:{}'.format(i))
+            with tf.device('/gpu:%d' % i):
+                with tf.name_scope('%s_%d' % (TOWER_NAME, i)) as scope:
                     # Dequeues one batch for the GPU
                     image_batch, label_batch = iter.get_next()
 
                     # Calculate the loss for one tower of the model. This function
                     # constructs the entire model but shares the variables across
                     # all towers.
-                    loss_op, accuracy_op = tower_loss(image_batch, label_batch, number_classes,
-                                                      is_training_placeholder)
-                    ops_per_gpu['gpu{}-loss'.format(0)] = loss_op
-                    ops_per_gpu['gpu{}-accuracy'.format(0)] = accuracy_op
+                    loss_op, accuracy_op = tower_loss(image_batch, label_batch, number_classes, is_training_placeholder)
+                    ops_per_gpu['gpu{}-loss'.format(i)] = loss_op
+                    ops_per_gpu['gpu{}-accuracy'.format(i)] = accuracy_op
 
                     # Reuse variables for the next tower.
                     tf.get_variable_scope().reuse_variables()
@@ -294,31 +290,6 @@ def build_towered_model(train_reader, test_reader, gpu_ids, learning_rate, numbe
 
                     # Keep track of the gradients across all towers.
                     tower_grads.append(grads)
-                    gpu_ids = [0] # to correctly handle loss and accuracy averaging
-        else:
-            for i in gpu_ids:
-                print('Building tower for GPU:{}'.format(i))
-                with tf.device('/gpu:%d' % i):
-                    with tf.name_scope('%s_%d' % (TOWER_NAME, i)) as scope:
-                        # Dequeues one batch for the GPU
-                        image_batch, label_batch = iter.get_next()
-
-                        # Calculate the loss for one tower of the model. This function
-                        # constructs the entire model but shares the variables across
-                        # all towers.
-                        loss_op, accuracy_op = tower_loss(image_batch, label_batch, number_classes, is_training_placeholder)
-                        ops_per_gpu['gpu{}-loss'.format(i)] = loss_op
-                        ops_per_gpu['gpu{}-accuracy'.format(i)] = accuracy_op
-
-                        # Reuse variables for the next tower.
-                        tf.get_variable_scope().reuse_variables()
-
-                        # Calculate the gradients for the batch of data on this tower.
-                        with tf.control_dependencies(tf.get_collection(tf.GraphKeys.UPDATE_OPS)):
-                            grads = optimizer.compute_gradients(loss_op)
-
-                        # Keep track of the gradients across all towers.
-                        tower_grads.append(grads)
 
     # We must calculate the mean of each gradient. Note that this is the
     # synchronization point across all towers.

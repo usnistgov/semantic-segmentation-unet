@@ -5,32 +5,27 @@
 
 #SBATCH --partition=gpu
 #SBATCH --nodes=1
-#SBATCH --cpus-per-task=40
+#SBATCH --cpus-per-task=20
 #SBATCH --gres=gpu:1
-#SBATCH --exclusive
 #SBATCH --job-name=segnet
 #SBATCH -o segnet_%N.%j.out
-#SBATCH --time=48:0:0
+#SBATCH --time=24:0:0
 
 
 # job configuration
-batch_size=2 # 4x across the gpus
+
+input_data_directory="/wrk/mmajursk/Concrete_Feldman/images"
+output_directory="/wrk/mmajursk/Concrete_Feldman"
+
+checkpoint_filepath="/wrk/mmajursk/Concrete_Feldman/segnet-20190510T123041-0/checkpoint/model.ckpt"
 number_classes=4
+image_height=712
+image_width=950
 
-image_folder="/wrk/mmajursk/Concrete_Feldman/data/rawFOV"
-output_directory="/wrk/mmajursk/Concrete_Feldman/output"
-img_height=712
-img_width=950
-
-checkpoint_filepath="/wrk/mmajursk/Concrete_Feldman/segnet-20190507T141113/checkpoint/model.ckpt"
-
-experiment_name="segnet-$(date +%Y%m%dT%H%M%S)"
+experiment_name="segnet-inference-$(date +%Y%m%dT%H%M%S)"
 
 # MODIFY THESE OPTIONS
 # **************************
-
-
-echo "Experiment: $experiment_name"
 
 # define the handler function
 # note that this is not executed here, but rather
@@ -46,15 +41,25 @@ term_handler()
 trap 'term_handler' TERM
 
 
+# load any modules
 module load powerAI/tensorflow-1.5.4
 echo "Modules loaded"
 
-mkdir -p ${output_directory}
-echo "Output Directory: $output_directory"
+for N in 0 1 2 3
+do
+    results_dir="$output_directory/$experiment_name-$N"
 
+    mkdir -p ${results_dir}
+    echo "Results Directory: $results_dir"
 
-# launch training script with required options
-echo "Launching Script"
-python inference.py --gpu=0 --checkpoint_filepath="$checkpoint_filepath" --image_folder="$image_folder" --output_folder="$output_directory" --number_classes=${number_classes} --image_height=${img_height} --image_width=${img_width}
+    mkdir -p "$results_dir/src"
+    cp -r . "$results_dir/src"
+
+    # launch training script with required options
+    echo "Launching Training Script"
+    python inference.py --checkpoint_filepath=${checkpoint_filepath} --image_folder=${input_data_directory} --output_folder=${results_dir} --number_classes=${number_classes} --image_height=${image_height} --image_width=${image_width} | tee "$results_dir/log.txt"
+
+done
+
 
 echo "Job completed"

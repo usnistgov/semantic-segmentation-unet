@@ -7,6 +7,7 @@ import argparse
 import os
 
 
+
 # Function to query tensorflow to obtain the number of GPUs the system has
 def get_available_gpu_count():
     from tensorflow.python.client import device_lib
@@ -25,8 +26,7 @@ os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"  # so the IDs match nvidia-smi
 # define the number of disk readers (which are each single threaded) to match the number of GPUs, so we have one single threaded reader per gpu
 READER_COUNT = NUM_GPUS
 if len(GPU_IDS) == 0:
-    GPU_IDS = -1
-    READER_COUNT = 1
+    exit(1)
 print('Reader Count: {}'.format(READER_COUNT))
 
 
@@ -35,7 +35,7 @@ parser = argparse.ArgumentParser(prog='train_segnet', description='Script which 
 
 parser.add_argument('--batch_size', dest='batch_size', type=int, help='training batch size', default=4)
 parser.add_argument('--number_classes', dest='number_classes', type=int, default=2)
-parser.add_argument('--learning_rate', dest='learning_rate', type=float, default=1e-4)
+parser.add_argument('--learning_rate', dest='learning_rate', type=float, default=3e-4)
 parser.add_argument('--output_dir', dest='output_folder', type=str, help='Folder where outputs will be saved (Required)', required=True)
 parser.add_argument('--test_every_n_steps', dest='test_every_n_steps', type=int, help='number of gradient update steps to take between test epochs', default=100)
 parser.add_argument('--balance_classes', dest='balance_classes', type=int, help='whether to balance classes [0 = false, 1 = true]', default=0)
@@ -46,6 +46,7 @@ parser.add_argument('--test_database', dest='test_database_filepath', type=str, 
 parser.add_argument('--early_stopping', dest='terminate_after_num_epochs_without_test_loss_improvement', type=int, help='Perform early stopping when the test loss does not improve for N epochs.', default=10)
 parser.add_argument('--gradient_update_location', dest='gradient_update_location', type=str, help="Where to perform gradient averaging and update. Options: ['cpu', 'gpu:#']. Use the GPU if you have a fully connected topology, cpu otherwise.", default='gpu:0')
 parser.add_argument('--restore_checkpoint_filepath', dest='restore_checkpoint_filepath', type=str, help='checkpoint to resume from', default=None)
+parser.add_argument('--restore_var_common_name', dest='restore_var_common_name', type=str, default=None)
 
 args = parser.parse_args()
 batch_size = args.batch_size
@@ -60,23 +61,20 @@ restore_checkpoint_filepath = args.restore_checkpoint_filepath
 test_every_n_steps = args.test_every_n_steps
 balance_classes = args.balance_classes
 use_augmentation = args.use_augmentation
+restore_var_common_name = args.restore_var_common_name
 
 # verify gradient_update_location is valid
-if GPU_IDS == -1:
-    # no gpu found, so average on cpu
-    gradient_update_location = 'cpu:0'
-    print('Found no GPUs overwriting gradient averaging location request to use cpu')
-else:
-    valid_location = False
-    if gradient_update_location == 'cpu':
-        # if the GPUs do not have a fully connected topology (e.g. NVLink), its faster to perform gradient averaging on the CPU
+
+valid_location = False
+if gradient_update_location == 'cpu':
+    # if the GPUs do not have a fully connected topology (e.g. NVLink), its faster to perform gradient averaging on the CPU
+    valid_location = True
+    gradient_update_location = gradient_update_location + ':0' # append the useless id number
+for id in GPU_IDS:
+    if gradient_update_location == 'gpu:{}'.format(id):
         valid_location = True
-        gradient_update_location = gradient_update_location + ':0' # append the useless id number
-    for id in GPU_IDS:
-        if gradient_update_location == 'gpu:{}'.format(id):
-            valid_location = True
-    if not valid_location:
-        raise Exception("Invalid option for 'gradient_update_location': {}".format(gradient_update_location))
+if not valid_location:
+    raise Exception("Invalid option for 'gradient_update_location': {}".format(gradient_update_location))
 
 
 print('Arguments:')
@@ -94,13 +92,14 @@ print('output folder = {}'.format(output_folder))
 print('gradient_update_location = {}'.format(gradient_update_location))
 print('early_stopping count = {}'.format(terminate_after_num_epochs_without_test_loss_improvement))
 print('restore_checkpoint_filepath = {}'.format(restore_checkpoint_filepath))
-
+print('restore_var_common_name = {}'.format(restore_var_common_name))
 
 
 import numpy as np
 import tensorflow as tf
 import segnet_model
 import imagereader
+
 
 
 def save_csv_file(output_folder, data, filename):
@@ -128,8 +127,15 @@ def plot(output_folder, name, train_val, test_val, epoch_size, log_scale=True):
     ax = plt.gca()
     ax.scatter(iterations, train_val, c='b', s=dot_size)
     ax.plot(test_iterations, test_val, 'r-', marker='o', markersize=12)
-    plt.ylim((min(np.min(train_val), np.min(test_val[np.isfinite(test_val)])), max(np.max(train_val), np.max(test_val[np.isfinite(test_val)]))))
-    plt.ylim((np.min(train_val), np.max(train_val)))
+
+    min_x = np.min(train_val)
+    max_x = np.max(train_val)
+    tmp = test_val[np.isfinite(test_val)]
+    if tmp.size > 0:
+        min_x = min(min_x, np.min(tmp))
+        max_x = max(max_x, np.max(tmp))
+
+    plt.ylim((min_x, max_x))
     if log_scale:
         ax.set_yscale('log')
     plt.ylabel('{}'.format(name))
@@ -151,7 +157,7 @@ def train_model():
     train_reader = imagereader.ImageReader(train_lmdb_filepath, batch_size=batch_size, use_augmentation=use_augmentation, shuffle=True, num_workers=READER_COUNT, balance_classes=balance_classes, number_classes=number_classes)
     print('Train Reader has {} batches'.format(train_reader.get_epoch_size()))
 
-    try: # if any erros happen we want to catch them and shut down the multiprocess readers
+    try: # if any errors happen we want to catch them and shut down the multiprocess readers
         print('Starting Readers')
         train_reader.startup()
         test_reader.startup()
@@ -174,6 +180,15 @@ def train_model():
                 vars = tf.global_variables()
                 vars = [v for v in vars if 'Adam' not in v._shared_name]  # remove Adam variables
                 vars = [v for v in vars if 'logits' not in v._shared_name]  # remove output layer variables
+                vars = [v for v in vars if 'batch_normalization' not in v._shared_name]  # remove output layer variables
+
+                if restore_var_common_name is not None:
+                    vars = [v for v in vars if restore_var_common_name in v._shared_name]  # remove output layer variables
+                print('*********************************')
+                print('Restoring Vars')
+                for v in vars:
+                    print('{}   {}'.format(v._shared_name, v.shape))
+                print('*********************************')
 
                 saver = tf.train.Saver(vars)
                 saver.restore(sess, restore_checkpoint_filepath)
@@ -237,7 +252,7 @@ def train_model():
                     saver.save(sess, checkpoint_filepath)
 
                 # determine early stopping
-                CONVERGENCE_TOLERANCE = 1e-8
+                CONVERGENCE_TOLERANCE = 1e-4
                 print('Best Current Epoch Selection:')
                 print('Test Loss:')
                 print(test_loss)

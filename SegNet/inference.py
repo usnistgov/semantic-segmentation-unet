@@ -22,6 +22,7 @@ def translate_image_size(img_size):
 
     tgt_h = int(h + pad_y)
     tgt_w = int(w + pad_x)
+    print('model input image size: ({}, {})'.format(tgt_h, tgt_w))
 
     return [tgt_h, tgt_w]
 
@@ -93,50 +94,19 @@ def _inference(img_filepath, sess, input_op, logits_op):
     return pred
 
 
-def main():
-    parser = argparse.ArgumentParser(prog='inference', description='Script to detect stars with the selected segnet model')
-
-    parser.add_argument('--gpu', dest='gpu_id', type=int, help='which gpu to use for training (can only use a single gpu)', default=0)
-    parser.add_argument('--checkpoint_filepath', dest='checkpoint_filepath', type=str, help='Checkpoint filepath to the  model to use', required=True)
-    parser.add_argument('--image_folder', dest='image_folder', type=str, help='filepath to the folder containing tif images to inference (Required)', required=True)
-    parser.add_argument('--output_folder', dest='output_folder', type=str, required=True)
-    parser.add_argument('--number_classes', dest='number_classes', type=int, default=2)
-    parser.add_argument('--image_height', dest='image_height', type=int, required=True, help='Image height from the data used when training the model')
-    parser.add_argument('--image_width', dest='image_width', type=int, required=True, help='Image width from the data used when training the model')
-
-    args = parser.parse_args()
-
-    gpu_id = args.gpu_id
-    checkpoint_filepath = args.checkpoint_filepath
-    image_folder = args.image_folder
-    output_folder = args.output_folder
-    number_classes = args.number_classes
-    image_height = args.image_height
-    image_width = args.image_width
-
-    print('Arguments:')
-    print('number_classes = {}'.format(number_classes))
-    print('gpu_id = {}'.format(gpu_id))
-    print('checkpoint_filepath = {}'.format(checkpoint_filepath))
-    print('image_folder = {}'.format(image_folder))
-    print('output_folder = {}'.format(output_folder))
-    print('image_height = {}'.format(image_height))
-    print('image_width = {}'.format(image_width))
-
+def inference(gpu_id, checkpoint_filepath, image_folder, output_folder, number_classes, image_height, image_width, image_format):
     os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"  # so the IDs match nvidia-smi
     if gpu_id != -1:
         os.environ["CUDA_VISIBLE_DEVICES"] = str(gpu_id)
+
+    model_input_h, model_input_w = translate_image_size([image_height, image_width])
 
     # create output filepath
     if not os.path.exists(output_folder):
         os.mkdir(output_folder)
 
-    img_filepath_list = [os.path.join(image_folder, fn) for fn in os.listdir(image_folder) if fn.endswith('.tif')]
+    img_filepath_list = [os.path.join(image_folder, fn) for fn in os.listdir(image_folder) if fn.endswith('.{}'.format(image_format))]
 
-    img_filepath_list = img_filepath_list[:100]
-
-    model_input_h, model_input_w = translate_image_size([image_height, image_width])
-    print('Input image size: ({},{}) converts to a model with inputs of shape: ({},{})'.format(image_height, image_width, model_input_h, model_input_w))
     sess, input_op, logits_op = load_model(checkpoint_filepath, gpu_id, number_classes, model_input_h, model_input_w)
 
     print('Starting inference of file list')
@@ -146,6 +116,7 @@ def main():
         print('{}/{} : {}'.format(i, len(img_filepath_list), slide_name))
 
         segmented_mask = _inference(img_filepath, sess, input_op, logits_op)
+
         if 0 <= np.max(segmented_mask) <= 255:
             segmented_mask = segmented_mask.astype(np.uint8)
         if 255 < np.max(segmented_mask) < 65536:
@@ -156,4 +127,41 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(prog='inference',
+                                     description='Script to detect stars with the selected unet model')
+
+    parser.add_argument('--gpu', dest='gpu_id', type=int,
+                        help='which gpu to use for training (can only use a single gpu)', default=0)
+    parser.add_argument('--checkpoint_filepath', dest='checkpoint_filepath', type=str,
+                        help='Checkpoint filepath to the  model to use', required=True)
+    parser.add_argument('--image_folder', dest='image_folder', type=str,
+                        help='filepath to the folder containing tif images to inference (Required)', required=True)
+    parser.add_argument('--output_folder', dest='output_folder', type=str, required=True)
+    parser.add_argument('--number_classes', dest='number_classes', type=int, default=2)
+    parser.add_argument('--image_height', dest='image_height', type=int, required=True, help='Image height from the data used when training the model')
+    parser.add_argument('--image_width', dest='image_width', type=int, required=True, help='Image width from the data used when training the model')
+    parser.add_argument('--image_format', dest='image_format', type=str, help='format (extension) of the input images. E.g {tif, jpg, png)', default='tif')
+
+    args = parser.parse_args()
+
+    gpu_id = args.gpu_id
+    checkpoint_filepath = args.checkpoint_filepath
+    image_folder = args.image_folder
+    output_folder = args.output_folder
+    number_classes = args.number_classes
+    image_height = args.image_height
+    image_width = args.image_width
+    image_format = args.image_format
+
+    print('Arguments:')
+    print('number_classes = {}'.format(number_classes))
+    print('gpu_id = {}'.format(gpu_id))
+    print('checkpoint_filepath = {}'.format(checkpoint_filepath))
+    print('image_folder = {}'.format(image_folder))
+    print('output_folder = {}'.format(output_folder))
+    print('image_height = {}'.format(image_height))
+    print('image_width = {}'.format(image_width))
+    print('image_format = {}'.format(image_format))
+
+    inference(gpu_id, checkpoint_filepath, image_folder, output_folder, number_classes, image_height, image_width, image_format)
+
