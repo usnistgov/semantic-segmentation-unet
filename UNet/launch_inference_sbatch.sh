@@ -1,16 +1,27 @@
 #!/usr/bin/bash
+
+# **************************
+# MODIFY THESE OPTIONS
+
 #SBATCH --partition=gpu
 #SBATCH --nodes=1
 #SBATCH --cpus-per-task=20
 #SBATCH --gres=gpu:1
 #SBATCH --job-name=unet
 #SBATCH -o unet_%N.%j.out
-#SBATCH --time=12:0:0
+#SBATCH --time=24:0:0
 
-timestamp="$(date +%Y%m%dT%H%M%S)"
-experiment_name="unet-infer-${timestamp}"
-echo "Experiment: $experiment_name"
-working_dir="/scratch/${SLURM_JOB_ID}"
+
+# job configuration
+
+input_data_directory="/wrk/mmajursk/Concrete_Feldman/images"
+output_directory="/wrk/mmajursk/Concrete_Feldman"
+
+checkpoint_filepath="/wrk/mmajursk/Concrete_Feldman/unet-20190510T113248-0/checkpoint/model.ckpt"
+number_classes=4
+
+# MODIFY THESE OPTIONS
+# **************************
 
 # define the handler function
 # note that this is not executed here, but rather
@@ -18,49 +29,29 @@ working_dir="/scratch/${SLURM_JOB_ID}"
 term_handler()
 {
         echo "function term_handler called.  Cleaning up and Exiting"
-        rm -rf ${working_dir}
+        # Do nothing
         exit -1
 }
 
 # associate the function "term_handler" with the TERM signal
 trap 'term_handler' TERM
 
-# this is the root directory for results
-wrk_directory="/wrk/pnb"
 
-# make working directory
-mkdir -p ${working_dir}
-echo "Created Directory: $working_dir"
-
-#make results directory
-results_dir="$wrk_directory/$experiment_name"
-mkdir -p ${results_dir}
-echo "Results Directory: $results_dir"
-
-# job configuration
-checkpoint_filepath=${wrk_directory}/unet-aug-2019-03-01T15\:05\:08/checkpoint/model.ckpt-37
-infer_folder="rawTiles"
-image_folder=${wrk_directory}/data/${infer_folder}/
-number_classes=4
-echo "job config: checkpoint_filepath=" $checkpoint_filepath " image_folder=" $image_folder " output_folder=" $results_dir " number_classes=" ${number_classes}
-
-# copy data to node
-echo "Copying data to Node"
-cp -r ${wrk_directory}/data/${infer_folder}/ ${working_dir}/
-echo "data copy to node complete"
-echo "Working directory contains: "
-ls ${working_dir}
-
+# load any modules
 module load powerAI/tensorflow-1.5.4
 echo "Modules loaded"
 
 
-# launch inference script with required options
-echo "Launching Inference Script"
-python inference.py --gpu=0 --checkpoint_filepath="$checkpoint_filepath" --image_folder="$image_folder" --output_folder="$results_dir" --number_classes=${number_classes} | tee "$results_dir/log.txt"
+mkdir -p ${output_directory}
+echo "Results Directory: $output_directory"
 
-# cleanup (delete src, data)
-echo "Performing Node Cleanup"
-rm -rf ${working_dir}
+mkdir -p "$output_directory/src"
+cp -r . "$output_directory/src"
+
+# launch training script with required options
+echo "Launching Training Script"
+python inference.py --checkpoint_filepath=${checkpoint_filepath} --image_folder=${input_data_directory} --output_folder=${output_directory} --number_classes=${number_classes} | tee "$output_directory/log.txt"
+
 
 echo "Job completed"
+
