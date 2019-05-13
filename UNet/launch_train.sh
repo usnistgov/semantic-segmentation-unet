@@ -33,8 +33,8 @@ balance_classes=1 #[0, 1]
 # DO NOT MODIFY ANYTHING BELOW
 
 # limit the script to only the GPUs you selected above
-CUDA_DEVICE_ORDER="PCI_BUS_ID"
-CUDA_VISIBLE_DEVICES=${GPU}
+export CUDA_DEVICE_ORDER="PCI_BUS_ID"
+export CUDA_VISIBLE_DEVICES=${GPU}
 
 
 python train_unet.py --test_every_n_steps=${test_every_n_step} --batch_size=${batch_size} --train_database=${train_database} --test_database=${test_database} --output_dir=${output_folder} --number_classes=${number_classes} --learning_rate=${learning_rate}  --use_augmenation=${use_augmenation} --${balance_classes}
