@@ -31,8 +31,8 @@ image_height=512
 # DO NOT MODIFY ANYTHING BELOW
 
 # limit the script to only the GPUs you selected above
-CUDA_DEVICE_ORDER="PCI_BUS_ID"
-CUDA_VISIBLE_DEVICES=${GPU}
+export CUDA_DEVICE_ORDER="PCI_BUS_ID"
+export CUDA_VISIBLE_DEVICES=${GPU}
 
 
 python inference.py --checkpoint_filepath=${checkpoint_filepath} --image_folder=${input_data_directory} --output_folder=${output_directory} --number_classes=${number_classes} --image_height=${image_height} --image_width=${image_width}
