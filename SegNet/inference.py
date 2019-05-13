@@ -94,18 +94,20 @@ def _inference(img_filepath, sess, input_op, logits_op):
     return pred
 
 
-def inference(gpu_id, checkpoint_filepath, image_folder, output_folder, number_classes, image_height, image_width, image_format):
+def inference(gpu_id, checkpoint_filepath, image_folder, output_folder, number_classes, image_format):
     os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"  # so the IDs match nvidia-smi
     if gpu_id != -1:
         os.environ["CUDA_VISIBLE_DEVICES"] = str(gpu_id)
-
-    model_input_h, model_input_w = translate_image_size([image_height, image_width])
 
     # create output filepath
     if not os.path.exists(output_folder):
         os.mkdir(output_folder)
 
     img_filepath_list = [os.path.join(image_folder, fn) for fn in os.listdir(image_folder) if fn.endswith('.{}'.format(image_format))]
+
+    image_height, image_width = imagereader.imread(img_filepath_list[0]).shape
+    model_input_h, model_input_w = translate_image_size([image_height, image_width])
+
 
     sess, input_op, logits_op = load_model(checkpoint_filepath, gpu_id, number_classes, model_input_h, model_input_w)
 
@@ -138,8 +140,6 @@ if __name__ == "__main__":
                         help='filepath to the folder containing tif images to inference (Required)', required=True)
     parser.add_argument('--output_folder', dest='output_folder', type=str, required=True)
     parser.add_argument('--number_classes', dest='number_classes', type=int, default=2)
-    parser.add_argument('--image_height', dest='image_height', type=int, required=True, help='Image height from the data used when training the model')
-    parser.add_argument('--image_width', dest='image_width', type=int, required=True, help='Image width from the data used when training the model')
     parser.add_argument('--image_format', dest='image_format', type=str, help='format (extension) of the input images. E.g {tif, jpg, png)', default='tif')
 
     args = parser.parse_args()
@@ -149,8 +149,6 @@ if __name__ == "__main__":
     image_folder = args.image_folder
     output_folder = args.output_folder
     number_classes = args.number_classes
-    image_height = args.image_height
-    image_width = args.image_width
     image_format = args.image_format
 
     print('Arguments:')
@@ -159,9 +157,7 @@ if __name__ == "__main__":
     print('checkpoint_filepath = {}'.format(checkpoint_filepath))
     print('image_folder = {}'.format(image_folder))
     print('output_folder = {}'.format(output_folder))
-    print('image_height = {}'.format(image_height))
-    print('image_width = {}'.format(image_width))
     print('image_format = {}'.format(image_format))
 
-    inference(gpu_id, checkpoint_filepath, image_folder, output_folder, number_classes, image_height, image_width, image_format)
+    inference(gpu_id, checkpoint_filepath, image_folder, output_folder, number_classes, image_format)
 
