@@ -5,7 +5,7 @@ if sys.version_info[0] < 3:
 
 import tensorflow as tf
 tf_version = tf.__version__.split('.')
-if tf_version[0] is not '1' or tf_version[1] is not '12':
+if int(tf_version[0]) != 1 or int(tf_version[1]) != 12:
     import warnings
     warnings.warn('Codebase only tested using Tensorflow version 1.12.x')
 
