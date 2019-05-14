@@ -1,3 +1,8 @@
+import sys
+if sys.version_info[0] < 3:
+    print('Python3 required')
+    sys.exit(1)
+
 import matplotlib as mpl
 
 mpl.use('Agg')
@@ -97,6 +102,11 @@ print('restore_var_common_name = {}'.format(restore_var_common_name))
 
 import numpy as np
 import tensorflow as tf
+tf_version = tf.__version__.split('.')
+if tf_version[0] is not '1' and tf_version[1] is not '12':
+    print('Tensorflow version 1.12.x required')
+    sys.exit(1)
+
 import unet_model
 import imagereader
 

@@ -1,4 +1,14 @@
+import sys
+if sys.version_info[0] < 3:
+    print('Python3 required')
+    sys.exit(1)
+
 import tensorflow as tf
+tf_version = tf.__version__.split('.')
+if tf_version[0] is not '1' and tf_version[1] is not '12':
+    print('Tensorflow version 1.12.x required')
+    sys.exit(1)
+
 
 NUMBER_CHANNELS = 1  # grayscale
 

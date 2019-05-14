@@ -1,3 +1,8 @@
+import sys
+if sys.version_info[0] < 3:
+    print('Python3 required')
+    sys.exit(1)
+
 import numpy as np
 import scipy
 import scipy.ndimage
