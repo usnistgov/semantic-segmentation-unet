@@ -7,9 +7,9 @@ import argparse
 import os
 import tensorflow as tf
 tf_version = tf.__version__.split('.')
-if tf_version[0] is not '1' and tf_version[1] is not '12':
-    print('Tensorflow version 1.12.x required')
-    sys.exit(1)
+if tf_version[0] is not '1' or tf_version[1] is not '13':
+    import warnings
+    warnings.warn('Codebase only tested using Tensorflow version 1.12.x')
 import segnet_model
 import numpy as np
 import imagereader
