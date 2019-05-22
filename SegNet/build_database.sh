@@ -17,6 +17,9 @@ train_fraction=0.8 # (0.0, 1.0)
 # what format are the images in your image/mask folder
 image_format="tif"
 
+use_tiling=1 #{0, 1}
+tile_size=256
+
 # MODIFY THESE OPTIONS
 # ************************************
 
@@ -24,4 +27,9 @@ image_format="tif"
 # DO NOT MODIFY ANYTHING BELOW
 
 
-python build_lmdb.py --image_folder=${image_folder} --mask_folder=${mask_folder} --output_folder=${output_folder} --dataset_name=${dataset_name} --train_fraction=${train_fraction} --image_format=${image_folder}
+if [ ${use_tiling} -eq 0 ]
+then
+	python3 build_lmdb.py --image_folder=${image_folder} --mask_folder=${mask_folder} --output_folder=${output_folder} --dataset_name=${dataset_name} --train_fraction=${train_fraction} --image_format=${image_format}
+else
+	python3 build_lmdb_tiling.py --image_folder=${image_folder} --mask_folder=${mask_folder} --output_folder=${output_folder} --dataset_name=${dataset_name} --train_fraction=${train_fraction} --image_format=${image_format} --tile_size=${tile_size}
+fi
