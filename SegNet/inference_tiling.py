@@ -11,25 +11,44 @@ if int(tf_version[0]) != 1 or int(tf_version[1]) != 12:
     import warnings
     warnings.warn('Codebase only tested using Tensorflow version 1.12.x')
 
-import unet_model
+import segnet_model
 import numpy as np
 import imagereader
 
 
-# image size must be a factor of 16 to allow UNet conv and deconv layer dimension to line up
-SIZE_FACTOR = 16
+# image size must be a factor of 32 to allow Segnet conv and deconv layer dimension to line up
+SIZE_FACTOR = 32
 
 
-def load_model(checkpoint_filepath, gpu_id, number_classes):
+def translate_image_size(img_size):
+    h = img_size[0]
+    w = img_size[1]
+
+    pad_x = 0
+    pad_y = 0
+    if h % SIZE_FACTOR != 0:
+        pad_y = (SIZE_FACTOR - h % SIZE_FACTOR)
+        print('image height needs to be a multiple of {}, padding with reflect'.format(SIZE_FACTOR))
+    if w % SIZE_FACTOR != 0:
+        pad_x = (SIZE_FACTOR - w % SIZE_FACTOR)
+        print('image width needs to be a multiple of {}, padding with reflect'.format(SIZE_FACTOR))
+
+    tgt_h = int(h + pad_y)
+    tgt_w = int(w + pad_x)
+
+    return tgt_h, tgt_w, pad_y, pad_x
+
+
+def load_model(checkpoint_filepath, gpu_id, number_classes, model_input_h, model_input_w):
     print('Creating model')
     with tf.Graph().as_default(), tf.device('/cpu:0'):
-        input_op = tf.placeholder(tf.float32, shape=(1, 1, None, None))
+        input_op = tf.placeholder(tf.float32, shape=(1, model_input_h, model_input_w, 1))
 
         # Calculate the gradients for each model tower.
         with tf.variable_scope(tf.get_variable_scope()):
             with tf.device('/gpu:%d' % gpu_id):
-                with tf.name_scope('%s_%d' % (unet_model.TOWER_NAME, gpu_id)) as scope:
-                    logits_op = unet_model.add_inference_ops(input_op, is_training=False, number_classes=number_classes)
+                with tf.name_scope('%s_%d' % (segnet_model.TOWER_NAME, gpu_id)) as scope:
+                    logits_op = segnet_model.add_inference_ops(input_op, is_training=False, number_classes=number_classes)
 
         # Start running operations on the Graph. allow_soft_placement must be set to
         # True to build towers on GPU, as some of the ops do not have GPU
@@ -41,7 +60,6 @@ def load_model(checkpoint_filepath, gpu_id, number_classes):
 
         # build list of variables to restore
         vars = tf.global_variables()
-        print('Loading variables:')
         for v in vars:
             print('{}   {}'.format(v._shared_name, v.shape))
 
@@ -104,7 +122,7 @@ def _inference(img_filepath, sess, input_op, logits_op, tile_size):
                 # ensure its correct size (if tile exists at the edge of the image
                 tile = np.pad(tile, pad_width=((pre_pad_y, post_pad_y), (pre_pad_x, post_pad_x)), mode='reflect')
 
-            batch_data = tile.reshape((1, 1, tile.shape[0], tile.shape[1]))
+            batch_data = tile.reshape((1, tile.shape[0], tile.shape[1], 1))
 
             [logits] = sess.run([logits_op], feed_dict={input_op: batch_data})
             pred = np.squeeze(np.argmax(logits, axis=-1).astype(np.int32))
@@ -140,7 +158,7 @@ def inference(gpu_id, checkpoint_filepath, image_folder, output_folder, number_c
 
     img_filepath_list = [os.path.join(image_folder, fn) for fn in os.listdir(image_folder) if fn.endswith('.{}'.format(image_format))]
 
-    sess, input_op, logits_op = load_model(checkpoint_filepath, gpu_id, number_classes)
+    sess, input_op, logits_op = load_model(checkpoint_filepath, gpu_id, number_classes, tile_size, tile_size)
 
     print('Starting inference of file list')
     for i in range(len(img_filepath_list)):

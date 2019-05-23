@@ -16,9 +16,11 @@ output_directory="/path/to/your/results"
 checkpoint_filepath="/path/to/your/model/checkpoint/model.ckpt"
 
 # how many classes exist in your training dataset (e.g. 2 for binary segmentation)
-number_classes=4
+number_classes=2
 
-# this script assumes you have enough gpu memory to run a full sized image through the network in a single pass. It will not handle tiling of the input image through the network
+use_tiling=1 # {0, 1} # use tiling when the images being inferenced are too small to fit in GPU memory
+tile_size=256
+image_format='tif'
 
 # MODIFY THESE OPTIONS
 # ************************************
@@ -31,4 +33,9 @@ export CUDA_DEVICE_ORDER="PCI_BUS_ID"
 export CUDA_VISIBLE_DEVICES=${GPU}
 
 
-python inference.py --checkpoint_filepath=${checkpoint_filepath} --image_folder=${input_data_directory} --output_folder=${output_directory} --number_classes=${number_classes}
+if [ ${use_tiling} -eq 0 ]
+then
+	python3 inference.py --checkpoint_filepath=${checkpoint_filepath} --image_folder=${input_data_directory} --output_folder=${output_directory} --number_classes=${number_classes} --image_format=${image_format}
+else
+	python3 inference_tiling.py --checkpoint_filepath=${checkpoint_filepath} --image_folder=${input_data_directory} --output_folder=${output_directory} --number_classes=${number_classes} --tile_size=${tile_size} --image_format=${image_format}
+fi

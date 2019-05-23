@@ -14,26 +14,27 @@ import segnet_model
 import numpy as np
 import imagereader
 
+# image size must be a factor of 32 to allow Segnet conv and deconv layer dimension to line up
+SIZE_FACTOR = 32
+
 
 def translate_image_size(img_size):
     h = img_size[0]
     w = img_size[1]
 
-    factor = 32
     pad_x = 0
     pad_y = 0
-    if h % factor != 0:
-        pad_y = (factor - h % factor)
-        print('image height needs to be a multiple of {}, padding with reflect'.format(factor))
-    if w % factor != 0:
-        pad_x = (factor - w % factor)
-        print('image width needs to be a multiple of {}, padding with reflect'.format(factor))
+    if h % SIZE_FACTOR != 0:
+        pad_y = (SIZE_FACTOR - h % SIZE_FACTOR)
+        print('image height needs to be a multiple of {}, padding with reflect'.format(SIZE_FACTOR))
+    if w % SIZE_FACTOR != 0:
+        pad_x = (SIZE_FACTOR - w % SIZE_FACTOR)
+        print('image width needs to be a multiple of {}, padding with reflect'.format(SIZE_FACTOR))
 
     tgt_h = int(h + pad_y)
     tgt_w = int(w + pad_x)
-    print('model input image size: ({}, {})'.format(tgt_h, tgt_w))
 
-    return [tgt_h, tgt_w]
+    return tgt_h, tgt_w, pad_y, pad_x
 
 
 def load_model(checkpoint_filepath, gpu_id, number_classes, model_input_h, model_input_w):
@@ -77,16 +78,8 @@ def _inference(img_filepath, sess, input_op, logits_op):
     img = imagereader.zscore_normalize(img)
 
     print('  img.shape={}'.format(img.shape))
-    pad_x = 0
-    pad_y = 0
+    _, _, pad_y, pad_x = translate_image_size(img.shape)
 
-    factor = 32
-    if img.shape[0] % factor != 0:
-        pad_y = (factor - img.shape[0] % factor)
-        print('image height needs to be a multiple of {}, padding with reflect'.format(factor))
-    if img.shape[1] % factor != 0:
-        pad_x = (factor - img.shape[1] % factor)
-        print('image width needs to be a multiple of {}, padding with reflect'.format(factor))
     if pad_x > 0 or pad_y > 0:
         img = np.pad(img, pad_width=((0, pad_y), (0, pad_x)), mode='reflect')
 
@@ -115,7 +108,8 @@ def inference(gpu_id, checkpoint_filepath, image_folder, output_folder, number_c
     img_filepath_list = [os.path.join(image_folder, fn) for fn in os.listdir(image_folder) if fn.endswith('.{}'.format(image_format))]
 
     image_height, image_width = imagereader.imread(img_filepath_list[0]).shape
-    model_input_h, model_input_w = translate_image_size([image_height, image_width])
+    model_input_h, model_input_w, _, _ = translate_image_size([image_height, image_width])
+    print('model input image size: ({}, {})'.format(model_input_h, model_input_w))
 
 
     sess, input_op, logits_op = load_model(checkpoint_filepath, gpu_id, number_classes, model_input_h, model_input_w)
