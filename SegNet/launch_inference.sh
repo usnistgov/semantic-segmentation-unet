@@ -8,15 +8,12 @@ GPU="0"
 
 # where is your image data is for inferencing
 input_data_directory="/path/to/your/images"
-input_data_directory="/scratch/small-data-cnns/source_data/Concrete_raw"
 
 # where to save your results
 output_directory="/path/to/your/results"
-output_directory="/home/mmajursk/Gitlab/Semantic-Segmentation/SegNet/inference"
 
 # which model checkpoint to use for inferencing
 checkpoint_filepath="/path/to/your/model/checkpoint/model.ckpt"
-checkpoint_filepath="/home/mmajursk/Gitlab/Semantic-Segmentation/SegNet/model/checkpoint/model.ckpt"
 
 # how many classes exist in your training dataset (e.g. 2 for binary segmentation)
 number_classes=2
