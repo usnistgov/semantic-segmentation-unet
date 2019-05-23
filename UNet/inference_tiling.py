@@ -16,6 +16,10 @@ import numpy as np
 import imagereader
 
 
+# image size must be a factor of 16 to allow UNet conv and deconv layer dimension to line up
+SIZE_FACTOR = 16
+
+
 def load_model(checkpoint_filepath, gpu_id, number_classes):
     print('Creating model')
     with tf.Graph().as_default(), tf.device('/cpu:0'):
@@ -48,45 +52,72 @@ def load_model(checkpoint_filepath, gpu_id, number_classes):
     return sess, input_op, logits_op
 
 
-def _inference(img_filepath, sess, input_op, logits_op):
+def _inference(img_filepath, sess, input_op, logits_op, tile_size):
 
-
-    # TODO cut up the image with ghost regions and overlap to inference at tile_size
+    # TODO test this
     print('Loading image: {}'.format(img_filepath))
     img = imagereader.imread(img_filepath)
     img = img.astype(np.float32)
 
     # normalize with whole image stats
     img = imagereader.zscore_normalize(img)
-
+    height, width, = img.shape
+    mask = np.zeros(img.shape)
     print('  img.shape={}'.format(img.shape))
-    pad_x = 0
-    pad_y = 0
 
-    factor = 16
-    if img.shape[0] % factor != 0:
-        pad_y = (factor - img.shape[0] % factor)
-        print('image height needs to be a multiple of {}, padding with reflect'.format(factor))
-    if img.shape[1] % factor != 0:
-        pad_x = (factor - img.shape[1] % factor)
-        print('image width needs to be a multiple of {}, padding with reflect'.format(factor))
-    if pad_x > 0 or pad_y > 0:
-        img = np.pad(img, pad_width=((0, pad_y), (0, pad_x)), mode='reflect')
+    radius = SIZE_FACTOR
+    zone_of_responsibility_size = tile_size - 2 * radius
+    for i in range(0, height, zone_of_responsibility_size):
+        for j in range(0, width, zone_of_responsibility_size):
 
-    batch_data = img.reshape((1, 1, img.shape[0], img.shape[1]))
+            x_st_z = j
+            y_st_z = i
+            x_end_z = x_st_z + zone_of_responsibility_size
+            y_end_z = y_st_z + zone_of_responsibility_size
 
-    [logits] = sess.run([logits_op], feed_dict={input_op: batch_data})
-    pred = np.squeeze(np.argmax(logits, axis=-1).astype(np.int32))
+            # pad zone of responsibility by radius
+            x_st = x_st_z - radius
+            y_st = y_st_z - radius
+            x_end = x_end_z + radius
+            y_end = y_end_z + radius
 
-    if pad_x > 0:
-        pred = pred[:, 0:-pad_x]
-    if pad_y > 0:
-        pred = pred[0:-pad_y, :]
+            pre_pad_x = 0
+            if x_st < 0:
+                pre_pad_x = -x_st
+                x_st = 0
+            pre_pad_y = 0
+            if y_st < 0:
+                pre_pad_y = -y_st
+                y_st = 0
+            post_pad_x = 0
+            if x_end > width:
+                post_pad_x = x_end - width
+                x_end = width
+            post_pad_y = 0
+            if y_end > height:
+                post_pad_y = y_end - height
+                y_end = height
 
-    return pred
+            # crop out the tile
+            tile = img[y_st:y_end, x_st:x_end]
+
+            if pre_pad_x > 0 or pre_pad_y > 0 or post_pad_x > 0 or post_pad_y > 0:
+                # ensure its correct size (if tile exists at the edge of the image
+                tile = np.pad(tile, pad_width=((pre_pad_y, post_pad_y), (pre_pad_x, post_pad_x)), mode='reflect')
+
+            batch_data = tile.reshape((1, 1, tile.shape[0], tile.shape[1]))
+
+            [logits] = sess.run([logits_op], feed_dict={input_op: batch_data})
+            pred = np.squeeze(np.argmax(logits, axis=-1).astype(np.int32))
+
+            pred = pred[pre_pad_y:-post_pad_y, pre_pad_x:-post_pad_x]
+
+            mask[y_st_z:y_end_z, x_st_z:x_end_z] = pred
+
+    return mask
 
 
-def inference(gpu_id, checkpoint_filepath, image_folder, output_folder, number_classes, image_format):
+def inference(gpu_id, checkpoint_filepath, image_folder, output_folder, number_classes, image_format, tile_size):
     os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"  # so the IDs match nvidia-smi
     os.environ["CUDA_VISIBLE_DEVICES"] = str(gpu_id)
 
@@ -104,7 +135,7 @@ def inference(gpu_id, checkpoint_filepath, image_folder, output_folder, number_c
         _, slide_name = os.path.split(img_filepath)
         print('{}/{} : {}'.format(i, len(img_filepath_list), slide_name))
 
-        segmented_mask = _inference(img_filepath, sess, input_op, logits_op)
+        segmented_mask = _inference(img_filepath, sess, input_op, logits_op, tile_size)
 
         if 0 <= np.max(segmented_mask) <= 255:
             segmented_mask = segmented_mask.astype(np.uint8)
@@ -149,5 +180,5 @@ if __name__ == "__main__":
     print('image_format = {}'.format(image_format))
     print('tile_size = {}'.format(tile_size))
 
-    inference(gpu_id, checkpoint_filepath, image_folder, output_folder, number_classes, image_format)
+    inference(gpu_id, checkpoint_filepath, image_folder, output_folder, number_classes, image_format, tile_size)
 
