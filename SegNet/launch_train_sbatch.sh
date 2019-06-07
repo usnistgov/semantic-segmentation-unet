@@ -5,8 +5,8 @@
 
 #SBATCH --partition=gpu
 #SBATCH --nodes=1
-#SBATCH --cpus-per-task=20
-#SBATCH --gres=gpu:1
+#SBATCH --cpus-per-task=160
+#SBATCH --gres=gpu:4
 #SBATCH --job-name=segnet
 #SBATCH -o segnet_%N.%j.out
 #SBATCH --time=24:0:0
@@ -14,16 +14,23 @@
 
 # job configuration
 test_every_n_steps=1000
-batch_size=1 # 4x across the gpus
+batch_size=8 # 4x across the gpus
 
-input_data_directory="/wrk/mmajursk/Concrete_Feldman"
-output_directory="/wrk/mmajursk/Concrete_Feldman"
+train_lmdb_file="train-hes.lmdb"
+test_lmdb_file="test-hes.lmdb"
+
+input_data_directory="/wrk/mmajursk/small-data-cnns/SegNet"
+output_directory="/wrk/mmajursk/small-data-cnns/SegNet"
 
 experiment_name="segnet-$(date +%Y%m%dT%H%M%S)"
 
+number_classes=4
+learning_rate=3e-4
+use_augmentation=1
+balance_classes=1
+
 # MODIFY THESE OPTIONS
 # **************************
-
 
 echo "Experiment: $experiment_name"
 scratch_dir="/scratch/${SLURM_JOB_ID}"
@@ -46,36 +53,29 @@ trap 'term_handler' TERM
 mkdir -p ${scratch_dir}
 echo "Created Directory: $scratch_dir"
 
+# copy data to node
+echo "Copying data to Node"
+cp -r ${input_data_directory}/${train_lmdb_file} ${scratch_dir}/${train_lmdb_file}
+cp -r ${input_data_directory}/${test_lmdb_file} ${scratch_dir}/${test_lmdb_file}
+echo "data copy to node complete"
+echo "Working directory contains: "
+ls ${scratch_dir}
 
 
-# load any modules
 module load powerAI/tensorflow-1.5.4
 echo "Modules loaded"
 
-for N in 0 1 2 3
-do
 
-    # copy data to node
-    echo "Copying data to Node"
-    test_lmdb_file="test-concrete-$N.lmdb"
-    cp -r ${input_data_directory}/${test_lmdb_file} ${scratch_dir}/${test_lmdb_file}
-    train_lmdb_file="train-concrete-$N.lmdb"
-    cp -r ${input_data_directory}/${train_lmdb_file} ${scratch_dir}/${train_lmdb_file}
+results_dir="$output_directory/$experiment_name"
+mkdir -p ${results_dir}
+echo "Results Directory: $results_dir"
 
-    results_dir="$output_directory/$experiment_name-$N"
+mkdir -p "$results_dir/src"
+cp -r . "$results_dir/src"
 
-    mkdir -p ${results_dir}
-    echo "Results Directory: $results_dir"
+# launch training script with required options
+echo "Launching Training Script"
 
-    mkdir -p "$results_dir/src"
-    cp -r . "$results_dir/src"
-
-    # launch training script with required options
-    echo "Launching Training Script"
-    python train_segnet.py --test_every_n_steps=${test_every_n_steps} --batch_size=${batch_size} --train_database="$scratch_dir/$train_lmdb_file" --test_database="$scratch_dir/$test_lmdb_file" --output_dir="$results_dir" --use_augmentation=1 --number_classes=4 --balance_classes=1 | tee "$results_dir/log.txt"
-
-done
-
+python train_segnet.py --test_every_n_steps=${test_every_n_steps} --batch_size=${batch_size} --train_database="$scratch_dir/$train_lmdb_file" --test_database="$scratch_dir/$test_lmdb_file" --output_dir="$results_dir" --number_classes=${number_classes} --learning_rate=${learning_rate}  --use_augmentation=${use_augmentation} --balance_classes=${balance_classes} | tee "$results_dir/log.txt"
 
 echo "Job completed"
-
