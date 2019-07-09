@@ -15,6 +15,11 @@ import os
 import skimage.io
 import skimage.transform
 from isg_ai_pb2 import ImageMaskPair
+import tensorflow as tf
+tf_version = tf.__version__.split('.')
+if int(tf_version[0]) != 2:
+    import warnings
+    warnings.warn('Codebase designed for Tensorflow 2.x.x')
 
 
 def zscore_normalize(image_data):
@@ -50,7 +55,7 @@ class ImageReader:
     _blur_max_sigma = 2  # pixels
     _intensity_augmentation_severity = None # vary intensity by x% of the dynamic range present in the image
 
-    def __init__(self, img_db, batch_size, use_augmentation=True, balance_classes=False, shuffle=True, num_workers=1, number_classes=2):
+    def __init__(self, img_db, use_augmentation=True, balance_classes=False, shuffle=True, num_workers=1, number_classes=2):
         random.seed()
 
         # copy inputs to class variables
@@ -58,13 +63,12 @@ class ImageReader:
         self.use_augmentation = use_augmentation
         self.balance_classes = balance_classes
         self.shuffle = shuffle
-        self.batchsize = batch_size
         self.nb_workers = num_workers
         self.nb_classes = number_classes
 
         # init class state
         self.queue_starvation = False
-        self.maxOutQSize = num_workers * 10
+        self.maxOutQSize = num_workers * 100 # queue 100 images per reader
         self.workers = None
         self.done = False
 
@@ -101,6 +105,11 @@ class ImageReader:
             # record the image size
             self.image_size = [datum.img_height, datum.img_width]
 
+            if self.image_size[0] % 16 != 0:
+                raise IOError('Input Image tile height needs to be a multiple of 16 to allow integer sized downscaled feature maps')
+            if self.image_size[1] % 16 != 0:
+                raise IOError('Input Image tile height needs to be a multiple of 16 to allow integer sized downscaled feature maps')
+
             # iterate over the database getting the keys
             for key, val in cursor:
                 self.keys_flat.append(key)
@@ -120,15 +129,18 @@ class ImageReader:
             for i in range(len(self.keys)):
                 print('  class: {} count: {}'.format(i, len(self.keys[i])))
 
-    def get_epoch_size(self):
+    def get_image_count(self):
         # tie epoch size to the number of images
-        return int(len(self.keys_flat) / self.batchsize)
+        return int(len(self.keys_flat))
 
     def get_image_size(self):
         return self.image_size
 
-    def get_batch_size(self):
-        return self.batchsize
+    def get_image_tensor_shape(self):
+        return [1, self.image_size[0], self.image_size[1]]
+
+    def get_label_tensor_shape(self):
+        return [self.image_size[0], self.image_size[1]]
 
     def startup(self):
         self.workers = None
@@ -163,19 +175,6 @@ class ImageReader:
         # wait for the workers to terminate
         for w in self.workers:
             w.join()
-
-
-    @staticmethod
-    def __format_image(image_data):
-        # reshape into tensor (NCHW)
-        image_data = image_data.reshape((-1, 1, image_data.shape[0], image_data.shape[1]))
-        return image_data
-
-    @staticmethod
-    def __format_label(label_data):
-        # # reshape into tensor (NCHW)
-        image_data = label_data.reshape((-1, label_data.shape[0], label_data.shape[1]))
-        return image_data
 
     def __get_next_key(self):
         if self.shuffle:
@@ -224,58 +223,58 @@ class ImageReader:
                 except queue.Empty:
                     pass  # do nothing
 
-                # allocate tensors for the current batch
-                pixel_tensor = list()
-                label_tensor = list()
+                # build a single image selecting the labels using round robin through the shuffled order
 
-                # build a batch selecting the labels using round robin through the shuffled order
-                for i in range(self.batchsize):
-                    fn = self.__get_next_key()
+                fn = self.__get_next_key()
 
-                    # extract the serialized image from the database
-                    value = local_lmdb_txn.get(fn)
-                    # convert from serialized representation
-                    datum.ParseFromString(value)
+                # extract the serialized image from the database
+                value = local_lmdb_txn.get(fn)
+                # convert from serialized representation
+                datum.ParseFromString(value)
 
-                    # convert from string to numpy array
-                    I = np.fromstring(datum.image, dtype=datum.img_type)
-                    # reshape the numpy array using the dimensions recorded in the datum
-                    I = I.reshape(datum.img_height, datum.img_width)
+                # convert from string to numpy array
+                I = np.fromstring(datum.image, dtype=datum.img_type)
+                # reshape the numpy array using the dimensions recorded in the datum
+                I = I.reshape(datum.img_height, datum.img_width)
 
-                    # convert from string to numpy array
-                    M = np.fromstring(datum.mask, dtype=datum.mask_type)
-                    # reshape the numpy array using the dimensions recorded in the datum
-                    M = M.reshape(datum.img_height, datum.img_width)
+                # convert from string to numpy array
+                M = np.fromstring(datum.mask, dtype=datum.mask_type)
+                # reshape the numpy array using the dimensions recorded in the datum
+                M = M.reshape(datum.img_height, datum.img_width)
 
-                    if self.use_augmentation:
-                        I = I.astype(np.float32)
+                if self.use_augmentation:
+                    I = I.astype(np.float32)
 
-                        # perform image data augmentation
-                        I, M = augment.augment_image(I, M,
-                                                     reflection_flag=self._reflection_flag,
-                                                     rotation_flag=self._rotation_flag,
-                                                     jitter_augmentation_severity=self._jitter_augmentation_severity,
-                                                     noise_augmentation_severity=self._noise_augmentation_severity,
-                                                     scale_augmentation_severity=self._scale_augmentation_severity,
-                                                     blur_augmentation_max_sigma=self._blur_max_sigma,
-                                                     intensity_augmentation_severity=self._intensity_augmentation_severity)
+                    # perform image data augmentation
+                    I, M = augment.augment_image(I, M,
+                                                 reflection_flag=self._reflection_flag,
+                                                 rotation_flag=self._rotation_flag,
+                                                 jitter_augmentation_severity=self._jitter_augmentation_severity,
+                                                 noise_augmentation_severity=self._noise_augmentation_severity,
+                                                 scale_augmentation_severity=self._scale_augmentation_severity,
+                                                 blur_augmentation_max_sigma=self._blur_max_sigma,
+                                                 intensity_augmentation_severity=self._intensity_augmentation_severity)
 
-                    # format the image into a tensor
-                    I = self.__format_image(I)
-                    I = zscore_normalize(I)
-                    M = self.__format_label(M)
+                # format the image into a tensor
+                # reshape into tensor (CHW)
+                I = I.reshape((1, I.shape[0], I.shape[1]))
+                I = I.astype(np.float32)
+                I = zscore_normalize(I)
 
-                    # append the image and label to the batch being built
-                    pixel_tensor.append(I)
-                    label_tensor.append(M)
+                # reshape into tensor (HWC)
+                M = M.astype(np.int32)
+                # M = M.reshape((M.shape[0], M.shape[1]))
+                # convert to a one-hot (HWC) representation
+                h, w = M.shape
+                M = M.reshape(-1)
+                fM = np.zeros((len(M), self.nb_classes), dtype=np.int32)
+                fM[np.arange(len(M)), M] = 1
+                fM = fM.reshape((h, w, self.nb_classes))
 
-                # convert the list of images into a numpy array tensor ready for tensorflow
-                pixel_tensor = np.concatenate(pixel_tensor, axis=0).astype(np.float32)
-                label_tensor = np.concatenate(label_tensor, axis=0).astype(np.int32)
 
                 # add the batch in the output queue
                 # this put block until there is space in the output queue (size 50)
-                self.outQ.put((pixel_tensor, label_tensor))
+                self.outQ.put((I, fM))
 
         except Exception as e:
             print('***************** Reader Error *****************')
@@ -286,7 +285,7 @@ class ImageReader:
             # when the worker terminates add a none to the output so the parent gets a shutdown confirmation from each worker
             self.outQ.put(None)
 
-    def get_batch(self):
+    def get_example(self):
         # get a ready to train batch from the output queue and pass to to the caller
         if self.outQ.qsize() < int(0.1*self.maxOutQSize):
             if not self.queue_starvation:
@@ -299,11 +298,20 @@ class ImageReader:
 
     def generator(self):
         while True:
-            batch = self.get_batch()
+            batch = self.get_example()
             if batch is None:
                 return
             yield batch
 
     def get_queue_size(self):
         return self.outQ.qsize()
+
+    def get_tf_dataset(self):
+        print('Creating Dataset')
+        # wrap the input queues into a Dataset
+        # this sets up the imagereader class as a Python generator
+        image_shape = tf.TensorShape((1, self.image_size[0], self.image_size[1]))
+        label_shape = tf.TensorShape((self.image_size[0], self.image_size[1], self.nb_classes))
+        return tf.data.Dataset.from_generator(self.generator, output_types=(tf.float32, tf.int32), output_shapes=(image_shape, label_shape))
+
 
