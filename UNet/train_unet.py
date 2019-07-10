@@ -91,46 +91,16 @@ def train_model():
         test_reader.startup()
 
         print('Creating model')
-        model = unet_model.UNet(number_classes, learning_rate)
+        model = unet_model.UNet(number_classes, train_reader.get_image_size(), learning_rate)
 
-        # (NCHW)
-        model.build(input_shape=(batch_size, 1, train_reader.get_image_size()[0], train_reader.get_image_size()[1]))
-        model.summary()
-
-        tf.keras.utils.plot_model(model, os.path.join(output_folder, 'model.png'), show_shapes=True)
-        tf.keras.utils.plot_model(model, os.path.join(output_folder, 'model.dot'), show_shapes=True)
+        tf.keras.utils.plot_model(model.get_keras_model(), os.path.join(output_folder, 'model.png'), show_shapes=True)
+        tf.keras.utils.plot_model(model.get_keras_model(), os.path.join(output_folder, 'model.dot'), show_shapes=True)
 
         # train_epoch_size = train_reader.get_image_count()/batch_size
         train_epoch_size = test_every_n_steps
         test_epoch_size = test_reader.get_image_count() / batch_size
 
         test_loss = list()
-
-        # epoch = 0
-        # print('Running Network')
-        # while True:  # loop until early stopping
-        #     print('---- Epoch: {} ----'.format(epoch))
-        #
-        #     # Iterate over the batches of the train dataset.
-        #     for step, (batch_images, batch_labels) in enumerate(train_dataset):
-        #         if step > train_epoch_size:
-        #             break
-        #         loss_value = model.train_step(batch_images, batch_labels)
-        #         loss_value = loss_value.numpy() # convert tensor to numpy array
-        #         print('Train Epoch {}: Batch {}/{}: Loss {}'.format(epoch, step, train_epoch_size, loss_value))
-        #
-        #
-        #     # Iterate over the batches of the test dataset.
-        #     epoch_test_loss = list()
-        #     for step, (batch_images, batch_labels) in enumerate(test_dataset):
-        #         if step > test_epoch_size:
-        #             break
-        #         loss_value = model.test_step(batch_images, batch_labels)
-        #         loss_value = loss_value.numpy() # convert tensor to numpy array
-        #         epoch_test_loss.append(loss_value)
-        #         print('Test Epoch {}: Batch {}/{}: Loss {}'.format(epoch, step, test_epoch_size, loss_value))
-        #     test_loss.append(np.mean(epoch_test_loss))
-
 
         # Prepare the metrics.
         train_loss_metric = tf.keras.metrics.Mean('train_loss', dtype=tf.float32)
@@ -194,7 +164,6 @@ def train_model():
             test_loss_metric.reset_states()
             test_acc_metric.reset_states()
 
-
             with open(os.path.join(output_folder, 'test_loss.csv'), 'w') as csvfile:
                 for i in range(len(test_loss)):
                     csvfile.write(str(test_loss[i]))
@@ -204,8 +173,7 @@ def train_model():
             if (len(test_loss) - 1) == np.argmin(test_loss):
                 # save tf checkpoint
                 print('Test loss improved: {}, saving checkpoint'.format(np.min(test_loss)))
-                # tf.keras.experimental.export_saved_model(model, os.path.join(output_folder, 'saved_model'), serving_only=True)
-                # tf.saved_model.save(model, os.path.join(output_folder, 'checkpoint'))
+                tf.saved_model.save(model.get_keras_model(), os.path.join(output_folder, 'saved_model'))
 
             # determine early stopping
             CONVERGENCE_TOLERANCE = 1e-4

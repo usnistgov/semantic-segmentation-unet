@@ -10,356 +10,145 @@ if int(tf_version[0]) != 2:
     warnings.warn('Codebase designed for Tensorflow 2.x.x')
 
 
-class UNet(tf.keras.Model):
+class UNet():
     _BASELINE_FEATURE_DEPTH = 64
+    _KERNEL_SIZE = 3
+    _DECONV_KERNEL_SIZE = 2
+    _POOLING_STRIDE = 2
 
-    def __init__(self, number_classes, learning_rate=1e-4):
-        super(UNet, self).__init__()
+    @staticmethod
+    def _conv_layer(input, filter_count, kernel, stride=1):
+        output = tf.keras.layers.Conv2D(filters=filter_count,
+                                        kernel_size=kernel,
+                                        strides=stride,
+                                        padding='same',
+                                        activation=tf.keras.activations.relu,  # 'relu'
+                                        data_format='channels_first')(input)
+        output = tf.keras.layers.BatchNormalization(axis=1)(output)
+        return output
 
+    @staticmethod
+    def _deconv_layer(input, filter_count, kernel, stride=1):
+        output = tf.keras.layers.Conv2DTranspose(filters=filter_count,
+                                                 kernel_size=kernel,
+                                                 strides=stride,
+                                                 activation=None,
+                                                 padding='same',
+                                                 data_format='channels_first')(input)
+        output = tf.keras.layers.BatchNormalization(axis=1)(output)
+        return output
+
+    @staticmethod
+    def _pool(input, size):
+        pool = tf.keras.layers.MaxPool2D(pool_size=size, data_format='channels_first')(input)
+        return pool
+
+    @staticmethod
+    def _concat(input1, input2, axis):
+        output = tf.keras.layers.Concatenate(axis=axis)([input1, input2])
+        return output
+
+    @staticmethod
+    def _build_model(input, number_classes=2):
+
+        # Encoder
+        conv_1 = UNet._conv_layer(input, UNet._BASELINE_FEATURE_DEPTH, UNet._KERNEL_SIZE)
+        conv_1 = UNet._conv_layer(conv_1, UNet._BASELINE_FEATURE_DEPTH, UNet._KERNEL_SIZE)
+
+        pool_1 = UNet._pool(conv_1, UNet._POOLING_STRIDE)
+
+        conv_2 = UNet._conv_layer(pool_1, 2 * UNet._BASELINE_FEATURE_DEPTH, UNet._KERNEL_SIZE)
+        conv_2 = UNet._conv_layer(conv_2, 2 * UNet._BASELINE_FEATURE_DEPTH, UNet._KERNEL_SIZE)
+
+        pool_2 = UNet._pool(conv_2, UNet._POOLING_STRIDE)
+
+        conv_3 = UNet._conv_layer(pool_2, 4 * UNet._BASELINE_FEATURE_DEPTH, UNet._KERNEL_SIZE)
+        conv_3 = UNet._conv_layer(conv_3, 4 * UNet._BASELINE_FEATURE_DEPTH, UNet._KERNEL_SIZE)
+
+        pool_3 = UNet._pool(conv_3, UNet._POOLING_STRIDE)
+
+        conv_4 = UNet._conv_layer(pool_3, 8 * UNet._BASELINE_FEATURE_DEPTH, UNet._KERNEL_SIZE)
+        conv_4 = UNet._conv_layer(conv_4, 8 * UNet._BASELINE_FEATURE_DEPTH, UNet._KERNEL_SIZE)
+
+        pool_4 = UNet._pool(conv_4, UNet._POOLING_STRIDE)
+
+        # bottleneck
+        bottleneck = UNet._conv_layer(pool_4, 16 * UNet._BASELINE_FEATURE_DEPTH, UNet._KERNEL_SIZE)
+        bottleneck = UNet._conv_layer(bottleneck, 16 * UNet._BASELINE_FEATURE_DEPTH, UNet._KERNEL_SIZE)
+
+        # Decoder
+        # up-conv which reduces the number of feature channels by 2
+        deconv_4 = UNet._deconv_layer(bottleneck, 8 * UNet._BASELINE_FEATURE_DEPTH, UNet._DECONV_KERNEL_SIZE, stride=UNet._POOLING_STRIDE)
+        deconv_4 = UNet._concat(conv_4, deconv_4, axis=1)
+        deconv_4 = UNet._conv_layer(deconv_4, 8 * UNet._BASELINE_FEATURE_DEPTH, UNet._KERNEL_SIZE)
+        deconv_4 = UNet._conv_layer(deconv_4, 8 * UNet._BASELINE_FEATURE_DEPTH, UNet._KERNEL_SIZE)
+
+        deconv_3 = UNet._deconv_layer(deconv_4, 4 * UNet._BASELINE_FEATURE_DEPTH, UNet._DECONV_KERNEL_SIZE, stride=UNet._POOLING_STRIDE)
+        deconv_3 = UNet._concat(conv_3, deconv_3, axis=1)
+        deconv_3 = UNet._conv_layer(deconv_3, 4 * UNet._BASELINE_FEATURE_DEPTH, UNet._KERNEL_SIZE)
+        deconv_3 = UNet._conv_layer(deconv_3, 4 * UNet._BASELINE_FEATURE_DEPTH, UNet._KERNEL_SIZE)
+
+        deconv_2 = UNet._deconv_layer(deconv_3, 2 * UNet._BASELINE_FEATURE_DEPTH, UNet._DECONV_KERNEL_SIZE, stride=UNet._POOLING_STRIDE)
+        deconv_2 = UNet._concat(conv_2, deconv_2, axis=1)
+        deconv_2 = UNet._conv_layer(deconv_2, 2 * UNet._BASELINE_FEATURE_DEPTH, UNet._KERNEL_SIZE)
+        deconv_2 = UNet._conv_layer(deconv_2, 2 * UNet._BASELINE_FEATURE_DEPTH, UNet._KERNEL_SIZE)
+
+        deconv_1 = UNet._deconv_layer(deconv_2, UNet._BASELINE_FEATURE_DEPTH, UNet._DECONV_KERNEL_SIZE, stride=UNet._POOLING_STRIDE)
+        deconv_1 = UNet._concat(conv_1, deconv_1, axis=1)
+        deconv_1 = UNet._conv_layer(deconv_1, UNet._BASELINE_FEATURE_DEPTH, UNet._KERNEL_SIZE)
+        deconv_1 = UNet._conv_layer(deconv_1, UNet._BASELINE_FEATURE_DEPTH, UNet._KERNEL_SIZE)
+
+        logits = UNet._conv_layer(deconv_1, number_classes, 1)  # 1x1 kernel to convert feature map into class map
+        # convert NCHW to NHWC so that softmax axis is the last dimension
+        logits = tf.keras.layers.Permute((2, 3, 1))(logits)
+        # logits is [NHWC]
+
+        softmax = tf.keras.layers.Softmax(axis=-1, name='softmax')(logits)
+
+        unet = tf.keras.Model(input, softmax, name='unet')
+        unet.summary()
+
+        return unet
+
+    def __init__(self, number_classes, img_size, learning_rate=1e-4):
+
+        self.img_size = img_size
         self.learning_rate = learning_rate
         self.number_classes = number_classes
 
-        self.kernel_size = 3
-        self.deconv_kernel_size = 2
-        self.pooling_stride = 2
-
-        # encoder layer 1 *************************************************************************************
-        filter_count = self._BASELINE_FEATURE_DEPTH
-        self.enc_layer1_conv1 = tf.keras.layers.Conv2D(filters=filter_count,
-                                                 kernel_size=self.kernel_size,
-                                                 strides=1,
-                                                 activation=tf.keras.activations.relu,
-                                                 padding='same',
-                                                 data_format='channels_first')
-        self.enc_layer1_bn1 = tf.keras.layers.BatchNormalization(axis=1)
-
-        self.enc_layer1_conv2 = tf.keras.layers.Conv2D(filters=filter_count,
-                                                  kernel_size=self.kernel_size,
-                                                  strides=1,
-                                                  activation=tf.keras.activations.relu,
-                                                  padding='same',
-                                                  data_format='channels_first')
-        self.enc_layer1_bn2 = tf.keras.layers.BatchNormalization(axis=1)
-
-        self.enc_layer1_pool = tf.keras.layers.MaxPool2D(pool_size=self.pooling_stride, data_format='channels_first')
-
-        # encoder layer 2 *************************************************************************************
-        filter_count = 2 * self._BASELINE_FEATURE_DEPTH
-        self.enc_layer2_conv1 = tf.keras.layers.Conv2D(filters=filter_count,
-                                                   kernel_size=self.kernel_size,
-                                                   strides=1,
-                                                   activation=tf.keras.activations.relu,
-                                                   padding='same',
-                                                   data_format='channels_first')
-        self.enc_layer2_bn1 = tf.keras.layers.BatchNormalization(axis=1)
-
-        self.enc_layer2_conv2 = tf.keras.layers.Conv2D(filters=filter_count,
-                                                   kernel_size=self.kernel_size,
-                                                   strides=1,
-                                                   activation=tf.keras.activations.relu,
-                                                   padding='same',
-                                                   data_format='channels_first')
-        self.enc_layer2_bn2 = tf.keras.layers.BatchNormalization(axis=1)
-
-        self.enc_layer2_pool = tf.keras.layers.MaxPool2D(pool_size=self.pooling_stride, data_format='channels_first')
-
-        # encoder layer 3 *************************************************************************************
-        filter_count = 4 * self._BASELINE_FEATURE_DEPTH
-        self.enc_layer3_conv1 = tf.keras.layers.Conv2D(filters=filter_count,
-                                                   kernel_size=self.kernel_size,
-                                                   strides=1,
-                                                   activation=tf.keras.activations.relu,
-                                                   padding='same',
-                                                   data_format='channels_first')
-        self.enc_layer3_bn1 = tf.keras.layers.BatchNormalization(axis=1)
-
-        self.enc_layer3_conv2 = tf.keras.layers.Conv2D(filters=filter_count,
-                                                   kernel_size=self.kernel_size,
-                                                   strides=1,
-                                                   activation=tf.keras.activations.relu,
-                                                   padding='same',
-                                                   data_format='channels_first')
-        self.enc_layer3_bn2 = tf.keras.layers.BatchNormalization(axis=1)
-
-        self.enc_layer3_pool = tf.keras.layers.MaxPool2D(pool_size=self.pooling_stride, data_format='channels_first')
-
-        # encoder layer 4 *************************************************************************************
-        filter_count = 8 * self._BASELINE_FEATURE_DEPTH
-        self.enc_layer4_conv1 = tf.keras.layers.Conv2D(filters=filter_count,
-                                                   kernel_size=self.kernel_size,
-                                                   strides=1,
-                                                   activation=tf.keras.activations.relu,
-                                                   padding='same',
-                                                   data_format='channels_first')
-        self.enc_layer4_bn1 = tf.keras.layers.BatchNormalization(axis=1)
-
-        self.enc_layer4_conv2 = tf.keras.layers.Conv2D(filters=filter_count,
-                                                   kernel_size=self.kernel_size,
-                                                   strides=1,
-                                                   activation=tf.keras.activations.relu,
-                                                   padding='same',
-                                                   data_format='channels_first')
-        self.enc_layer4_bn2 = tf.keras.layers.BatchNormalization(axis=1)
-
-        self.enc_layer4_pool = tf.keras.layers.MaxPool2D(pool_size=self.pooling_stride, data_format='channels_first')
-
-        # encoder layer 5 *************************************************************************************
-        filter_count = 16 * self._BASELINE_FEATURE_DEPTH
-        self.enc_layer5_conv1 = tf.keras.layers.Conv2D(filters=filter_count,
-                                                   kernel_size=self.kernel_size,
-                                                   strides=1,
-                                                   activation=tf.keras.activations.relu,
-                                                   padding='same',
-                                                   data_format='channels_first')
-        self.enc_layer5_bn1 = tf.keras.layers.BatchNormalization(axis=1)
-
-        self.enc_layer5_conv2 = tf.keras.layers.Conv2D(filters=filter_count,
-                                                   kernel_size=self.kernel_size,
-                                                   strides=1,
-                                                   activation=tf.keras.activations.relu,
-                                                   padding='same',
-                                                   data_format='channels_first')
-        self.enc_layer5_bn2 = tf.keras.layers.BatchNormalization(axis=1)
-
-        # decoder layer 4 *************************************************************************************
-        filter_count = 8 * self._BASELINE_FEATURE_DEPTH
-        # up-conv which reduces the number of feature channels by 2
-        self.dec_layer4_deconv0 = tf.keras.layers.Conv2DTranspose(filters=filter_count,
-                                                 kernel_size=self.kernel_size,
-                                                 strides=self.pooling_stride,
-                                                 activation=None,
-                                                 padding='same',
-                                                 data_format='channels_first')
-        self.dec_layer4_bn0 = tf.keras.layers.BatchNormalization(axis=1)
-        self.dec_layer4_concat = tf.keras.layers.Concatenate(axis=1)
-
-        self.dec_layer4_conv1 = tf.keras.layers.Conv2D(filters=filter_count,
-                                                   kernel_size=self.kernel_size,
-                                                   strides=1,
-                                                   activation=tf.keras.activations.relu,
-                                                   padding='same',
-                                                    data_format='channels_first')
-        self.dec_layer4_bn1 = tf.keras.layers.BatchNormalization(axis=1)
-
-        self.dec_layer4_conv2 = tf.keras.layers.Conv2D(filters=filter_count,
-                                                   kernel_size=self.kernel_size,
-                                                   strides=1,
-                                                   activation=tf.keras.activations.relu,
-                                                   padding='same',
-                                                   data_format='channels_first')
-        self.dec_layer4_bn2 = tf.keras.layers.BatchNormalization(axis=1)
-
-        # decoder layer 3 *************************************************************************************
-        filter_count = 4 * self._BASELINE_FEATURE_DEPTH
-        # up-conv which reduces the number of feature channels by 2
-        self.dec_layer3_deconv0 = tf.keras.layers.Conv2DTranspose(filters=filter_count,
-                                                                  kernel_size=self.kernel_size,
-                                                                  strides=self.pooling_stride,
-                                                                  activation=None,
-                                                                  padding='same',
-                                                                  data_format='channels_first')
-        self.dec_layer3_bn0 = tf.keras.layers.BatchNormalization(axis=1)
-        self.dec_layer3_concat = tf.keras.layers.Concatenate(axis=1)
-
-        self.dec_layer3_conv1 = tf.keras.layers.Conv2D(filters=filter_count,
-                                                       kernel_size=self.kernel_size,
-                                                       strides=1,
-                                                       activation=tf.keras.activations.relu,
-                                                       padding='same',
-                                                       data_format='channels_first')
-        self.dec_layer3_bn1 = tf.keras.layers.BatchNormalization(axis=1)
-
-        self.dec_layer3_conv2 = tf.keras.layers.Conv2D(filters=filter_count,
-                                                       kernel_size=self.kernel_size,
-                                                       strides=1,
-                                                       activation=tf.keras.activations.relu,
-                                                       padding='same',
-                                                       data_format='channels_first')
-        self.dec_layer3_bn2 = tf.keras.layers.BatchNormalization(axis=1)
-
-        # decoder layer 2 *************************************************************************************
-        filter_count = 2  * self._BASELINE_FEATURE_DEPTH
-        # up-conv which reduces the number of feature channels by 2
-        self.dec_layer2_deconv0 = tf.keras.layers.Conv2DTranspose(filters=filter_count,
-                                                                  kernel_size=self.kernel_size,
-                                                                  strides=self.pooling_stride,
-                                                                  activation=None,
-                                                                  padding='same',
-                                                                  data_format='channels_first')
-        self.dec_layer2_bn0 = tf.keras.layers.BatchNormalization(axis=1)
-        self.dec_layer2_concat = tf.keras.layers.Concatenate(axis=1)
-
-        self.dec_layer2_conv1 = tf.keras.layers.Conv2D(filters=filter_count,
-                                                       kernel_size=self.kernel_size,
-                                                       strides=1,
-                                                       activation=tf.keras.activations.relu,
-                                                       padding='same',
-                                                       data_format='channels_first')
-        self.dec_layer2_bn1 = tf.keras.layers.BatchNormalization(axis=1)
-
-        self.dec_layer2_conv2 = tf.keras.layers.Conv2D(filters=filter_count,
-                                                       kernel_size=self.kernel_size,
-                                                       strides=1,
-                                                       activation=tf.keras.activations.relu,
-                                                       padding='same',
-                                                       data_format='channels_first')
-        self.dec_layer2_bn2 = tf.keras.layers.BatchNormalization(axis=1)
-
-        # decoder layer 1 *************************************************************************************
-        filter_count = self._BASELINE_FEATURE_DEPTH
-        # up-conv which reduces the number of feature channels by 2
-        self.dec_layer1_deconv0 = tf.keras.layers.Conv2DTranspose(filters=filter_count,
-                                                                  kernel_size=self.kernel_size,
-                                                                  strides=self.pooling_stride,
-                                                                  activation=None,
-                                                                  padding='same',
-                                                                  data_format='channels_first')
-        self.dec_layer1_bn0 = tf.keras.layers.BatchNormalization(axis=1)
-        self.dec_layer1_concat = tf.keras.layers.Concatenate(axis=1)
-
-        self.dec_layer1_conv1 = tf.keras.layers.Conv2D(filters=filter_count,
-                                                       kernel_size=self.kernel_size,
-                                                       strides=1,
-                                                       activation=tf.keras.activations.relu,
-                                                       padding='same',
-                                                       data_format='channels_first')
-        self.dec_layer1_bn1 = tf.keras.layers.BatchNormalization(axis=1)
-
-        self.dec_layer1_conv2 = tf.keras.layers.Conv2D(filters=filter_count,
-                                                       kernel_size=self.kernel_size,
-                                                       strides=1,
-                                                       activation=tf.keras.activations.relu,
-                                                       padding='same',
-                                                       data_format='channels_first')
-        self.dec_layer1_bn2 = tf.keras.layers.BatchNormalization(axis=1)
-
-        # logit layer *************************************************************************************
-        self.logit_layer = tf.keras.layers.Conv2D(filters=self.number_classes,
-                                                                  kernel_size=1,
-                                                                  strides=1,
-                                                                  activation=tf.keras.activations.relu,
-                                                                  padding='same',
-                                                                  data_format='channels_first')
-
-        self.permute_layer = tf.keras.layers.Permute((2, 3, 1)) # does not include samples dim, starts at 1
-        self.softmax_layer = tf.keras.layers.Softmax(axis=-1, name='softmax') # NHWC
+        self.inputs = tf.keras.Input(shape=(1, img_size[0], img_size[1]))
+        self.model = self._build_model(self.inputs, self.number_classes)
 
         self.loss_fn = tf.keras.losses.CategoricalCrossentropy(from_logits=False)
 
-        self.optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate)
+        self.optimizer = tf.keras.optimizers.Adam(learning_rate=self.learning_rate)
 
-
-    @tf.function
-    def call(self, inputs, training=False):
-        # Forward pass
-
-        # Encoder
-
-        # layer 1
-        conv_1 = self.enc_layer1_conv1(inputs)
-        conv_1 = self.enc_layer1_bn1(conv_1, training)
-        conv_1 = self.enc_layer1_conv2(conv_1)
-        conv_1 = self.enc_layer1_bn2(conv_1, training)
-        pool_1 = self.enc_layer1_pool(conv_1)
-
-        # layer 2
-        conv_2 = self.enc_layer2_conv1(pool_1)
-        conv_2 = self.enc_layer2_bn1(conv_2, training)
-        conv_2 = self.enc_layer2_conv2(conv_2)
-        conv_2 = self.enc_layer2_bn2(conv_2, training)
-        pool_2 = self.enc_layer2_pool(conv_2)
-
-        # layer 3
-        conv_3 = self.enc_layer3_conv1(pool_2)
-        conv_3 = self.enc_layer3_bn1(conv_3, training)
-        conv_3 = self.enc_layer3_conv2(conv_3)
-        conv_3 = self.enc_layer3_bn2(conv_3, training)
-        pool_3 = self.enc_layer3_pool(conv_3)
-
-        # layer 4
-        conv_4 = self.enc_layer4_conv1(pool_3)
-        conv_4 = self.enc_layer4_bn1(conv_4, training)
-        conv_4 = self.enc_layer4_conv2(conv_4)
-        conv_4 = self.enc_layer4_bn2(conv_4, training)
-        pool_4 = self.enc_layer4_pool(conv_4)
-
-        # layer 5
-        bottleneck = self.enc_layer5_conv1(pool_4)
-        bottleneck = self.enc_layer5_bn1(bottleneck, training)
-        bottleneck = self.enc_layer5_conv2(bottleneck)
-        bottleneck = self.enc_layer5_bn2(bottleneck, training)
-
-        # Decoder
-
-        # layer 4
-        deconv_4 = self.dec_layer4_deconv0(bottleneck)
-        deconv_4 = self.dec_layer4_bn0(deconv_4, training)
-        deconv_4 = self.dec_layer4_concat([conv_4, deconv_4])
-        deconv_4 = self.dec_layer4_conv1(deconv_4)
-        deconv_4 = self.dec_layer4_bn1(deconv_4, training)
-        deconv_4 = self.dec_layer4_conv2(deconv_4)
-        deconv_4 = self.dec_layer4_bn2(deconv_4, training)
-
-        # layer 3
-        deconv_3 = self.dec_layer3_deconv0(deconv_4)
-        deconv_3 = self.dec_layer3_bn0(deconv_3, training)
-        deconv_3 = self.dec_layer3_concat([conv_3, deconv_3])
-        deconv_3 = self.dec_layer3_conv1(deconv_3)
-        deconv_3 = self.dec_layer3_bn1(deconv_3, training)
-        deconv_3 = self.dec_layer3_conv2(deconv_3)
-        deconv_3 = self.dec_layer3_bn2(deconv_3, training)
-
-        # layer 2
-        deconv_2 = self.dec_layer2_deconv0(deconv_3)
-        deconv_2 = self.dec_layer2_bn0(deconv_2, training)
-        deconv_2 = self.dec_layer2_concat([conv_2, deconv_2])
-        deconv_2 = self.dec_layer2_conv1(deconv_2)
-        deconv_2 = self.dec_layer2_bn1(deconv_2, training)
-        deconv_2 = self.dec_layer2_conv2(deconv_2)
-        deconv_2 = self.dec_layer2_bn2(deconv_2, training)
-
-        # layer 1
-        deconv_1 = self.dec_layer1_deconv0(deconv_2)
-        deconv_1 = self.dec_layer1_bn0(deconv_1, training)
-        deconv_1 = self.dec_layer1_concat([conv_1, deconv_1])
-        deconv_1 = self.dec_layer1_conv1(deconv_1)
-        deconv_1 = self.dec_layer1_bn1(deconv_1, training)
-        deconv_1 = self.dec_layer1_conv2(deconv_1)
-        deconv_1 = self.dec_layer1_bn2(deconv_1, training)
-
-        # output logit
-
-        logits = self.logit_layer(deconv_1)
-        logits_nhwc = self.permute_layer(logits)
-        softmax_nhwc = self.softmax_layer(logits_nhwc)
-
-        return softmax_nhwc
+    def get_keras_model(self):
+        return self.model
 
     @tf.function
     def train_step(self, images, labels):
         # Open a GradientTape to record the operations run
         # during the forward pass, which enables autodifferentiation.
         with tf.GradientTape() as tape:
-            softmax = self.call(images)
+            softmax = self.model(images)
 
             loss_value = self.loss_fn(labels, softmax)
 
         # Use the gradient tape to automatically retrieve
         # the gradients of the trainable variables with respect to the loss.
-        grads = tape.gradient(loss_value, self.trainable_weights)
+        grads = tape.gradient(loss_value, self.model.trainable_weights)
 
         # Run one step of gradient descent by updating
         # the value of the variables to minimize the loss.
-        self.optimizer.apply_gradients(zip(grads, self.trainable_weights))
+        self.optimizer.apply_gradients(zip(grads, self.model.trainable_weights))
 
         return loss_value, softmax
 
     @tf.function
     def test_step(self, images, labels):
-        softmax = self.call(images)
+        softmax = self.model(images)
 
         loss_value = self.loss_fn(labels, softmax)
 
         return loss_value, softmax
-
-
