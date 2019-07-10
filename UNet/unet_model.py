@@ -9,6 +9,8 @@ if int(tf_version[0]) != 2:
     import warnings
     warnings.warn('Codebase designed for Tensorflow 2.x.x')
 
+import numpy as np
+
 
 class UNet():
     _BASELINE_FEATURE_DEPTH = 64
@@ -106,34 +108,41 @@ class UNet():
         softmax = tf.keras.layers.Softmax(axis=-1, name='softmax')(logits)
 
         unet = tf.keras.Model(input, softmax, name='unet')
-        unet.summary()
 
         return unet
 
-    def __init__(self, number_classes, img_size, learning_rate=1e-4):
+    def __init__(self, number_classes, global_batch_size, img_size, learning_rate=1e-4):
 
         self.img_size = img_size
         self.learning_rate = learning_rate
         self.number_classes = number_classes
+        self.global_batch_size = global_batch_size
 
         self.inputs = tf.keras.Input(shape=(1, img_size[0], img_size[1]))
         self.model = self._build_model(self.inputs, self.number_classes)
 
-        self.loss_fn = tf.keras.losses.CategoricalCrossentropy(from_logits=False)
+        self.loss_fn = tf.keras.losses.CategoricalCrossentropy(from_logits=False, reduction=tf.keras.losses.Reduction.NONE)
 
         self.optimizer = tf.keras.optimizers.Adam(learning_rate=self.learning_rate)
 
     def get_keras_model(self):
         return self.model
 
-    @tf.function
-    def train_step(self, images, labels):
+    def get_optimizer(self):
+        return self.optimizer
+
+    def train_step(self, inputs):
+        (images, labels, loss_metric, accuracy_metric) = inputs
         # Open a GradientTape to record the operations run
         # during the forward pass, which enables autodifferentiation.
         with tf.GradientTape() as tape:
             softmax = self.model(images)
 
-            loss_value = self.loss_fn(labels, softmax)
+            loss_value = self.loss_fn(labels, softmax) # [NxHxWx1]
+            # average across the batch (N) with the approprite global batch size
+            loss_value = tf.reduce_sum(loss_value, axis=0) / self.global_batch_size
+            # reduce down to a scalar (reduce H, W)
+            loss_value = tf.reduce_mean(loss_value)
 
         # Use the gradient tape to automatically retrieve
         # the gradients of the trainable variables with respect to the loss.
@@ -143,12 +152,35 @@ class UNet():
         # the value of the variables to minimize the loss.
         self.optimizer.apply_gradients(zip(grads, self.model.trainable_weights))
 
-        return loss_value, softmax
+        loss_metric.update_state(loss_value)
+        accuracy_metric.update_state(labels, softmax)
+
+        return loss_value
 
     @tf.function
-    def test_step(self, images, labels):
+    def dist_train_step(self, dist_strategy, inputs):
+        per_gpu_loss = dist_strategy.experimental_run_v2(self.train_step, args=(inputs,))
+        loss_value = dist_strategy.reduce(tf.distribute.ReduceOp.SUM, per_gpu_loss, axis=None)
+
+        return loss_value
+
+    def test_step(self, inputs):
+        (images, labels, loss_metric, accuracy_metric) = inputs
         softmax = self.model(images)
 
         loss_value = self.loss_fn(labels, softmax)
+        # average across the batch (N) with the approprite global batch size
+        loss_value = tf.reduce_sum(loss_value, axis=0) / self.global_batch_size
+        # reduce down to a scalar (reduce H, W)
+        loss_value = tf.reduce_mean(loss_value)
 
-        return loss_value, softmax
+        loss_metric.update_state(loss_value)
+        accuracy_metric.update_state(labels, softmax)
+
+        return loss_value
+
+    @tf.function
+    def dist_test_step(self, dist_strategy, inputs):
+        per_gpu_loss = dist_strategy.experimental_run_v2(self.test_step, args=(inputs,))
+        loss_value = dist_strategy.reduce(tf.distribute.ReduceOp.SUM, per_gpu_loss, axis=None)
+        return loss_value
