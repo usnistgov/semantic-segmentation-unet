@@ -90,23 +90,53 @@ def train_model():
         train_reader.startup()
         test_reader.startup()
 
-        input = tf.keras.Input(shape=train_reader.get_image_tensor_shape(), name='image')
-
         print('Creating model')
-        model = unet_model.get_model(input, number_classes=number_classes)
+        model = unet_model.UNet(number_classes, learning_rate)
+
+        # (NCHW)
+        model.build(input_shape=(batch_size, 1, train_reader.get_image_size()[0], train_reader.get_image_size()[1]))
+        model.summary()
+
         tf.keras.utils.plot_model(model, os.path.join(output_folder, 'model.png'), show_shapes=True)
         tf.keras.utils.plot_model(model, os.path.join(output_folder, 'model.dot'), show_shapes=True)
 
-        optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate)
+        # train_epoch_size = train_reader.get_image_count()/batch_size
+        train_epoch_size = test_every_n_steps
+        test_epoch_size = test_reader.get_image_count() / batch_size
 
-        loss_fn = tf.keras.losses.CategoricalCrossentropy(from_logits=True)
+        test_loss = list()
+
+        # epoch = 0
+        # print('Running Network')
+        # while True:  # loop until early stopping
+        #     print('---- Epoch: {} ----'.format(epoch))
+        #
+        #     # Iterate over the batches of the train dataset.
+        #     for step, (batch_images, batch_labels) in enumerate(train_dataset):
+        #         if step > train_epoch_size:
+        #             break
+        #         loss_value = model.train_step(batch_images, batch_labels)
+        #         loss_value = loss_value.numpy() # convert tensor to numpy array
+        #         print('Train Epoch {}: Batch {}/{}: Loss {}'.format(epoch, step, train_epoch_size, loss_value))
+        #
+        #
+        #     # Iterate over the batches of the test dataset.
+        #     epoch_test_loss = list()
+        #     for step, (batch_images, batch_labels) in enumerate(test_dataset):
+        #         if step > test_epoch_size:
+        #             break
+        #         loss_value = model.test_step(batch_images, batch_labels)
+        #         loss_value = loss_value.numpy() # convert tensor to numpy array
+        #         epoch_test_loss.append(loss_value)
+        #         print('Test Epoch {}: Batch {}/{}: Loss {}'.format(epoch, step, test_epoch_size, loss_value))
+        #     test_loss.append(np.mean(epoch_test_loss))
+
 
         # Prepare the metrics.
         train_loss_metric = tf.keras.metrics.Mean('train_loss', dtype=tf.float32)
         train_acc_metric = tf.keras.metrics.CategoricalAccuracy('train_accuracy')
         test_loss_metric = tf.keras.metrics.Mean('test_loss', dtype=tf.float32)
         test_acc_metric = tf.keras.metrics.CategoricalAccuracy('test_accuracy')
-
 
         current_time = datetime.datetime.now().strftime("%Y%m%dT%H%M%S")
 
@@ -120,76 +150,50 @@ def train_model():
         train_summary_writer = tf.summary.create_file_writer(train_log_dir)
         test_summary_writer = tf.summary.create_file_writer(test_log_dir)
 
-        # train_epoch_size = train_reader.get_image_count()/batch_size
-        train_epoch_size = test_every_n_steps
-        test_epoch_size = test_reader.get_image_count()/batch_size
-
-        test_loss = list()
-
         epoch = 0
         print('Running Network')
-        while True: # loop until early stopping
+        while True:  # loop until early stopping
             print('---- Epoch: {} ----'.format(epoch))
 
-            # Iterate over the batches of the dataset.
+            # Iterate over the batches of the train dataset.
             for step, (batch_images, batch_labels) in enumerate(train_dataset):
                 if step > train_epoch_size:
                     break
-
-                # Open a GradientTape to record the operations run
-                # during the forward pass, which enables autodifferentiation.
-                with tf.GradientTape() as tape:
-                    softmax = model(batch_images)
-
-                    loss_value = loss_fn(batch_labels, softmax)
-
-                # Use the gradient tape to automatically retrieve
-                # the gradients of the trainable variables with respect to the loss.
-                grads = tape.gradient(loss_value, model.trainable_weights)
-
-                # Run one step of gradient descent by updating
-                # the value of the variables to minimize the loss.
-                optimizer.apply_gradients(zip(grads, model.trainable_weights))
-
+                loss_value, softmax_value = model.train_step(batch_images, batch_labels)
                 # update the metrics
                 train_loss_metric(loss_value)
-                train_acc_metric(batch_labels, softmax)
+                train_acc_metric(batch_labels, softmax_value)
 
-                # print('Train Epoch: {}: Loss = {} Accuracy = {}'.format(epoch, train_loss_metric.result(), train_acc_metric.result()))
-                # with train_summary_writer.as_default():
-                #     tf.summary.scalar('loss', train_loss_metric.result(), step=int(epoch * train_epoch_size + step))
-                #     tf.summary.scalar('accuracy', train_acc_metric.result(), step=int(epoch * train_epoch_size + step))
-                # train_loss_metric.reset_states()
-                # train_acc_metric.reset_states()
+                # print('Train Epoch {}: Batch {}/{}: Loss {}'.format(epoch, step, train_epoch_size, loss_value.numpy()))
 
-            print('Train Epoch: {}: Loss = {} Accuracy = {}'.format(epoch, train_loss_metric.result(), train_acc_metric.result()))
-            with train_summary_writer.as_default():
-                tf.summary.scalar('loss', train_loss_metric.result(), step=epoch)
-                tf.summary.scalar('accuracy', train_acc_metric.result(), step=epoch)
-            train_loss_metric.reset_states()
-            train_acc_metric.reset_states()
+                print('Train Epoch {}: Batch {}/{}: Loss {} Accuracy = {}'.format(epoch, step, train_epoch_size, train_loss_metric.result(), train_acc_metric.result()))
+                with train_summary_writer.as_default():
+                    tf.summary.scalar('loss', train_loss_metric.result(), step=int(epoch * train_epoch_size + step))
+                    tf.summary.scalar('accuracy', train_acc_metric.result(), step=int(epoch * train_epoch_size + step))
+                train_loss_metric.reset_states()
+                train_acc_metric.reset_states()
 
-
-
-            # Iterate over the batches of the dataset.
+            # Iterate over the batches of the test dataset.
+            epoch_test_loss = list()
             for step, (batch_images, batch_labels) in enumerate(test_dataset):
                 if step > test_epoch_size:
                     break
-                softmax = model(batch_images)
-
-                loss_value = loss_fn(batch_labels, softmax)
-
+                loss_value, softmax_value = model.test_step(batch_images, batch_labels)
                 # update the metrics
                 test_loss_metric(loss_value)
-                test_acc_metric(batch_labels, softmax)
+                test_acc_metric(batch_labels, softmax_value)
+
+                epoch_test_loss.append(loss_value.numpy())
+                # print('Test Epoch {}: Batch {}/{}: Loss {}'.format(epoch, step, test_epoch_size, loss_value))
+            test_loss.append(np.mean(epoch_test_loss))
 
             print('Test Epoch: {}: Loss = {} Accuracy = {}'.format(epoch, test_loss_metric.result(), test_acc_metric.result()))
-            test_loss.append(test_loss_metric.result().numpy())
             with test_summary_writer.as_default():
-                tf.summary.scalar('loss', test_loss_metric.result(), step=int(epoch * train_epoch_size))
-                tf.summary.scalar('accuracy', test_acc_metric.result(), step=int(epoch * train_epoch_size))
+                tf.summary.scalar('loss', test_loss_metric.result(), step=int((epoch+1) * train_epoch_size))
+                tf.summary.scalar('accuracy', test_acc_metric.result(), step=int((epoch+1) * train_epoch_size))
             test_loss_metric.reset_states()
             test_acc_metric.reset_states()
+
 
             with open(os.path.join(output_folder, 'test_loss.csv'), 'w') as csvfile:
                 for i in range(len(test_loss)):
@@ -200,9 +204,8 @@ def train_model():
             if (len(test_loss) - 1) == np.argmin(test_loss):
                 # save tf checkpoint
                 print('Test loss improved: {}, saving checkpoint'.format(np.min(test_loss)))
-                # saver = tf.train.Saver(tf.global_variables())
-                # checkpoint_filepath = os.path.join(output_folder, 'checkpoint', 'model.ckpt')
-                # saver.save(sess, checkpoint_filepath)
+                # tf.keras.experimental.export_saved_model(model, os.path.join(output_folder, 'saved_model'), serving_only=True)
+                # tf.saved_model.save(model, os.path.join(output_folder, 'checkpoint'))
 
             # determine early stopping
             CONVERGENCE_TOLERANCE = 1e-4
