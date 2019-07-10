@@ -9,8 +9,6 @@ if int(tf_version[0]) != 2:
     import warnings
     warnings.warn('Codebase designed for Tensorflow 2.x.x')
 
-import numpy as np
-
 
 class UNet():
     _BASELINE_FEATURE_DEPTH = 64
@@ -26,6 +24,13 @@ class UNet():
                                         padding='same',
                                         activation=tf.keras.activations.relu,  # 'relu'
                                         data_format='channels_first')(input)
+        # output = tf.keras.layers.Conv2D(filters=filter_count,
+        #                                 kernel_size=kernel,
+        #                                 strides=stride,
+        #                                 padding='same',
+        #                                 activation=tf.keras.activations.relu,
+        #                                 kernel_regularizer=tf.keras.regularizers.l2(1e-4),
+        #                                 data_format='channels_first')(input)
         output = tf.keras.layers.BatchNormalization(axis=1)(output)
         return output
 

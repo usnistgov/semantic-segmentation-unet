@@ -186,7 +186,8 @@ def train_model():
                 if (len(test_loss) - 1) == np.argmin(test_loss):
                     # save tf checkpoint
                     print('Test loss improved: {}, saving checkpoint'.format(np.min(test_loss)))
-                    checkpoint.save(os.path.join(output_folder, 'checkpoint', "ckpt"))
+                    # checkpoint.save(os.path.join(output_folder, 'checkpoint', "ckpt")) # does not overwrite
+                    checkpoint.write(os.path.join(output_folder, 'checkpoint', "ckpt"))
 
                 # determine early stopping
                 CONVERGENCE_TOLERANCE = 1e-4
