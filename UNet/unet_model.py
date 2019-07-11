@@ -6,8 +6,8 @@ if sys.version_info[0] < 3:
 import tensorflow as tf
 tf_version = tf.__version__.split('.')
 if int(tf_version[0]) != 2:
-    import warnings
-    warnings.warn('Codebase designed for Tensorflow 2.x.x')
+    print('Tensorflow 2.x.x required')
+    sys.exit(1)
 
 
 class UNet():
@@ -24,13 +24,6 @@ class UNet():
                                         padding='same',
                                         activation=tf.keras.activations.relu,  # 'relu'
                                         data_format='channels_first')(input)
-        # output = tf.keras.layers.Conv2D(filters=filter_count,
-        #                                 kernel_size=kernel,
-        #                                 strides=stride,
-        #                                 padding='same',
-        #                                 activation=tf.keras.activations.relu,
-        #                                 kernel_regularizer=tf.keras.regularizers.l2(1e-4),
-        #                                 data_format='channels_first')(input)
         output = tf.keras.layers.BatchNormalization(axis=1)(output)
         return output
 
