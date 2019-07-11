@@ -26,6 +26,7 @@ def train_model(output_folder, batch_size, reader_count, train_lmdb_filepath, te
         os.makedirs(output_folder)
 
     # TODO add ability to reload a checkpoint or saved model to resume training
+    training_checkpoint_filepath = None
 
     mirrored_strategy = tf.distribute.MirroredStrategy(devices=devices)
     with mirrored_strategy.scope():
@@ -141,7 +142,7 @@ def train_model(output_folder, batch_size, reader_count, train_lmdb_filepath, te
                     # save tf checkpoint
                     print('Test loss improved: {}, saving checkpoint'.format(np.min(test_loss)))
                     # checkpoint.save(os.path.join(output_folder, 'checkpoint', "ckpt")) # does not overwrite
-                    checkpoint.write(os.path.join(output_folder, 'checkpoint', "ckpt"))
+                    training_checkpoint_filepath = checkpoint.write(os.path.join(output_folder, 'checkpoint', "ckpt"))
 
                 # determine early stopping
                 CONVERGENCE_TOLERANCE = 1e-4
@@ -164,11 +165,12 @@ def train_model(output_folder, batch_size, reader_count, train_lmdb_filepath, te
             print('Shutting down test_reader')
             test_reader.shutdown()
 
-    # restore the checkpoint and generate a saved model
-    model = unet_model.UNet(number_classes, global_batch_size, train_reader.get_image_size(), learning_rate)
-    checkpoint = tf.train.Checkpoint(optimizer=model.get_optimizer(), model=model.get_keras_model())
-    checkpoint.restore(tf.train.latest_checkpoint(os.path.join(output_folder, 'checkpoint')))
-    tf.saved_model.save(model.get_keras_model(), os.path.join(output_folder, 'saved_model'))
+    if training_checkpoint_filepath is not None:
+        # restore the checkpoint and generate a saved model
+        model = unet_model.UNet(number_classes, global_batch_size, train_reader.get_image_size(), learning_rate)
+        checkpoint = tf.train.Checkpoint(optimizer=model.get_optimizer(), model=model.get_keras_model())
+        checkpoint.restore(training_checkpoint_filepath)
+        tf.saved_model.save(model.get_keras_model(), os.path.join(output_folder, 'saved_model'))
 
 
 def main():
@@ -179,7 +181,7 @@ def main():
     parser.add_argument('--number_classes', dest='number_classes', type=int, default=2)
     parser.add_argument('--learning_rate', dest='learning_rate', type=float, default=1e-4)
     parser.add_argument('--output_dir', dest='output_folder', type=str, help='Folder where outputs will be saved (Required)', required=True)
-    parser.add_argument('--test_every_n_steps', dest='test_every_n_steps', type=int, help='number of gradient update steps to take between test epochs', default=100)
+    parser.add_argument('--test_every_n_steps', dest='test_every_n_steps', type=int, help='number of gradient update steps to take between test epochs', default=25)
     parser.add_argument('--balance_classes', dest='balance_classes', type=int, help='whether to balance classes [0 = false, 1 = true]', default=0)
     parser.add_argument('--use_augmentation', dest='use_augmentation', type=int, help='whether to use data augmentation [0 = false, 1 = true]', default=1)
 
