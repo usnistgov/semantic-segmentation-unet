@@ -26,11 +26,9 @@ learning_rate=3e-4 # Karpathy Constant
 use_augmentation=1 # {0, 1}
 balance_classes=1 # {0, 1}
 
-# MODIFY THESE OPTIONS
+# END MODIFY THESE OPTIONS
 # ************************************
 
-
-# DO NOT MODIFY ANYTHING BELOW
 
 # limit the script to only the GPUs you selected above
 export CUDA_DEVICE_ORDER="PCI_BUS_ID"

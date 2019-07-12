@@ -28,7 +28,8 @@ def train_model(output_folder, batch_size, reader_count, train_lmdb_filepath, te
     # TODO add ability to reload a checkpoint or saved model to resume training
     training_checkpoint_filepath = None
 
-    mirrored_strategy = tf.distribute.MirroredStrategy(devices=devices)
+    # uses all available devices
+    mirrored_strategy = tf.distribute.MirroredStrategy()
     with mirrored_strategy.scope():
 
         global_batch_size = batch_size * mirrored_strategy.num_replicas_in_sync
@@ -190,7 +191,6 @@ def main():
     parser.add_argument('--test_database', dest='test_database_filepath', type=str, help='lmdb database to use for testing (Required)', required=True)
     parser.add_argument('--early_stopping', dest='early_stopping_count', type=int, help='Perform early stopping when the test loss does not improve for N epochs.', default=10)
     parser.add_argument('--reader_count', dest='reader_count', type=int, help='how many threads to use for disk I/O and augmentation per gpu', default=1)
-    parser.add_argument('--devices', dest='devices', type=str, help='comma separated list of which compute devices to use', default='/gpu:0')
 
     # TODO add parameter to specify the devices to use for training
 
@@ -206,8 +206,6 @@ def main():
     balance_classes = args.balance_classes
     use_augmentation = args.use_augmentation
     reader_count = args.reader_count
-    devices = args.devices
-    devices = devices.split(',')
 
     print('Arguments:')
     print('batch_size = {}'.format(batch_size))
@@ -223,9 +221,8 @@ def main():
 
     print('early_stopping count = {}'.format(early_stopping_count))
     print('reader_count = {}'.format(reader_count))
-    print('devices = {}'.format(devices))
 
-    train_model(output_folder, batch_size, reader_count, train_lmdb_filepath, test_lmdb_filepath, use_augmentation, number_classes, balance_classes, learning_rate, test_every_n_steps, early_stopping_count, devices)
+    train_model(output_folder, batch_size, reader_count, train_lmdb_filepath, test_lmdb_filepath, use_augmentation, number_classes, balance_classes, learning_rate, test_every_n_steps, early_stopping_count)
 
 
 if __name__ == "__main__":

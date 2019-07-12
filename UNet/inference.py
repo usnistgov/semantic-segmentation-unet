@@ -174,11 +174,7 @@ def _inference(img_filepath, model):
     return pred
 
 
-def inference(gpu_id, saved_model_filepath, image_folder, output_folder, image_format, tile_size):
-    os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"  # so the IDs match nvidia-smi
-    if gpu_id != -1:
-        os.environ["CUDA_VISIBLE_DEVICES"] = str(gpu_id)
-
+def inference(saved_model_filepath, image_folder, output_folder, image_format, tile_size):
     # create output filepath
     if not os.path.exists(output_folder):
         os.mkdir(output_folder)
@@ -211,8 +207,6 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(prog='inference',
                                      description='Script to detect stars with the selected unet model')
 
-    parser.add_argument('--gpu', dest='gpu_id', type=int,
-                        help='which gpu to use for training (can only use a single gpu)', default=0)
     parser.add_argument('--saved_model_filepath', dest='saved_model_filepath', type=str,
                         help='SavedModel filepath to the  model to use', required=True)
     parser.add_argument('--image_folder', dest='image_folder', type=str,
@@ -221,8 +215,6 @@ if __name__ == "__main__":
     parser.add_argument('--image_format', dest='image_format', type=str, help='format (extension) of the input images. E.g {tif, jpg, png)', default='tif')
     parser.add_argument('--use_tiling', dest='use_tiling', type=int, help='Whether to tile the image through the network [0 = False, 1 = True]', default=0)
     parser.add_argument('--tile_size', dest='tile_size', type=int, help='tile size to break input images down to with overlap to fit onto gpu memory', default=256)
-
-
 
     args = parser.parse_args()
 
@@ -235,7 +227,6 @@ if __name__ == "__main__":
     tile_size = args.tile_size
 
     print('Arguments:')
-    print('gpu_id = {}'.format(gpu_id))
     print('saved_model_filepath = {}'.format(saved_model_filepath))
     print('image_folder = {}'.format(image_folder))
     print('output_folder = {}'.format(output_folder))
@@ -250,5 +241,5 @@ if __name__ == "__main__":
     else:
         assert tile_size % unet_model.UNet.SIZE_FACTOR == 0, 'UNet requires tiles with shapes that are multiples of 16'
 
-    inference(gpu_id, saved_model_filepath, image_folder, output_folder, image_format, tile_size)
+    inference(saved_model_filepath, image_folder, output_folder, image_format, tile_size)
 

@@ -22,7 +22,7 @@ use_tiling=1 # {0, 1} # use tiling when the images being inferenced are too smal
 tile_size=256
 image_format='tif'
 
-# MODIFY THESE OPTIONS
+# END MODIFY THESE OPTIONS
 # ************************************
 
 
