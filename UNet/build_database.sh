@@ -3,15 +3,10 @@
 # ************************************
 # MODIFY THESE OPTIONS
 
-#image_folder="/path/to/your/image/folder"
-#mask_folder="/path/to/your/mask/folder"
+image_folder="/path/to/your/image/folder"
+mask_folder="/path/to/your/mask/folder"
 
-#output_folder="/path/to/output/directory/where/results/are/saved"
-
-image_folder='/home/mmajursk/Downloads/tf2.0-data/images'
-mask_folder='/home/mmajursk/Downloads/tf2.0-data/masks'
-
-output_folder='/home/mmajursk/Downloads/tf2.0-data/'
+output_folder="/path/to/output/directory/where/results/are/saved"
 
 # what common name to use in saving the lmdb dataset
 dataset_name="my_dataset"
