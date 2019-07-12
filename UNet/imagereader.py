@@ -20,27 +20,42 @@ tf_version = tf.__version__.split('.')
 if int(tf_version[0]) != 2:
     import warnings
     warnings.warn('Codebase designed for Tensorflow 2.x.x')
+import unet_model
 
 
 def zscore_normalize(image_data):
     image_data = image_data.astype(np.float32)
 
-    # input is CHW
-    for c in range(image_data.shape[0]):
-        std = np.std(image_data[c, :, :])
-        mv = np.mean(image_data[c, :, :])
+
+    if len(image_data.shape) == 3:
+        # input is CHW
+        for c in range(image_data.shape[0]):
+            std = np.std(image_data[c, :, :])
+            mv = np.mean(image_data[c, :, :])
+            if std <= 1.0:
+                # normalize (but dont divide by zero)
+                image_data[c, :, :] = (image_data[c, :, :] - mv)
+            else:
+                # z-score normalize
+                image_data[c, :, :] = (image_data[c, :, :] - mv) / std
+    elif len(image_data.shape) == 2:
+        # input is HW
+        std = np.std(image_data)
+        mv = np.mean(image_data)
         if std <= 1.0:
             # normalize (but dont divide by zero)
-            image_data[c, :, :] = (image_data[c, :, :] - mv)
+            image_data = (image_data - mv)
         else:
             # z-score normalize
-            image_data[c, :, :] = (image_data[c, :, :] - mv) / std
+            image_data = (image_data - mv) / std
+    else:
+        raise IOError("Input to Z-Score normalization needs to be either a 2D or 3D image [HW, or CHW]")
 
     return image_data
 
 
 def imread(fp):
-    return skimage.io.imread(fp, as_grey=True)
+    return skimage.io.imread(fp)
 
 
 def imwrite(img, fp):
@@ -107,9 +122,9 @@ class ImageReader:
             # record the image size
             self.image_size = [datum.img_height, datum.img_width, datum.channels]
 
-            if self.image_size[0] % 16 != 0:
+            if self.image_size[0] % unet_model.UNet.SIZE_FACTOR != 0:
                 raise IOError('Input Image tile height needs to be a multiple of 16 to allow integer sized downscaled feature maps')
-            if self.image_size[1] % 16 != 0:
+            if self.image_size[1] % unet_model.UNet.SIZE_FACTOR != 0:
                 raise IOError('Input Image tile height needs to be a multiple of 16 to allow integer sized downscaled feature maps')
 
             # iterate over the database getting the keys

@@ -16,6 +16,8 @@ class UNet():
     _DECONV_KERNEL_SIZE = 2
     _POOLING_STRIDE = 2
 
+    SIZE_FACTOR = 16
+
     @staticmethod
     def _conv_layer(input, filter_count, kernel, stride=1):
         output = tf.keras.layers.Conv2D(filters=filter_count,
@@ -109,7 +111,7 @@ class UNet():
 
         return unet
 
-    def __init__(self, number_classes, global_batch_size, img_size, learning_rate=1e-4):
+    def __init__(self, number_classes, global_batch_size, img_size, learning_rate=3e-4):
 
         self.img_size = img_size
         self.learning_rate = learning_rate
@@ -117,7 +119,8 @@ class UNet():
         self.global_batch_size = global_batch_size
 
         # image is HWC (normally e.g. RGB image) however data needs to be NCHW for network
-        self.inputs = tf.keras.Input(shape=(img_size[2], img_size[0], img_size[1]))
+        self.inputs = tf.keras.Input(shape=(img_size[2], None, None))
+        # self.inputs = tf.keras.Input(shape=(img_size[2], img_size[0], img_size[1]))
         self.model = self._build_model(self.inputs, self.number_classes)
 
         self.loss_fn = tf.keras.losses.CategoricalCrossentropy(from_logits=False, reduction=tf.keras.losses.Reduction.NONE)
@@ -183,3 +186,9 @@ class UNet():
         per_gpu_loss = dist_strategy.experimental_run_v2(self.test_step, args=(inputs,))
         loss_value = dist_strategy.reduce(tf.distribute.ReduceOp.SUM, per_gpu_loss, axis=None)
         return loss_value
+
+    @tf.function
+    def predict(self, images):
+        softmax = self.model(images)
+        return softmax
+

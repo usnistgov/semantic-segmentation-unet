@@ -33,9 +33,4 @@ export CUDA_DEVICE_ORDER="PCI_BUS_ID"
 export CUDA_VISIBLE_DEVICES=${GPU}
 
 
-if [ ${use_tiling} -eq 0 ]
-then
-	python3 inference.py --checkpoint_filepath=${checkpoint_filepath} --image_folder=${input_data_directory} --output_folder=${output_directory} --number_classes=${number_classes} --image_format=${image_format}
-else
-	python3 inference_tiling.py --checkpoint_filepath=${checkpoint_filepath} --image_folder=${input_data_directory} --output_folder=${output_directory} --number_classes=${number_classes} --tile_size=${tile_size} --image_format=${image_format}
-fi
+python3 inference.py --checkpoint_filepath=${checkpoint_filepath} --image_folder=${input_data_directory} --output_folder=${output_directory} --number_classes=${number_classes} --image_format=${image_format} --use_tiling=${use_tiling} -tile_size=${tile_size}

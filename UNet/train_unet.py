@@ -158,6 +158,7 @@ def train_model(output_folder, batch_size, reader_count, train_lmdb_filepath, te
                 if len(test_loss) - best_epoch > early_stopping_count:
                     break  # break the epoch loop
                 epoch = epoch + 1
+                break
 
         finally: # if any erros happened during training, shut down the disk readers
             print('Shutting down train_reader')
@@ -179,9 +180,9 @@ def main():
 
     parser.add_argument('--batch_size', dest='batch_size', type=int, help='training batch size', default=4)
     parser.add_argument('--number_classes', dest='number_classes', type=int, default=2)
-    parser.add_argument('--learning_rate', dest='learning_rate', type=float, default=1e-4)
+    parser.add_argument('--learning_rate', dest='learning_rate', type=float, default=3e-4)
     parser.add_argument('--output_dir', dest='output_folder', type=str, help='Folder where outputs will be saved (Required)', required=True)
-    parser.add_argument('--test_every_n_steps', dest='test_every_n_steps', type=int, help='number of gradient update steps to take between test epochs', default=25)
+    parser.add_argument('--test_every_n_steps', dest='test_every_n_steps', type=int, help='number of gradient update steps to take between test epochs', default=1000)
     parser.add_argument('--balance_classes', dest='balance_classes', type=int, help='whether to balance classes [0 = false, 1 = true]', default=0)
     parser.add_argument('--use_augmentation', dest='use_augmentation', type=int, help='whether to use data augmentation [0 = false, 1 = true]', default=1)
 

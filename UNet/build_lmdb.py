@@ -13,6 +13,7 @@ import shutil
 import lmdb
 import random
 import argparse
+import unet_model
 
 
 def read_image(fp):
@@ -56,7 +57,7 @@ def enforce_size_multiple(img):
 
     # this function crops the input image down slightly to be a size multiple of 16
 
-    factor = 16
+    factor = unet_model.UNet.SIZE_FACTOR
     tgt_h = int(np.floor(h / factor) * factor)
     tgt_w = int(np.floor(w / factor) * factor)
 
@@ -194,7 +195,7 @@ if __name__ == "__main__":
         # tile_size <= 0 disables tiling
         tile_size = 0
     else:
-        assert tile_size % 16 == 0, 'UNet requires tiles with shapes that are multiples of 16'
+        assert tile_size % unet_model.UNet.SIZE_FACTOR == 0, 'UNet requires tiles with shapes that are multiples of 16'
 
     if image_format.startswith('.'):
         # remove leading period
