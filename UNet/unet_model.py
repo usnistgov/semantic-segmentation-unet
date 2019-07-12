@@ -116,7 +116,8 @@ class UNet():
         self.number_classes = number_classes
         self.global_batch_size = global_batch_size
 
-        self.inputs = tf.keras.Input(shape=(1, img_size[0], img_size[1]))
+        # image is HWC (normally e.g. RGB image) however data needs to be NCHW for network
+        self.inputs = tf.keras.Input(shape=(img_size[2], img_size[0], img_size[1]))
         self.model = self._build_model(self.inputs, self.number_classes)
 
         self.loss_fn = tf.keras.losses.CategoricalCrossentropy(from_logits=False, reduction=tf.keras.losses.Reduction.NONE)

@@ -3,10 +3,15 @@
 # ************************************
 # MODIFY THESE OPTIONS
 
-image_folder="/path/to/your/image/folder"
-mask_folder="/path/to/your/mask/folder"
+#image_folder="/path/to/your/image/folder"
+#mask_folder="/path/to/your/mask/folder"
 
-output_folder="/path/to/output/directory/where/results/are/saved"
+#output_folder="/path/to/output/directory/where/results/are/saved"
+
+image_folder='/home/mmajursk/Downloads/tf2.0-data/images'
+mask_folder='/home/mmajursk/Downloads/tf2.0-data/masks'
+
+output_folder='/home/mmajursk/Downloads/tf2.0-data/'
 
 # what common name to use in saving the lmdb dataset
 dataset_name="my_dataset"
@@ -24,10 +29,5 @@ tile_size=256
 # ************************************
 
 
-if [ ${use_tiling} -eq 0 ]
-then
-	python3 build_lmdb.py --image_folder=${image_folder} --mask_folder=${mask_folder} --output_folder=${output_folder} --dataset_name=${dataset_name} --train_fraction=${train_fraction} --image_format=${image_format}
-else
-	python3 build_lmdb_tiling.py --image_folder=${image_folder} --mask_folder=${mask_folder} --output_folder=${output_folder} --dataset_name=${dataset_name} --train_fraction=${train_fraction} --image_format=${image_format} --tile_size=${tile_size}
-fi
+python3 build_lmdb.py --image_folder=${image_folder} --mask_folder=${mask_folder} --output_folder=${output_folder} --dataset_name=${dataset_name} --train_fraction=${train_fraction} --image_format=${image_format} --tile_size=${tile_size} --use_tiling=${use_tiling}
 

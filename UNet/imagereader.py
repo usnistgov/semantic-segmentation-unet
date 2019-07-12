@@ -25,14 +25,16 @@ if int(tf_version[0]) != 2:
 def zscore_normalize(image_data):
     image_data = image_data.astype(np.float32)
 
-    std = np.std(image_data)
-    mv = np.mean(image_data)
-    if std <= 1.0:
-        # normalize (but dont divide by zero)
-        image_data = (image_data - mv)
-    else:
-        # z-score normalize
-        image_data = (image_data - mv) / std
+    # input is CHW
+    for c in range(image_data.shape[0]):
+        std = np.std(image_data[c, :, :])
+        mv = np.mean(image_data[c, :, :])
+        if std <= 1.0:
+            # normalize (but dont divide by zero)
+            image_data[c, :, :] = (image_data[c, :, :] - mv)
+        else:
+            # z-score normalize
+            image_data[c, :, :] = (image_data[c, :, :] - mv) / std
 
     return image_data
 
@@ -103,7 +105,7 @@ class ImageReader:
             # get the first serialized value from the database and convert from serialized representation
             datum.ParseFromString(cursor.value())
             # record the image size
-            self.image_size = [datum.img_height, datum.img_width]
+            self.image_size = [datum.img_height, datum.img_width, datum.channels]
 
             if self.image_size[0] % 16 != 0:
                 raise IOError('Input Image tile height needs to be a multiple of 16 to allow integer sized downscaled feature maps')
@@ -235,7 +237,7 @@ class ImageReader:
                 # convert from string to numpy array
                 I = np.fromstring(datum.image, dtype=datum.img_type)
                 # reshape the numpy array using the dimensions recorded in the datum
-                I = I.reshape(datum.img_height, datum.img_width)
+                I = I.reshape((datum.img_height, datum.img_width, datum.channels))
 
                 # convert from string to numpy array
                 M = np.fromstring(datum.mask, dtype=datum.mask_type)
@@ -257,20 +259,17 @@ class ImageReader:
 
                 # format the image into a tensor
                 # reshape into tensor (CHW)
-                I = I.reshape((1, I.shape[0], I.shape[1]))
+                I = I.transpose((2, 0, 1))
                 I = I.astype(np.float32)
                 I = zscore_normalize(I)
 
-                # reshape into tensor (HWC)
                 M = M.astype(np.int32)
-                # M = M.reshape((M.shape[0], M.shape[1]))
                 # convert to a one-hot (HWC) representation
                 h, w = M.shape
                 M = M.reshape(-1)
                 fM = np.zeros((len(M), self.nb_classes), dtype=np.int32)
                 fM[np.arange(len(M)), M] = 1
                 fM = fM.reshape((h, w, self.nb_classes))
-
 
                 # add the batch in the output queue
                 # this put block until there is space in the output queue (size 50)
@@ -310,7 +309,8 @@ class ImageReader:
         print('Creating Dataset')
         # wrap the input queues into a Dataset
         # this sets up the imagereader class as a Python generator
-        image_shape = tf.TensorShape((1, self.image_size[0], self.image_size[1]))
+        # Images come in as HWC, and are converted into CHW for network
+        image_shape = tf.TensorShape((self.image_size[2], self.image_size[0], self.image_size[1]))
         label_shape = tf.TensorShape((self.image_size[0], self.image_size[1], self.nb_classes))
         return tf.data.Dataset.from_generator(self.generator, output_types=(tf.float32, tf.int32), output_shapes=(image_shape, label_shape))
 
