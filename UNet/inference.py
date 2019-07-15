@@ -16,39 +16,6 @@ import numpy as np
 import imagereader
 
 
-
-def load_model(checkpoint_filepath, gpu_id, number_classes):
-    print('Creating model')
-    with tf.Graph().as_default(), tf.device('/cpu:0'):
-        input_op = tf.placeholder(tf.float32, shape=(1, 1, None, None))
-
-        # Calculate the gradients for each model tower.
-        with tf.variable_scope(tf.get_variable_scope()):
-            with tf.device('/gpu:%d' % gpu_id):
-                with tf.name_scope('%s_%d' % (unet_model.TOWER_NAME, gpu_id)) as scope:
-                    logits_op = unet_model.add_inference_ops(input_op, is_training=False, number_classes=number_classes)
-
-        # Start running operations on the Graph. allow_soft_placement must be set to
-        # True to build towers on GPU, as some of the ops do not have GPU
-        # implementations.
-        print('Starting Session')
-        sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
-        init = tf.global_variables_initializer()
-        sess.run(init)
-
-        # build list of variables to restore
-        vars = tf.global_variables()
-        print('Loading variables:')
-        for v in vars:
-            print('{}   {}'.format(v._shared_name, v.shape))
-
-        # restore only inference ops from checkpoint
-        saver = tf.train.Saver(vars)
-        saver.restore(sess, checkpoint_filepath)
-
-    return sess, input_op, logits_op
-
-
 def _inference_tiling(img_filepath, model, tile_size):
 
     print('Loading image: {}'.format(img_filepath))
@@ -218,7 +185,6 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    gpu_id = args.gpu_id
     saved_model_filepath = args.saved_model_filepath
     image_folder = args.image_folder
     output_folder = args.output_folder

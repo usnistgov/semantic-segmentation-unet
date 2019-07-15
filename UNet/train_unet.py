@@ -21,7 +21,7 @@ import unet_model
 import imagereader
 
 
-def train_model(output_folder, batch_size, reader_count, train_lmdb_filepath, test_lmdb_filepath, use_augmentation, number_classes, balance_classes, learning_rate, test_every_n_steps, early_stopping_count, devices):
+def train_model(output_folder, batch_size, reader_count, train_lmdb_filepath, test_lmdb_filepath, use_augmentation, number_classes, balance_classes, learning_rate, test_every_n_steps, early_stopping_count):
     if not os.path.exists(output_folder):
         os.makedirs(output_folder)
 
@@ -159,7 +159,6 @@ def train_model(output_folder, batch_size, reader_count, train_lmdb_filepath, te
                 if len(test_loss) - best_epoch > early_stopping_count:
                     break  # break the epoch loop
                 epoch = epoch + 1
-                break
 
         finally: # if any erros happened during training, shut down the disk readers
             print('Shutting down train_reader')
@@ -167,6 +166,7 @@ def train_model(output_folder, batch_size, reader_count, train_lmdb_filepath, te
             print('Shutting down test_reader')
             test_reader.shutdown()
 
+    # convert training checkpoint to the saved model format
     if training_checkpoint_filepath is not None:
         # restore the checkpoint and generate a saved model
         model = unet_model.UNet(number_classes, global_batch_size, train_reader.get_image_size(), learning_rate)
