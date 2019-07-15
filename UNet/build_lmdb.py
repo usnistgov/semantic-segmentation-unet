@@ -31,6 +31,10 @@ def write_img_to_db(txn, img, msk, key_str):
     if len(img.shape) < 2:
         raise Exception("Img must be 2D or 3D [HW, or HWC] format")
 
+    if len(img.shape) == 2:
+        # make a 3D array
+        img = img.reshape((img.shape[0], img.shape[1], 1))
+
     # get the list of labels in the image
     labels = np.unique(msk)
 

@@ -187,8 +187,3 @@ class UNet():
         loss_value = dist_strategy.reduce(tf.distribute.ReduceOp.SUM, per_gpu_loss, axis=None)
         return loss_value
 
-    @tf.function
-    def predict(self, images):
-        softmax = self.model(images)
-        return softmax
-

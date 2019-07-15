@@ -32,8 +32,8 @@ def train_model(output_folder, batch_size, reader_count, train_lmdb_filepath, te
     mirrored_strategy = tf.distribute.MirroredStrategy()
     with mirrored_strategy.scope():
 
+        # scale the batch size based on the GPU count
         global_batch_size = batch_size * mirrored_strategy.num_replicas_in_sync
-        print('reader count = {}'.format(reader_count))
         # scale the number of I/O readers based on the GPU count
         reader_count = reader_count * mirrored_strategy.num_replicas_in_sync
 

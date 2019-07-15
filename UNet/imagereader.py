@@ -154,7 +154,8 @@ class ImageReader:
         return self.image_size
 
     def get_image_tensor_shape(self):
-        return [1, self.image_size[0], self.image_size[1]]
+        # HWC to CHW
+        return [self.image_size[2], self.image_size[0], self.image_size[1]]
 
     def get_label_tensor_shape(self):
         return [self.image_size[0], self.image_size[1]]
