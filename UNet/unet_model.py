@@ -55,10 +55,31 @@ class UNet():
         return output
 
     @staticmethod
-    def _build_model(input, number_classes=2):
+    def _dropout(input):
+        output = tf.keras.layers.Dropout(rate=0.5)(input)
+        return output
+
+    def __init__(self, number_classes, global_batch_size, img_size, learning_rate=3e-4):
+
+        self.img_size = img_size
+        self.learning_rate = learning_rate
+        self.number_classes = number_classes
+        self.global_batch_size = global_batch_size
+        self.is_training = False
+
+        # image is HWC (normally e.g. RGB image) however data needs to be NCHW for network
+        self.inputs = tf.keras.Input(shape=(img_size[2], None, None))
+        # self.inputs = tf.keras.Input(shape=(img_size[2], img_size[0], img_size[1]))
+        self.model = self._build_model()
+
+        self.loss_fn = tf.keras.losses.CategoricalCrossentropy(from_logits=False, reduction=tf.keras.losses.Reduction.NONE)
+
+        self.optimizer = tf.keras.optimizers.Adam(learning_rate=self.learning_rate)
+
+    def _build_model(self):
 
         # Encoder
-        conv_1 = UNet._conv_layer(input, UNet._BASELINE_FEATURE_DEPTH, UNet._KERNEL_SIZE)
+        conv_1 = UNet._conv_layer(self.inputs, UNet._BASELINE_FEATURE_DEPTH, UNet._KERNEL_SIZE)
         conv_1 = UNet._conv_layer(conv_1, UNet._BASELINE_FEATURE_DEPTH, UNet._KERNEL_SIZE)
 
         pool_1 = UNet._pool(conv_1, UNet._POOLING_STRIDE)
@@ -75,12 +96,14 @@ class UNet():
 
         conv_4 = UNet._conv_layer(pool_3, 8 * UNet._BASELINE_FEATURE_DEPTH, UNet._KERNEL_SIZE)
         conv_4 = UNet._conv_layer(conv_4, 8 * UNet._BASELINE_FEATURE_DEPTH, UNet._KERNEL_SIZE)
+        conv_4 = UNet._dropout(conv_4)
 
         pool_4 = UNet._pool(conv_4, UNet._POOLING_STRIDE)
 
         # bottleneck
         bottleneck = UNet._conv_layer(pool_4, 16 * UNet._BASELINE_FEATURE_DEPTH, UNet._KERNEL_SIZE)
         bottleneck = UNet._conv_layer(bottleneck, 16 * UNet._BASELINE_FEATURE_DEPTH, UNet._KERNEL_SIZE)
+        bottleneck = UNet._dropout(bottleneck)
 
         # Decoder
         # up-conv which reduces the number of feature channels by 2
@@ -104,35 +127,22 @@ class UNet():
         deconv_1 = UNet._conv_layer(deconv_1, UNet._BASELINE_FEATURE_DEPTH, UNet._KERNEL_SIZE)
         deconv_1 = UNet._conv_layer(deconv_1, UNet._BASELINE_FEATURE_DEPTH, UNet._KERNEL_SIZE)
 
-        logits = UNet._conv_layer(deconv_1, number_classes, 1)  # 1x1 kernel to convert feature map into class map
+        logits = UNet._conv_layer(deconv_1, self.number_classes, 1)  # 1x1 kernel to convert feature map into class map
         # convert NCHW to NHWC so that softmax axis is the last dimension
         logits = tf.keras.layers.Permute((2, 3, 1))(logits)
         # logits is [NHWC]
 
         softmax = tf.keras.layers.Softmax(axis=-1, name='softmax')(logits)
 
-        unet = tf.keras.Model(input, softmax, name='unet')
+        unet = tf.keras.Model(self.inputs, softmax, name='unet')
 
         return unet
 
-    def __init__(self, number_classes, global_batch_size, img_size, learning_rate=3e-4):
-
-        self.img_size = img_size
-        self.learning_rate = learning_rate
-        self.number_classes = number_classes
-        self.global_batch_size = global_batch_size
-
-        # image is HWC (normally e.g. RGB image) however data needs to be NCHW for network
-        self.inputs = tf.keras.Input(shape=(img_size[2], None, None))
-        # self.inputs = tf.keras.Input(shape=(img_size[2], img_size[0], img_size[1]))
-        self.model = self._build_model(self.inputs, self.number_classes)
-
-        self.loss_fn = tf.keras.losses.CategoricalCrossentropy(from_logits=False, reduction=tf.keras.losses.Reduction.NONE)
-
-        self.optimizer = tf.keras.optimizers.Adam(learning_rate=self.learning_rate)
-
     def get_keras_model(self):
         return self.model
+
+    def set_is_training(self, val):
+        self.is_training = val
 
     def get_optimizer(self):
         return self.optimizer
@@ -142,7 +152,7 @@ class UNet():
         # Open a GradientTape to record the operations run
         # during the forward pass, which enables autodifferentiation.
         with tf.GradientTape() as tape:
-            softmax = self.model(images)
+            softmax = self.model(images, training=True)
 
             loss_value = self.loss_fn(labels, softmax) # [NxHxWx1]
             # average across the batch (N) with the approprite global batch size
@@ -172,7 +182,7 @@ class UNet():
 
     def test_step(self, inputs):
         (images, labels, loss_metric, accuracy_metric) = inputs
-        softmax = self.model(images)
+        softmax = self.model(images, training=False)
 
         loss_value = self.loss_fn(labels, softmax)
         # average across the batch (N) with the approprite global batch size

@@ -103,6 +103,7 @@ def train_model(output_folder, batch_size, reader_count, train_lmdb_filepath, te
                 print('---- Epoch: {} ----'.format(epoch))
 
                 # Iterate over the batches of the train dataset.
+                model.set_is_training(True)
                 for step, (batch_images, batch_labels) in enumerate(train_dataset):
                     if step > train_epoch_size:
                         break
@@ -118,6 +119,7 @@ def train_model(output_folder, batch_size, reader_count, train_lmdb_filepath, te
                     train_acc_metric.reset_states()
 
                 # Iterate over the batches of the test dataset.
+                model.set_is_training(False)
                 epoch_test_loss = list()
                 for step, (batch_images, batch_labels) in enumerate(test_dataset):
                     if step > test_epoch_size:
