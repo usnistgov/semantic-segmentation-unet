@@ -65,7 +65,6 @@ class UNet():
         self.learning_rate = learning_rate
         self.number_classes = number_classes
         self.global_batch_size = global_batch_size
-        self.is_training = False
 
         # image is HWC (normally e.g. RGB image) however data needs to be NCHW for network
         self.inputs = tf.keras.Input(shape=(img_size[2], None, None))
@@ -140,9 +139,6 @@ class UNet():
 
     def get_keras_model(self):
         return self.model
-
-    def set_is_training(self, val):
-        self.is_training = val
 
     def get_optimizer(self):
         return self.optimizer
