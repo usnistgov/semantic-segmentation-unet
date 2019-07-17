@@ -20,21 +20,18 @@ import numpy as np
 import imagereader
 
 
-def _inference_tiling(img_filepath, model, tile_size):
+def _inference_tiling(img, model, tile_size):
 
-    print('Loading image: {}'.format(img_filepath))
-    img = imagereader.imread(img_filepath)
-    img = img.astype(np.float32)
-
-    # normalize with whole image stats
-    img = imagereader.zscore_normalize(img)
     height = img.shape[0]
     width = img.shape[1]
     mask = np.zeros(img.shape, dtype=np.int32)
-    print('  img.shape={}'.format(img.shape))
 
-    radius = unet_model.UNet.SIZE_FACTOR
+    # radius = unet_model.UNet.SIZE_FACTOR
+    assert tile_size % unet_model.UNet.SIZE_FACTOR == 0
+    radius = np.power(2, 7) # based on number of conv layers in UNet, to ensure all local context before the bottlneck remains the same
+    assert radius % unet_model.UNet.SIZE_FACTOR == 0
     zone_of_responsibility_size = tile_size - 2 * radius
+
     for i in range(0, height, zone_of_responsibility_size):
         for j in range(0, width, zone_of_responsibility_size):
 
@@ -49,29 +46,56 @@ def _inference_tiling(img_filepath, model, tile_size):
             x_end = x_end_z + radius
             y_end = y_end_z + radius
 
-            pre_pad_x = 0
+            radius_pre_x = radius
             if x_st < 0:
-                pre_pad_x = -x_st
+                dist_from_edge = x_st_z
+                radius_pre_x = int(np.ceil(dist_from_edge / unet_model.UNet.SIZE_FACTOR) * unet_model.UNet.SIZE_FACTOR)
                 x_st = 0
-            pre_pad_y = 0
+
+            radius_pre_y = radius
             if y_st < 0:
-                pre_pad_y = -y_st
+                dist_from_edge = y_st_z
+                radius_pre_y = int(np.ceil(dist_from_edge / unet_model.UNet.SIZE_FACTOR) * unet_model.UNet.SIZE_FACTOR)
                 y_st = 0
+
             post_pad_x = 0
+            radius_post_x = radius
             if x_end > width:
-                post_pad_x = x_end - width
-                x_end = width
+                if x_end_z > width:
+                    tmp_w = width - x_st_z
+                    w_plus_radius = int(np.ceil(tmp_w / unet_model.UNet.SIZE_FACTOR) * unet_model.UNet.SIZE_FACTOR)
+                    radius_post_x = w_plus_radius - tmp_w
+                    post_pad_x = radius_post_x
+                    x_end = width
+                    x_end_z = width
+                else:
+                    dist_from_edge = width - x_end_z
+                    radius_post_x = int(np.ceil(dist_from_edge / unet_model.UNet.SIZE_FACTOR) * unet_model.UNet.SIZE_FACTOR)
+                    post_pad_x = radius_post_x - dist_from_edge
+                    x_end = width
+
             post_pad_y = 0
+            radius_post_y = radius
             if y_end > height:
-                post_pad_y = y_end - height
-                y_end = height
+                if y_end_z > height:
+                    tmp_h = height - y_st_z
+                    h_plus_radius = int(np.ceil(tmp_h / unet_model.UNet.SIZE_FACTOR) * unet_model.UNet.SIZE_FACTOR)
+                    radius_post_y = h_plus_radius - tmp_h
+                    post_pad_y = radius_post_y
+                    y_end = height
+                    y_end_z = height
+                else:
+                    dist_from_edge = height - y_end_z
+                    radius_post_y = int(np.ceil(dist_from_edge / unet_model.UNet.SIZE_FACTOR) * unet_model.UNet.SIZE_FACTOR)
+                    post_pad_y = radius_post_y - dist_from_edge
+                    y_end = height
 
             # crop out the tile
             tile = img[y_st:y_end, x_st:x_end]
 
-            if pre_pad_x > 0 or pre_pad_y > 0 or post_pad_x > 0 or post_pad_y > 0:
+            if post_pad_x > 0 or post_pad_y > 0:
                 # ensure its correct size (if tile exists at the edge of the image
-                tile = np.pad(tile, pad_width=((pre_pad_y, post_pad_y), (pre_pad_x, post_pad_x)), mode='reflect')
+                tile = np.pad(tile, pad_width=((0, post_pad_y), (0, post_pad_x)), mode='reflect')
 
             if len(tile.shape) == 2:
                 # add a channel dimension
@@ -83,36 +107,32 @@ def _inference_tiling(img_filepath, model, tile_size):
             batch_data = batch_data.reshape((1, batch_data.shape[0], batch_data.shape[1], batch_data.shape[2]))
 
             softmax = model(batch_data) # model output defined in unet_model is softmax
+            softmax = np.squeeze(softmax)
             pred = np.squeeze(np.argmax(softmax, axis=-1).astype(np.int32))
 
-            pre_pad_x = max(pre_pad_x, radius)
-            if pre_pad_x > 0:
-                pred = pred[:, pre_pad_x:]
-            pre_pad_y = max(pre_pad_y, radius)
-            if pre_pad_y > 0:
-                pred = pred[pre_pad_y:, :]
-            post_pad_x = max(post_pad_x, radius)
-            if post_pad_x > 0:
-                pred = pred[:, :-post_pad_x]
-            post_pad_y = max(post_pad_y, radius)
-            if post_pad_y > 0:
-                pred = pred[:-post_pad_y, :]
+
+            # radius_pre_x
+            if radius_pre_x > 0:
+                pred = pred[:, radius_pre_x:]
+
+            # radius_pre_y
+            if radius_pre_y > 0:
+                pred = pred[radius_pre_y:, :]
+
+            # radius_post_x
+            if radius_post_x > 0:
+                pred = pred[:, :-radius_post_x]
+
+            # radius_post_y
+            if radius_post_y > 0:
+                pred = pred[:-radius_post_y, :]
 
             mask[y_st_z:y_end_z, x_st_z:x_end_z] = pred
 
     return mask
 
 
-def _inference(img_filepath, model):
-
-    print('Loading image: {}'.format(img_filepath))
-    img = imagereader.imread(img_filepath)
-    img = img.astype(np.float32)
-
-    # normalize with whole image stats
-    img = imagereader.zscore_normalize(img)
-
-    print('  img.shape={}'.format(img.shape))
+def _inference(img, model):
     pad_x = 0
     pad_y = 0
 
@@ -135,6 +155,7 @@ def _inference(img_filepath, model):
     batch_data = batch_data.reshape((1, batch_data.shape[0], batch_data.shape[1], batch_data.shape[2]))
 
     softmax = model(batch_data) # model output defined in unet_model is softmax
+    softmax = np.squeeze(softmax)
     pred = np.squeeze(np.argmax(softmax, axis=-1).astype(np.int32))
 
     if pad_x > 0:
@@ -145,10 +166,14 @@ def _inference(img_filepath, model):
     return pred
 
 
-def inference(saved_model_filepath, image_folder, output_folder, image_format, tile_size):
+def inference(saved_model_filepath, image_folder, output_folder, image_format):
     # create output filepath
     if not os.path.exists(output_folder):
         os.mkdir(output_folder)
+
+    prob_folder = output_folder.replace('_mask','_prob')
+    if not os.path.exists(prob_folder):
+        os.mkdir(prob_folder)
 
     img_filepath_list = [os.path.join(image_folder, fn) for fn in os.listdir(image_folder) if fn.endswith('.{}'.format(image_format))]
 
@@ -160,10 +185,21 @@ def inference(saved_model_filepath, image_folder, output_folder, image_format, t
         _, slide_name = os.path.split(img_filepath)
         print('{}/{} : {}'.format(i, len(img_filepath_list), slide_name))
 
-        if tile_size > 0:
-            segmented_mask = _inference_tiling(img_filepath, model, tile_size)
+        print('Loading image: {}'.format(img_filepath))
+        img = imagereader.imread(img_filepath)
+        img = img.astype(np.float32)
+
+        # normalize with whole image stats
+        img = imagereader.zscore_normalize(img)
+        print('  img.shape={}'.format(img.shape))
+
+        if img.shape[0] > 1024 or img.shape[1] > 1024:
+            tile_size = 512
+            if img.shape[0] >= 2048 or img.shape[1] >= 2048:
+                tile_size = 1024
+            segmented_mask = _inference_tiling(img, model, tile_size)
         else:
-            segmented_mask = _inference(img_filepath, model)
+            segmented_mask = _inference(img, model)
 
         if 0 <= np.max(segmented_mask) <= 255:
             segmented_mask = segmented_mask.astype(np.uint8)
@@ -184,8 +220,6 @@ if __name__ == "__main__":
                         help='filepath to the folder containing tif images to inference (Required)', required=True)
     parser.add_argument('--output_folder', dest='output_folder', type=str, required=True)
     parser.add_argument('--image_format', dest='image_format', type=str, help='format (extension) of the input images. E.g {tif, jpg, png)', default='tif')
-    parser.add_argument('--use_tiling', dest='use_tiling', type=int, help='Whether to tile the image through the network [0 = False, 1 = True]', default=0)
-    parser.add_argument('--tile_size', dest='tile_size', type=int, help='tile size to break input images down to with overlap to fit onto gpu memory', default=256)
 
     args = parser.parse_args()
 
@@ -193,23 +227,12 @@ if __name__ == "__main__":
     image_folder = args.image_folder
     output_folder = args.output_folder
     image_format = args.image_format
-    use_tiling = args.use_tiling
-    tile_size = args.tile_size
 
     print('Arguments:')
     print('saved_model_filepath = {}'.format(saved_model_filepath))
     print('image_folder = {}'.format(image_folder))
     print('output_folder = {}'.format(output_folder))
     print('image_format = {}'.format(image_format))
-    print('use_tiling = {}'.format(use_tiling))
-    print('tile_size = {}'.format(tile_size))
 
-    # zero out tile size with its turned off
-    if not use_tiling:
-        # tile_size <= 0 disables tiling
-        tile_size = 0
-    else:
-        assert tile_size % unet_model.UNet.SIZE_FACTOR == 0, 'UNet requires tiles with shapes that are multiples of 16'
-
-    inference(saved_model_filepath, image_folder, output_folder, image_format, tile_size)
+    inference(saved_model_filepath, image_folder, output_folder, image_format)
 
