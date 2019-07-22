@@ -107,6 +107,12 @@ if int(tf_version[0]) != 1 or int(tf_version[1]) != 12:
     import warnings
     warnings.warn('Codebase only tested using Tensorflow version 1.12.x')
 
+if int(tf_version[0]) == 1 and int(tf_version[1]) > 12:
+    import warnings
+    warnings.warn('For Tensorflow versions greater than 1.12.x, only CPU gradient averaging works.')
+    gradient_update_location = 'cpu'
+    print('gradient_update_location = {}'.format(gradient_update_location))
+
 import unet_model
 import imagereader
 

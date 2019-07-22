@@ -73,13 +73,15 @@ def conv_layer(layer_in, fc_out, kernel, is_training, stride=1, name=None):
         filters=fc_out,
         kernel_size=kernel,
         padding='same',
-        activation=tf.nn.relu,
+        activation=None,
         strides=stride,
         data_format='channels_last',  # translates to NHWC
         kernel_initializer=tf.contrib.layers.xavier_initializer(),
-        name=name)
-    layer_output = tf.layers.batch_normalization(conv_output, training=is_training, axis=3)  # axis to normalize (the channels dimension)
-    return layer_output
+        name=name,
+        use_bias=False)
+    conv_output = tf.layers.batch_normalization(conv_output, training=is_training, axis=3)  # axis to normalize (the channels dimension)
+    conv_output = tf.nn.relu(conv_output)
+    return conv_output
 
 #############################################################################################################
 #############################################################################################################
