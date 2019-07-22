@@ -1,3 +1,5 @@
+*This codebase is designed to work with Python3 and Tensorflow 2.0*
+
 # SemanticSegmentation
 
 Semantic Segmentation Tesnorflow models ready to run on Enki.
