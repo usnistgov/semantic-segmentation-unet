@@ -59,7 +59,7 @@ class UNet():
         output = tf.keras.layers.Dropout(rate=0.5)(input)
         return output
 
-    def __init__(self, number_classes, global_batch_size, img_size, learning_rate=3e-4):
+    def __init__(self, number_classes, global_batch_size, img_size, learning_rate=3e-4, label_smoothing=0):
 
         self.img_size = img_size
         self.learning_rate = learning_rate
@@ -71,7 +71,7 @@ class UNet():
         # self.inputs = tf.keras.Input(shape=(img_size[2], img_size[0], img_size[1]))
         self.model = self._build_model()
 
-        self.loss_fn = tf.keras.losses.CategoricalCrossentropy(from_logits=False, reduction=tf.keras.losses.Reduction.NONE)
+        self.loss_fn = tf.keras.losses.CategoricalCrossentropy(from_logits=False, label_smoothing=label_smoothing, reduction=tf.keras.losses.Reduction.NONE)
 
         self.optimizer = tf.keras.optimizers.Adam(learning_rate=self.learning_rate)
 
