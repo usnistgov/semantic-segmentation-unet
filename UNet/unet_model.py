@@ -34,6 +34,16 @@ def conv_layer(layer_in, fc_out, kernel, is_training, stride=1, name=None):
     return conv_output
 
 
+def dropout(layer_in, is_training, drop_rate=0.5, name=None):
+
+    #use tf.layers.dropout function
+    drop_output = tf.layers.dropout(
+        layer_in,
+        rate=drop_rate,
+        training=is_training,
+        name=name)
+    return drop_output
+
 def deconv_layer(layer_in, fc_out, kernel, is_training, stride=1, name=None):
     conv_output = tf.layers.conv2d_transpose(
         layer_in,
@@ -74,11 +84,17 @@ def add_inference_ops(inputs, is_training, number_classes=2):
             conv_4 = conv_layer(pool_3, 8 * BASELINE_FEATURE_DEPTH, kernel, is_training)
             conv_4 = conv_layer(conv_4, 8 * BASELINE_FEATURE_DEPTH, kernel, is_training)
 
+            #TODO
+            conv_4 = dropout(conv_4, is_training)
+
             pool_4 = tf.layers.max_pooling2d(conv_4, pool_size=pooling_stride, strides=pooling_stride, data_format='channels_first')
 
             # bottleneck
             bottleneck = conv_layer(pool_4, 16 * BASELINE_FEATURE_DEPTH, kernel, is_training)
             bottleneck = conv_layer(bottleneck, 16 * BASELINE_FEATURE_DEPTH, kernel, is_training)
+
+            #TODO
+            bottleneck = dropout(bottleneck, is_training)
 
         with tf.variable_scope("decoder"):
             # up-conv which reduces the number of feature channels by 2
