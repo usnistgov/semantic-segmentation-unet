@@ -5,10 +5,7 @@ Semantic Segmentation Tesnorflow models ready to run on Enki.
 
 	<!-- ![UNet Architecture Diagram](./doc/unet-architecture.png "UNet Architecture Diagram") -->
 
-- SegNet: [https://arxiv.org/pdf/1511.00561.pdf](https://arxiv.org/pdf/1511.00561.pdf)
-
-	<!-- ![SegNet Architecture Diagram](./doc/segnet-architecture.png "SegNet Architecture Diagram") -->
-
+Old SegNet code is available on the segnet branch.
 
 Enki AI Cluster page: 
 - [https://aihpc.ipages.nist.gov/pages/](https://aihpc.ipages.nist.gov/pages/)
@@ -25,7 +22,6 @@ Input data assumptions:
 - mask pixel value 0 indicates background/no-class
 - each input image must have a corresponding mask 
 - each image/mask pair must be identical size
-- each image/mask should be square (width = height)
 
 Before training script can be launched, the input data needs to be converted into a memory mapped database ([lmdb](https://en.wikipedia.org/wiki/Lightning_Memory-Mapped_Database)) to enable fast memory mapped file reading during training. 
 
