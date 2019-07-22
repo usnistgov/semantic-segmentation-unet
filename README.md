@@ -1,3 +1,7 @@
+The `master` branch of this codebase is designed to work with Tensorflow 1.12.x.
+
+Tensorflow 2.0 code can be found on the `tf2.0b` branch.
+
 # SemanticSegmentation
 
 Semantic Segmentation Tesnorflow models ready to run on Enki.
