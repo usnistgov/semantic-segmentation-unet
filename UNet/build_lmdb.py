@@ -87,6 +87,7 @@ def process_slide_tiling(img, msk, tile_size):
     img_list = []
     msk_list = []
 
+    # TODO (majurski) update tiling to handle radius and zones of responsibility correctly based on 128 pixel overlap requirement for UNet
     for x_st in range(0, width, delta):
         for y_st in range(0, height, delta):
             x_end = x_st + tile_size
