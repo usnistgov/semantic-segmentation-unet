@@ -139,8 +139,8 @@ def generate_database(img_list, database_name, image_filepath, mask_filepath, ou
         img = read_image(os.path.join(image_filepath, img_file_name))
         msk = read_image(os.path.join(mask_filepath, img_file_name))
         msk = msk.astype(np.uint8)
-        assert img.shape[0] == msk.shape[0], 'Image and Mask must be the same Height'
-        assert img.shape[1] == msk.shape[1], 'Image and Mask must be the same Width'
+        assert img.shape[0] == msk.shape[0], 'Image and Mask must be the same Height, input images should be either HW or HWC dimension ordering'
+        assert img.shape[1] == msk.shape[1], 'Image and Mask must be the same Width, input images should be either HW or HWC dimension ordering'
 
         if tile_size > 0:
             # convert the image mask pair into tiles

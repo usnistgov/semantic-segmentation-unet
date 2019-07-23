@@ -127,9 +127,9 @@ class ImageReader:
             self.image_size = [datum.img_height, datum.img_width, datum.channels]
 
             if self.image_size[0] % unet_model.UNet.SIZE_FACTOR != 0:
-                raise IOError('Input Image tile height needs to be a multiple of 16 to allow integer sized downscaled feature maps')
+                raise IOError('Input Image tile height needs to be a multiple of 16 to allow integer sized downscaled feature maps. Input images should be either HW or HWC dimension ordering')
             if self.image_size[1] % unet_model.UNet.SIZE_FACTOR != 0:
-                raise IOError('Input Image tile height needs to be a multiple of 16 to allow integer sized downscaled feature maps')
+                raise IOError('Input Image tile height needs to be a multiple of 16 to allow integer sized downscaled feature maps. Input images should be either HW or HWC dimension ordering')
 
             # iterate over the database getting the keys
             for key, val in cursor:
