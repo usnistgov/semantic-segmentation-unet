@@ -21,6 +21,7 @@ class UNet():
     _POOLING_STRIDE = 2
 
     SIZE_FACTOR = 16
+    RADIUS = 96  # nearest multiple of 16 over 92 pixels radius required from the unet paper ((572 - 388) / 2 = 92)
 
     @staticmethod
     def _conv_layer(input, filter_count, kernel, stride=1):

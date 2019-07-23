@@ -28,7 +28,7 @@ def _inference_tiling(img, model, tile_size):
 
     # radius = unet_model.UNet.SIZE_FACTOR
     assert tile_size % unet_model.UNet.SIZE_FACTOR == 0
-    radius = np.power(2, 7) # based on number of conv layers in UNet, to ensure all local context before the bottlneck remains the same
+    radius = unet_model.UNet.RADIUS
     assert radius % unet_model.UNet.SIZE_FACTOR == 0
     zone_of_responsibility_size = tile_size - 2 * radius
 
@@ -195,8 +195,6 @@ def inference(saved_model_filepath, image_folder, output_folder, image_format):
 
         if img.shape[0] > 1024 or img.shape[1] > 1024:
             tile_size = 512
-            if img.shape[0] >= 2048 or img.shape[1] >= 2048:
-                tile_size = 1024
             segmented_mask = _inference_tiling(img, model, tile_size)
         else:
             segmented_mask = _inference(img, model)
