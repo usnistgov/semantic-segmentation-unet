@@ -163,7 +163,6 @@ def train_model(output_folder, batch_size, reader_count, train_lmdb_filepath, te
                 if len(test_loss) - best_epoch > early_stopping_count:
                     break  # break the epoch loop
                 epoch = epoch + 1
-                break
 
         finally: # if any erros happened during training, shut down the disk readers
             print('Shutting down train_reader')
