@@ -110,7 +110,6 @@ def _inference_tiling(img, model, tile_size):
             softmax = np.squeeze(softmax)
             pred = np.squeeze(np.argmax(softmax, axis=-1).astype(np.int32))
 
-
             # radius_pre_x
             if radius_pre_x > 0:
                 pred = pred[:, radius_pre_x:]
@@ -143,7 +142,12 @@ def _inference(img, model):
         pad_x = (unet_model.UNet.SIZE_FACTOR - img.shape[1] % unet_model.UNet.SIZE_FACTOR)
         print('image width needs to be a multiple of {}, padding with reflect'.format(unet_model.UNet.SIZE_FACTOR))
     if pad_x > 0 or pad_y > 0:
-        img = np.pad(img, pad_width=((0, pad_y), (0, pad_x)), mode='reflect')
+        if len(img.shape) == 2:
+            img = np.pad(img, pad_width=((0, pad_y), (0, pad_x)), mode='reflect')
+        elif len(img.shape) == 3:
+            img = np.pad(img, pad_width=((0, pad_y, 0), (0, pad_x, 0)), mode='reflect')
+        else:
+            raise IOError('Invalid number of dimensions for input image. Expecting HW or HWC dimension ordering.')
 
     if len(img.shape) == 2:
         # add a channel dimension
