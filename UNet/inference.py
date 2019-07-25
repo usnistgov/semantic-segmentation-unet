@@ -93,13 +93,16 @@ def _inference_tiling(img, model, tile_size):
             # crop out the tile
             tile = img[y_st:y_end, x_st:x_end]
 
-            if post_pad_x > 0 or post_pad_y > 0:
-                # ensure its correct size (if tile exists at the edge of the image
-                tile = np.pad(tile, pad_width=((0, post_pad_y), (0, post_pad_x)), mode='reflect')
+            if len(tile.shape) != 2 and len(tile.shape) != 3:
+                raise IOError('Invalid number of dimensions for input image. Expecting HW or HWC dimension ordering.')
 
             if len(tile.shape) == 2:
                 # add a channel dimension
                 tile = tile.reshape((tile.shape[0], tile.shape[1], 1))
+
+            if post_pad_x > 0 or post_pad_y > 0:
+                # ensure its correct size (if tile exists at the edge of the image
+                tile = np.pad(tile, pad_width=((0, post_pad_y, 0), (0, post_pad_x, 0)), mode='reflect')
 
             # convert HWC to CHW
             batch_data = tile.transpose((2, 0, 1))
