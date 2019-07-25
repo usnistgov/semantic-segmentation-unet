@@ -102,7 +102,7 @@ def _inference_tiling(img, model, tile_size):
 
             if post_pad_x > 0 or post_pad_y > 0:
                 # ensure its correct size (if tile exists at the edge of the image
-                tile = np.pad(tile, pad_width=((0, post_pad_y, 0), (0, post_pad_x, 0)), mode='reflect')
+                tile = np.pad(tile, pad_width=((0, post_pad_y), (0, post_pad_x), (0, 0)), mode='reflect')
 
             # convert HWC to CHW
             batch_data = tile.transpose((2, 0, 1))
@@ -151,7 +151,7 @@ def _inference(img, model):
     if len(img.shape) == 2:
         # add a channel dimension
         img = img.reshape((img.shape[0], img.shape[1], 1))
-    img = np.pad(img, pad_width=((0, pad_y, 0), (0, pad_x, 0)), mode='reflect')
+    img = np.pad(img, pad_width=((0, pad_y), (0, pad_x), (0, 0)), mode='reflect')
 
     # convert HWC to CHW
     batch_data = img.transpose((2, 0, 1))
