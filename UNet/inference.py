@@ -141,17 +141,14 @@ def _inference(img, model):
     if img.shape[1] % unet_model.UNet.SIZE_FACTOR != 0:
         pad_x = (unet_model.UNet.SIZE_FACTOR - img.shape[1] % unet_model.UNet.SIZE_FACTOR)
         print('image width needs to be a multiple of {}, padding with reflect'.format(unet_model.UNet.SIZE_FACTOR))
-    if pad_x > 0 or pad_y > 0:
-        if len(img.shape) == 2:
-            img = np.pad(img, pad_width=((0, pad_y), (0, pad_x)), mode='reflect')
-        elif len(img.shape) == 3:
-            img = np.pad(img, pad_width=((0, pad_y, 0), (0, pad_x, 0)), mode='reflect')
-        else:
-            raise IOError('Invalid number of dimensions for input image. Expecting HW or HWC dimension ordering.')
+
+    if len(img.shape) != 2 and len(img.shape) != 3:
+        raise IOError('Invalid number of dimensions for input image. Expecting HW or HWC dimension ordering.')
 
     if len(img.shape) == 2:
         # add a channel dimension
         img = img.reshape((img.shape[0], img.shape[1], 1))
+    img = np.pad(img, pad_width=((0, pad_y, 0), (0, pad_x, 0)), mode='reflect')
 
     # convert HWC to CHW
     batch_data = img.transpose((2, 0, 1))
