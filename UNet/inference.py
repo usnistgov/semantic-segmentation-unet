@@ -24,7 +24,7 @@ def _inference_tiling(img, model, tile_size):
 
     height = img.shape[0]
     width = img.shape[1]
-    mask = np.zeros(img.shape, dtype=np.int32)
+    mask = np.zeros((height, width), dtype=np.int32)
 
     # radius = unet_model.UNet.SIZE_FACTOR
     assert tile_size % unet_model.UNet.SIZE_FACTOR == 0

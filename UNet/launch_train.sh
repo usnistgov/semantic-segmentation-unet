@@ -26,7 +26,7 @@ output_folder="/path/to/output/directory/where/results/are/saved"
 number_classes=4
 
 # what learning rate should the network use
-learning_rate=3e-4 # Karpathy Constant
+learning_rate=1e-4 # Karpathy Constant
 
 use_augmentation=1 # {0, 1}
 balance_classes=1 # {0, 1}
