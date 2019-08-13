@@ -78,7 +78,7 @@ def enforce_size_multiple(img):
     return img
 
 
-def process_slide_tiling(img, msk, tile_size):
+def process_slide_tiling(img, msk, tile_size, block_key):
     # get the height of the image
     height = img.shape[0]
     width = img.shape[1]
@@ -86,6 +86,7 @@ def process_slide_tiling(img, msk, tile_size):
 
     img_list = []
     msk_list = []
+    key_list = []
 
     for x_st in range(0, width, delta):
         for y_st in range(0, height, delta):
@@ -112,7 +113,16 @@ def process_slide_tiling(img, msk, tile_size):
             img_list.append(img_pixels)
             msk_list.append(msk_pixels)
 
-    return (img_list, msk_list)
+            present_classes = np.unique(msk_pixels)
+            present_classes_str = ''
+            for c in present_classes:
+                if len(present_classes_str) > 0:
+                    present_classes_str = present_classes_str + ','
+                present_classes_str = present_classes_str + str(c)
+            key_str = '{}_i{}_j{}:{}'.format(block_key, y_st, x_st, present_classes_str)
+            key_list.append(key_str)
+
+    return img_list, msk_list, key_list
 
 
 def generate_database(img_list, database_name, image_filepath, mask_filepath, output_folder, tile_size):
@@ -143,12 +153,12 @@ def generate_database(img_list, database_name, image_filepath, mask_filepath, ou
 
         if tile_size > 0:
             # convert the image mask pair into tiles
-            img_tile_list, msk_tile_list = process_slide_tiling(img, msk, tile_size)
+            img_tile_list, msk_tile_list, key_list = process_slide_tiling(img, msk, tile_size, block_key)
 
             for k in range(len(img_tile_list)):
                 img = img_tile_list[k]
                 msk = msk_tile_list[k]
-                key_str = '{}_{:08d}'.format(block_key, txn_nb)
+                key_str = key_list[k]
                 txn_nb += 1
                 write_img_to_db(image_txn, img, msk, key_str)
 
@@ -158,8 +168,14 @@ def generate_database(img_list, database_name, image_filepath, mask_filepath, ou
         else:
             img = enforce_size_multiple(img)
             msk = enforce_size_multiple(msk)
+            present_classes = np.unique(msk)
+            present_classes_str = ''
+            for c in present_classes:
+                if len(present_classes_str) > 0:
+                    present_classes_str = present_classes_str + ','
+                present_classes_str = present_classes_str + str(c)
+            key_str = '{}:{}'.format(block_key, present_classes_str)
 
-            key_str = '{}_{:08d}'.format(block_key, txn_nb)
             txn_nb += 1
             write_img_to_db(image_txn, img, msk, key_str)
 

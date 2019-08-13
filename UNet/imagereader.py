@@ -30,7 +30,6 @@ import unet_model
 def zscore_normalize(image_data):
     image_data = image_data.astype(np.float32)
 
-
     if len(image_data.shape) == 3:
         # input is CHW
         for c in range(image_data.shape[0]):
@@ -107,8 +106,7 @@ class ImageReader:
         # get a list of keys from the lmdb
         self.keys_flat = list()
         self.keys = list()
-        for i in range(self.nb_classes):
-            self.keys.append(list())
+        self.keys.append(list())  # there will always be at least one class
 
         self.lmdb_env = lmdb.open(self.image_db, map_size=int(2e10), readonly=True) # 20 GB
         self.lmdb_txns = list()
@@ -131,18 +129,19 @@ class ImageReader:
             if self.image_size[1] % unet_model.UNet.SIZE_FACTOR != 0:
                 raise IOError('Input Image tile height needs to be a multiple of 16 to allow integer sized downscaled feature maps. Input images should be either HW or HWC dimension ordering')
 
+            cursor = lmdb_txn.cursor().iternext(keys=True, values=False)
             # iterate over the database getting the keys
-            for key, val in cursor:
+            for key in cursor:
                 self.keys_flat.append(key)
 
                 if self.balance_classes:
-                    datum.ParseFromString(val)
-                    # get list of classes the current sample has
-                    # convert from string to numpy array
-                    cur_labels = np.fromstring(datum.labels, dtype=datum.mask_type)
-                    # walk through the list of labels, adding that image to each label bin
-                    for l in cur_labels:
-                        self.keys[l].append(key)
+                    present_classes_str = key.decode('ascii').split(':')[1]
+                    present_classes_str = present_classes_str.split(',')
+                    for k in present_classes_str:
+                        k = int(k)
+                        while len(self.keys) <= k:
+                            self.keys.append(list())
+                        self.keys[k].append(key)
 
         print('Dataset has {} examples'.format(len(self.keys_flat)))
         if self.balance_classes:
