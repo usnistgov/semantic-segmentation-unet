@@ -18,6 +18,7 @@ if int(tf_version[0]) != 2:
 import unet_model
 import numpy as np
 import imagereader
+import skimage.io
 
 
 def _inference_tiling(img, model, tile_size):
@@ -175,10 +176,6 @@ def inference(saved_model_filepath, image_folder, output_folder, image_format):
     if not os.path.exists(output_folder):
         os.mkdir(output_folder)
 
-    prob_folder = output_folder.replace('_mask','_prob')
-    if not os.path.exists(prob_folder):
-        os.mkdir(prob_folder)
-
     img_filepath_list = [os.path.join(image_folder, fn) for fn in os.listdir(image_folder) if fn.endswith('.{}'.format(image_format))]
 
     model = tf.saved_model.load(saved_model_filepath)
@@ -209,7 +206,7 @@ def inference(saved_model_filepath, image_folder, output_folder, image_format):
             segmented_mask = segmented_mask.astype(np.uint16)
         if np.max(segmented_mask) > 65536:
             segmented_mask = segmented_mask.astype(np.int32)
-        imagereader.imwrite(segmented_mask, os.path.join(output_folder, slide_name))
+        skimage.io.imsave(os.path.join(output_folder, slide_name), segmented_mask, compress=6)
 
 
 if __name__ == "__main__":
