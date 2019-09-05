@@ -144,6 +144,12 @@ class UNet():
     def get_optimizer(self):
         return self.optimizer
 
+    def set_learning_rate(self, learning_rate):
+        self.optimizer.learning_rate = learning_rate
+
+    def get_learning_rate(self):
+        return self.optimizer.learning_rate
+
     def train_step(self, inputs):
         (images, labels, loss_metric, accuracy_metric) = inputs
         # Open a GradientTape to record the operations run
