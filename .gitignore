@@ -1,14 +1,24 @@
 # use glob syntax.
 syntax: glob
 
-SegNet/__pycache__
-SegNet/model
-UNet/__pycache__
-UNet/model
+data/images_random_3824
+ooc-inference-eval/unet-model
+ooc-inference-eval/unet-model-modified
+ooc-inference-eval/unet-model-random
+
+__pycache__
+
+# LaTex generated files
+*.aux
+*.bbl
+*.blg
+*.log
+*.out
+*.synctex.gz
+*.toc
 
 .idea
 *.lmdb
-
 
 # Ignore Extensions
 *.lnk
@@ -18,42 +28,3 @@ Thumbs.db
 *.swp
 *.dot
 *.pyc
-
-*.zip
-*.7z
-*.tar.gz
-*.tar
-*.index
-*.png
-# *.tif
-
-# Microsoft Extensions
-*.exe
-*.xlsx
-*.xls
-*.ppt
-*.pptx
-*.csv
-*.doc
-*.docx
-
-# Multimedia Extensions
-*.mp3
-*.mpeg
-*.avi
-*.mov
-*.wma
-*.wmv
-*.mp4
-*.jpg
-*.svg
-
-
-# LaTeX extensions
-*.aux
-*.log
-*.out
-*.pdf
-*.glo
-*.glsdefs
-*.ist

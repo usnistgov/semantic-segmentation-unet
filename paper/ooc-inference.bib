@@ -1,0 +1,184 @@
+@article{Russakovsky2015,
+	abstract = {The ImageNet Large Scale Visual Recognition Challenge is a benchmark in object category classification and detection on hundreds of object categories and millions of images. The challenge has been run annually from 2010 to present, attracting participation from more than fifty institutions. This paper describes the creation of this benchmark dataset and the advances in object recognition that have been possible as a result. We discuss the challenges of collecting large-scale ground truth annotation, highlight key breakthroughs in categorical object recognition, provide a detailed analysis of the current state of the field of large-scale image classification and object detection, and compare the state-of-the-art computer vision accuracy with human accuracy. We conclude with lessons learned in the five years of the challenge, and propose future directions and improvements.},
+	author = {Russakovsky, Olga and Deng, Jia and Su, Hao and Krause, Jonathan and Satheesh, Sanjeev and Ma, Sean and Huang, Zhiheng and Karpathy, Andrej and Khosla, Aditya and Bernstein, Michael and Berg, Alexander C. and Fei-Fei, Li},
+	doi = {10.1007/s11263-015-0816-y},
+	issn = {15731405},
+	journal = {International Journal of Computer Vision},
+	keywords = {Benchmark,Dataset,Large-scale,Object detection,Object recognition},
+	mendeley-groups = {Out-of-Core-Inference},
+	pages = {211--252},
+	publisher = {Springer US},
+	title = {{ImageNet Large Scale Visual Recognition Challenge}},
+	url = {http://dx.doi.org/10.1007/s11263-015-0816-y},
+	volume = {115},
+	year = {2015}
+}
+@inproceedings{Badrinarayanan2015a,
+	abstract = {We present a novel and practical deep fully convolutional neural network architecture for semantic pixel-wise segmentation termed SegNet. This core trainable segmentation engine consists of an encoder network, a corresponding decoder network followed by a pixel-wise classification layer. The architecture of the encoder network is topologically identical to the 13 convolutional layers in the VGG16 network. The role of the decoder network is to map the low resolution encoder feature maps to full input resolution feature maps for pixel-wise classification. The novelty of SegNet lies is in the manner in which the decoder upsamples its lower resolution input feature map(s). Specifically, the decoder uses pooling indices computed in the max-pooling step of the corresponding encoder to perform non-linear upsampling. This eliminates the need for learning to upsample. The upsampled maps are sparse and are then convolved with trainable filters to produce dense feature maps. We compare our proposed architecture with the widely adopted FCN and also with the well known DeepLab-LargeFOV, DeconvNet architectures. This comparison reveals the memory versus accuracy trade-off involved in achieving good segmentation performance. SegNet was primarily motivated by scene understanding applications. Hence, it is designed to be efficient both in terms of memory and computational time during inference. It is also significantly smaller in the number of trainable parameters than other competing architectures. We also performed a controlled benchmark of SegNet and other architectures on both road scenes and SUN RGB-D indoor scene segmentation tasks. We show that SegNet provides good performance with competitive inference time and more efficient inference memory-wise as compared to other architectures. We also provide a Caffe implementation of SegNet and a web demo at http://mi.eng.cam.ac.uk/projects/segnet/.},
+	archivePrefix = {arXiv},
+	arxivId = {1511.00561},
+	author = {Badrinarayanan, Vijay and Kendall, Alex and Cipolla, Roberto},
+	booktitle = {IEEE transactions on pattern analysis and machine intelligence},
+	doi = {10.1109/TPAMI.2016.2644615},
+	eprint = {1511.00561},
+	isbn = {9783319464879},
+	issn = {0162-8828},
+	mendeley-groups = {Deep-Learning,Out-of-Core-Inference},
+	pmid = {28060704},
+	title = {{SegNet: A Deep Convolutional Encoder-Decoder Architecture for Image Segmentation}},
+	url = {http://arxiv.org/abs/1511.00561},
+	year = {2017}
+}
+@article{Bhadriraju2016,
+	abstract = {Identification and quantification of the characteristics of stem cell preparations is critical for understanding stem cell biology and for the development and manufacturing of stem cell based therapies. We have developed image analysis and visualization software that allows effective use of time-lapse microscopy to provide spatial and dynamic information from large numbers of human embryonic stem cell colonies. To achieve statistically relevant sampling, we examined {\textgreater} 680 colonies from 3 different preparations of cells over 5 days each, generating a total experimental dataset of 0.9 terabyte (TB). The 0.5 Giga-pixel images at each time point were represented by multi-resolution pyramids and visualized using the Deep Zoom Javascript library extended to support viewing Giga-pixel images over time and extracting data on individual colonies. We present a methodology that enables quantification of variations in nominally-identical preparations and between colonies, correlation of colony characteristics with Oct4 expression, and identification of rare events.},
+	author = {Bhadriraju, Kiran and Halter, Michael and Amelot, Julien and Bajcsy, Peter and Chalfoun, Joe and Vandecreme, Antoine and Mallon, Barbara S. and Park, Kye-yoon and Sista, Subhash and Elliott, John T. and Plant, Anne L.},
+	doi = {10.1016/j.scr.2016.05.012},
+	issn = {18735061},
+	journal = {Stem Cell Research},
+	mendeley-groups = {Terascale-Image-Analysis-Reliability},
+	number = {1},
+	pages = {122--129},
+	pmid = {27286574},
+	title = {{Large-scale time-lapse microscopy of Oct4 expression in human embryonic stem cell colonies}},
+	url = {http://linkinghub.elsevier.com/retrieve/pii/S1873506116300502},
+	volume = {17},
+	year = {2016}
+}
+@inproceedings{Ronneberger2015a,
+	abstract = {There is large consent that successful training of deep networks requires many thousand annotated training samples. In this paper, we present a network and training strategy that relies on the strong use of data augmentation to use the available annotated samples more efficiently. The architecture consists of a contracting path to capture context and a symmetric expanding path that enables precise localization. We show that such a network can be trained end-to-end from very few images and outperforms the prior best method (a sliding-window convolutional network) on the ISBI challenge for segmentation of neuronal structures in electron microscopic stacks. Using the same network trained on transmitted light microscopy images (phase contrast and DIC) we won the ISBI cell tracking challenge 2015 in these categories by a large margin. Moreover, the network is fast. Segmentation of a 512x512 image takes less than a second on a recent GPU. The full implementation (based on Caffe) and the trained networks are available at http://lmb.informatik.uni-freiburg.de/people/ronneber/u-net .},
+	archivePrefix = {arXiv},
+	arxivId = {1505.04597},
+	author = {Ronneberger, Olaf and Fischer, Philipp and Brox, Thomas},
+	booktitle = {International Conference on Medical image computing and computer-assisted intervention},
+	doi = {10.1007/978-3-319-24574-4_28},
+	eprint = {1505.04597},
+	isbn = {978-3-319-24573-7},
+	issn = {16113349},
+	mendeley-groups = {Deep-Learning,Out-of-Core-Inference},
+	month = {may},
+	pages = {234--241},
+	pmid = {23285570},
+	title = {{U-Net: Convolutional Networks for Biomedical Image Segmentation}},
+	url = {http://arxiv.org/abs/1505.04597},
+	year = {2015}
+}
+@misc{Bardakoff2019,
+	author       = {Alexandre Bardakoff},
+	title        = {Fast Image (FI) : A High-Performance Accessor for Processing Gigapixel Images},
+	month        = Aug,
+	year         = 2019,
+	url          = {https://github.com/usnistgov/FastImage}
+}
+@inproceedings{Long2015,
+	abstract = {Convolutional networks are powerful visual models that yield hierarchies of features. We show that convolutional networks by themselves, trained end-to-end, pixels-to-pixels, exceed the state-of-the-art in semantic segmentation. Our key insight is to build "fully convolutional" networks that take input of arbitrary size and produce correspondingly-sized output with efficient inference and learning. We define and detail the space of fully convolutional networks, explain their application to spatially dense prediction tasks, and draw connections to prior models. We adapt contemporary classification networks (AlexNet, the VGG net, and GoogLeNet) into fully convolutional networks and transfer their learned representations by fine-tuning to the segmentation task. We then define a novel architecture that combines semantic information from a deep, coarse layer with appearance information from a shallow, fine layer to produce accurate and detailed segmentations. Our fully convolutional network achieves state-of-the-art segmentation of PASCAL VOC (20{\%} relative improvement to 62.2{\%} mean IU on 2012), NYUDv2, and SIFT Flow, while inference takes one third of a second for a typical image.},
+	archivePrefix = {arXiv},
+	arxivId = {1411.4038},
+	author = {Long, Jonathan and Shelhamer, Evan and Darrell, Trevor},
+	booktitle = {Proceedings of the IEEE Computer Society Conference on Computer Vision and Pattern Recognition},
+	doi = {10.1109/CVPR.2015.7298965},
+	eprint = {1411.4038},
+	isbn = {9781467369640},
+	issn = {10636919},
+	mendeley-groups = {Deep-Learning,Out-of-Core-Inference},
+	pmid = {16190471},
+	title = {{Fully convolutional networks for semantic segmentation}},
+	year = {2015}
+}
+@article{Sherrah2016,
+	title={Fully convolutional networks for dense semantic labelling of high-resolution aerial imagery},
+	author={Sherrah, Jamie},
+	journal={arXiv preprint arXiv:1606.02585},
+	year={2016}
+}
+@inproceedings{Lin2019,
+	abstract = {Lymph node metastasis is one of the most important indicators in breast cancer diagnosis, that is traditionally observed under the microscope by pathologists. In recent years, with the dramatic advance of high-throughput scanning and deep learning technology, automatic analysis of histology from wholeslide images has received a wealth of interest in the field of medical image computing, which aims to alleviate pathologists' workload and simultaneously reduce misdiagnosis rate. However, automatic detection of lymph node metastases from whole-slide images remains a key challenge because such images are typically very large, where they can often be multiple gigabytes in size. Also, the presence of hard mimics may result in a large number of false positives. In this paper, we propose a novel method with anchor layers for model conversion, which not only leverages the efficiency of fully convolutional architectures to meet the speed requirement in clinical practice, but also densely scans the wholeslide image to achieve accurate predictions on both micro- and macro-metastases. Incorporating the strategies of asynchronous sample prefetching and hard negative mining, the network can be effectively trained. The efficacy of our method are corroborated on the benchmark dataset of 2016 Camelyon Grand Challenge. Our method achieved significant improvements in comparison with the state-of-the-art methods on tumour localization accuracy with a much faster speed and even surpassed human performance on both challenge tasks.;},
+	author = {Lin, Huangjing and Chen, Hao and Graham, Simon and Dou, Qi and Rajpoot, Nasir and Heng, Pheng-Ann},
+	booktitle = {IEEE Transactions on Medical Imaging},
+	doi = {10.1109/tmi.2019.2891305},
+	issn = {0278-0062},
+	mendeley-groups = {Out-of-Core-Inference},
+	pages = {1948--1958},
+	title = {{Fast ScanNet: Fast and Dense Analysis of Multi-Gigapixel Whole-Slide Images for Cancer Metastasis Detection}},
+	volume = {38},
+	year = {2019}
+}
+@inproceedings{Volpi2017a,
+	abstract = {Semantic labeling (or pixel-level land-cover classification) in ultra-high resolution imagery ({\textless} 10cm) requires statistical models able to learn high level concepts from spatial data, with large appearance variations. Convolutional Neural Networks (CNNs) achieve this goal by learning discriminatively a hierarchy of representations of increasing abstraction. In this paper we present a CNN-based system relying on an downsample-then-upsample architecture. Specifically, it first learns a rough spatial map of high-level representations by means of convolutions and then learns to upsample them back to the original resolution by deconvolutions. By doing so, the CNN learns to densely label every pixel at the original resolution of the image. This results in many advantages, including i) state-of-the-art numerical accuracy, ii) improved geometric accuracy of predictions and iii) high efficiency at inference time. We test the proposed system on the Vaihingen and Potsdam sub-decimeter resolution datasets, involving semantic labeling of aerial images of 9cm and 5cm resolution, respectively. These datasets are composed by many large and fully annotated tiles allowing an unbiased evaluation of models making use of spatial information. We do so by comparing two standard CNN architectures to the proposed one: standard patch classification, prediction of local label patches by employing only convolutions and full patch labeling by employing deconvolutions. All the systems compare favorably or outperform a state-of-the-art baseline relying on superpixels and powerful appearance descriptors. The proposed full patch labeling CNN outperforms these models by a large margin, also showing a very appealing inference time.},
+	author = {Volpi, Michele and Tuia, Devis},
+	booktitle = {IEEE Transactions on Geoscience and Remote Sensing},
+	doi = {10.1109/TGRS.2016.2616585},
+	issn = {01962892},
+	keywords = {Aerial images,classification,convolutional neural networks (CNNs),deconvolution networks,deep learning,semantic labeling,subdecimeter resolution},
+	mendeley-groups = {Out-of-Core-Inference},
+	pages = {881--893},
+	publisher = {IEEE},
+	title = {{Dense semantic labeling of subdecimeter resolution images with convolutional neural networks}},
+	volume = {55},
+	year = {2016}
+}
+@inproceedings{Maggiori2016,
+	abstract = {We propose a convolutional neural network (CNN) model for remote sensing image classification. Using CNNs provides us with a means of learning contextual features for large-scale image labeling. Our network consists of four stacked convolutional layers that downsample the image and extract relevant features. On top of these, a deconvolutional layer upsamples the data back to the initial resolution, producing a final dense image labeling. Contrary to previous frameworks, our network contains only convolution and deconvolution operations. Experiments on aerial images show that our network produces more accurate classifications in lower computational time.},
+	author = {Maggiori, Emmanuel and Tarabalka, Yuliya and Charpiat, Guillaume and Alliez, Pierre},
+	booktitle = {International Geoscience and Remote Sensing Symposium (IGARSS)},
+	doi = {10.1109/IGARSS.2016.7730322},
+	isbn = {9781509033324},
+	keywords = {Remote sensing images,classification,convolutional neural networks,deep learning},
+	mendeley-groups = {Out-of-Core-Inference},
+	publisher = {IEEE},
+	title = {{Fully convolutional neural networks for remote sensing image classification}},
+	year = {2016}
+}
+@article{Huang2019a,
+	title={Tiling and Stitching Segmentation Output for Remote Sensing: Basic Challenges and Recommendations},
+	author={Huang, Bohao and Reichman, Daniel and Collins, Leslie M and Bradbury, Kyle and Malof, Jordan M},
+	journal={arXiv preprint arXiv:1805.12219},
+	year={2019}
+}
+@article{Iglovikov2017,
+	title={Satellite imagery feature detection using deep convolutional neural network: A kaggle competition},
+	author={Iglovikov, Vladimir and Mushinskiy, Sergey and Osin, Vladimir},
+	journal={arXiv preprint arXiv:1706.06169},
+	year={2017}
+}
+@article{ioffe2015batch,
+	title={Batch normalization: Accelerating deep network training by reducing internal covariate shift},
+	author={Ioffe, Sergey and Szegedy, Christian},
+	journal={arXiv preprint arXiv:1502.03167},
+	year={2015}
+}
+@article{Dumoulin2018,
+	title={A guide to convolution arithmetic for deep learning},
+	author={Dumoulin, Vincent and Visin, Francesco},
+	journal={arXiv preprint arXiv:1603.07285},
+	year={2016}
+}
+@article{lecun2015deep,
+	title={Deep learning},
+	author={LeCun, Yann and Bengio, Yoshua and Hinton, Geoffrey},
+	journal={nature},
+	volume={521},
+	number={7553},
+	pages={436},
+	year={2015},
+	publisher={Nature Publishing Group}
+}
+@article{Sermanet2013,
+	title={Overfeat: Integrated recognition, localization and detection using convolutional networks},
+	author={Sermanet, Pierre and Eigen, David and Zhang, Xiang and Mathieu, Micha{\"e}l and Fergus, Rob and LeCun, Yann},
+	journal={arXiv preprint arXiv:1312.6229},
+	year={2013}
+}
+@inproceedings{VanEtten2019,
+	abstract = {Detecting small objects over large areas remains a significant challenge in satellite imagery analytics. Among the challenges is the sheer number of pixels and geographical extent per image: a single DigitalGlobe satellite image encompasses over 64 km2 and over 250 million pixels. Another challenge is that objects of interest are often minuscule ({\~{}}pixels in extent even for the highest resolution imagery), which complicates traditional computer vision techniques. To address these issues, we propose a pipeline (SIMRDWN) that evaluates satellite images of arbitrarily large size at native resolution at a rate of {\textgreater} 0.2 km2/s. Building upon the tensorflow object detection API paper, this pipeline offers a unified approach to multiple object detection frameworks that can run inference on images of arbitrary size. The SIMRDWN pipeline includes a modified version of YOLO (known as YOLT), along with the models of the tensorflow object detection API: SSD, Faster R-CNN, and R-FCN. The proposed approach allows comparison of the performance of these four frameworks, and can rapidly detect objects of vastly different scales with relatively little training data over multiple sensors. For objects of very different scales (e.g. airplanes versus airports) we find that using two different detectors at different scales is very effective with negligible runtime cost.We evaluate large test images at native resolution and find mAP scores of 0.2 to 0.8 for vehicle localization, with the YOLT architecture achieving both the highest mAP and fastest inference speed.},
+	author = {{Van Etten}, Adam},
+	booktitle = {2019 IEEE Winter Conference on Applications of Computer Vision (WACV)},
+	doi = {10.1109/WACV.2019.00083},
+	isbn = {9781728119755},
+	mendeley-groups = {Out-of-Core-Inference},
+	pages = {735--743},
+	publisher = {IEEE},
+	title = {{Satellite imagery multiscale rapid detection with windowed networks}},
+	year = {2019}
+}
+
+

@@ -2,12 +2,21 @@
 
 # SemanticSegmentation
 
-Semantic Segmentation Tesnorflow models ready to run on Enki.
+Semantic Segmentation Tesnorflow model.
 - UNet: [https://arxiv.org/pdf/1505.04597.pdf](https://arxiv.org/pdf/1505.04597.pdf)
 
+# TODO
+- update readme to reflect current state of the codebase
+- add data section for the input data used for the paper
+- add paper latex files to repo
+- add data to repo
+
+
+<!--
 
 # Input Data Constraints
-There is example input data included in the repo under the [data](https://gitlab.nist.gov/gitlab/mmajursk/Semantic-Segmentation/tree/master/data) folder
+
+ There is example input data included in the repo under the [data](https://gitlab.nist.gov/gitlab/mmajursk/Semantic-Segmentation/tree/master/data) folder
 
 Input data assumptions:
 - image type: N channel image with one of these pixel types: uint8, uint16, int32, float32
@@ -19,7 +28,9 @@ Input data assumptions:
 
 Before training script can be launched, the input data needs to be converted into a memory mapped database ([lmdb](https://en.wikipedia.org/wiki/Lightning_Memory-Mapped_Database)) to enable fast memory mapped file reading during training. 
 
+
 # LMDB Construction
+
 This training code uses lmdb databases to store the image and mask data to enable parallel memory-mapped file reader to keep the GPUs fed. 
 
 The input folder of images and masks needs to be split into train and test. Train to update the model parameters, and test to estimate the generalization accuracy of the resulting model. By default 80% of the data is used for training, 20% for test.
@@ -51,9 +62,10 @@ optional arguments:
   --train_fraction TRAIN_FRACTION
                         what fraction of the dataset to use for training
 ```
-
+ 
 
 # Training
+
 With the lmdb build there are two methods for training a model. 
 
 Single Node Multi GPU
@@ -109,8 +121,10 @@ A few of the arguments require explanation.
 - `early_stopping`: this is an integer specifying the early stopping criteria. If the model test loss does not improve after this number of epochs (epoch defined as `test_every_n_steps steps` updates) training is terminated because we have moved into overfitting the training dataset.
 
 
+
 # Image Readers
-One of the defining features of this codebase is the parallel (python multiprocess) image reading from lightning memory mapped databases. 
+
+One of the defining featuresof this codebase is the parallel (python multiprocess) image reading from lightning memory mapped databases. 
 
 There are typically 1 or more reader threads feeding each GPU. 
 
@@ -136,7 +150,7 @@ along with the matching message letting you know when the imagereaders have caug
 
 ```
 Input Queue Starvation Over
-```
+``` 
 
 # Image Augmentation
 
@@ -169,3 +183,4 @@ self._scale_augmentation_severity = 0.1  # vary size by x%
 self._blur_max_sigma = 2  # pixels
 # self._intensity_augmentation_severity = 0.05
 ``` 
+ 
