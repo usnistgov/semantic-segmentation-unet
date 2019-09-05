@@ -23,6 +23,7 @@ if int(tf_version[0]) != 2:
 
 import unet_model
 import imagereader
+import time
 
 
 def train_model(output_folder, batch_size, reader_count, train_lmdb_filepath, test_lmdb_filepath, use_augmentation, number_classes, balance_classes, learning_rate, test_every_n_steps, early_stopping_count):
@@ -102,9 +103,18 @@ def train_model(output_folder, batch_size, reader_count, train_lmdb_filepath, te
             while True:  # loop until early stopping
                 print('---- Epoch: {} ----'.format(epoch))
 
+                if epoch == 0:
+                    cur_train_epoch_size = min(1000, train_epoch_size)
+                    print('Performing Adam Optimizer learning rate warmup for {} steps'.format(cur_train_epoch_size))
+                    model.set_learning_rate(learning_rate / 10)
+                else:
+                    cur_train_epoch_size = train_epoch_size
+                    model.set_learning_rate(learning_rate)
+
                 # Iterate over the batches of the train dataset.
+                start_time = time.time()
                 for step, (batch_images, batch_labels) in enumerate(train_dataset):
-                    if step > train_epoch_size:
+                    if step > cur_train_epoch_size:
                         break
 
                     inputs = (batch_images, batch_labels, train_loss_metric, train_acc_metric)
@@ -141,6 +151,8 @@ def train_model(output_folder, batch_size, reader_count, train_lmdb_filepath, te
                     for i in range(len(test_loss)):
                         csvfile.write(str(test_loss[i]))
                         csvfile.write('\n')
+
+                print('Epoch took: {} s'.format(time.time() - start_time))
 
                 # determine if to record a new checkpoint based on best test loss
                 if (len(test_loss) - 1) == np.argmin(test_loss):

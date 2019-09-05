@@ -21,15 +21,33 @@ import imagereader
 import skimage.io
 
 
-def _inference_tiling(img, model, tile_size):
+def _inference_tiling(img, model, tile_size, radius):
+
+    # Pad the input image in CPU memory to ensure its dimensions are multiples of the U-Net Size Factor
+    pad_x = 0
+    pad_y = 0
+    if img.shape[0] % unet_model.UNet.SIZE_FACTOR != 0:
+        pad_y = (unet_model.UNet.SIZE_FACTOR - img.shape[0] % unet_model.UNet.SIZE_FACTOR)
+        print('image height needs to be a multiple of {}, padding with reflect'.format(unet_model.UNet.SIZE_FACTOR))
+    if img.shape[1] % unet_model.UNet.SIZE_FACTOR != 0:
+        pad_x = (unet_model.UNet.SIZE_FACTOR - img.shape[1] % unet_model.UNet.SIZE_FACTOR)
+        print('image width needs to be a multiple of {}, padding with reflect'.format(unet_model.UNet.SIZE_FACTOR))
+
+    if len(img.shape) != 2 and len(img.shape) != 3:
+        raise IOError('Invalid number of dimensions for input image. Expecting HW or HWC dimension ordering.')
+
+    if len(img.shape) == 2:
+        # add a channel dimension
+        img = img.reshape((img.shape[0], img.shape[1], 1))
+    if pad_x > 0 or pad_y > 0:
+        img = np.pad(img, pad_width=((0, pad_y), (0, pad_x), (0, 0)), mode='reflect')
+        print('Padded Image Size: {}'.format(img.shape))
 
     height = img.shape[0]
     width = img.shape[1]
     mask = np.zeros((height, width), dtype=np.int32)
 
-    # radius = unet_model.UNet.SIZE_FACTOR
     assert tile_size % unet_model.UNet.SIZE_FACTOR == 0
-    radius = unet_model.UNet.RADIUS
     assert radius % unet_model.UNet.SIZE_FACTOR == 0
     zone_of_responsibility_size = tile_size - 2 * radius
 
@@ -49,89 +67,65 @@ def _inference_tiling(img, model, tile_size):
 
             radius_pre_x = radius
             if x_st < 0:
-                dist_from_edge = x_st_z
-                radius_pre_x = int(np.ceil(dist_from_edge / unet_model.UNet.SIZE_FACTOR) * unet_model.UNet.SIZE_FACTOR)
                 x_st = 0
+                radius_pre_x = 0
 
             radius_pre_y = radius
             if y_st < 0:
-                dist_from_edge = y_st_z
-                radius_pre_y = int(np.ceil(dist_from_edge / unet_model.UNet.SIZE_FACTOR) * unet_model.UNet.SIZE_FACTOR)
+                radius_pre_y = 0
                 y_st = 0
 
-            post_pad_x = 0
             radius_post_x = radius
             if x_end > width:
-                if x_end_z > width:
-                    tmp_w = width - x_st_z
-                    w_plus_radius = int(np.ceil(tmp_w / unet_model.UNet.SIZE_FACTOR) * unet_model.UNet.SIZE_FACTOR)
-                    radius_post_x = w_plus_radius - tmp_w
-                    post_pad_x = radius_post_x
-                    x_end = width
-                    x_end_z = width
-                else:
-                    dist_from_edge = width - x_end_z
-                    radius_post_x = int(np.ceil(dist_from_edge / unet_model.UNet.SIZE_FACTOR) * unet_model.UNet.SIZE_FACTOR)
-                    post_pad_x = radius_post_x - dist_from_edge
-                    x_end = width
+                radius_post_x = 0
+                x_end = width
+                x_end_z = width
 
-            post_pad_y = 0
             radius_post_y = radius
             if y_end > height:
-                if y_end_z > height:
-                    tmp_h = height - y_st_z
-                    h_plus_radius = int(np.ceil(tmp_h / unet_model.UNet.SIZE_FACTOR) * unet_model.UNet.SIZE_FACTOR)
-                    radius_post_y = h_plus_radius - tmp_h
-                    post_pad_y = radius_post_y
-                    y_end = height
-                    y_end_z = height
-                else:
-                    dist_from_edge = height - y_end_z
-                    radius_post_y = int(np.ceil(dist_from_edge / unet_model.UNet.SIZE_FACTOR) * unet_model.UNet.SIZE_FACTOR)
-                    post_pad_y = radius_post_y - dist_from_edge
-                    y_end = height
+                radius_post_y = 0
+                y_end = height
+                y_end_z = height
 
             # crop out the tile
             tile = img[y_st:y_end, x_st:x_end]
-
-            if len(tile.shape) != 2 and len(tile.shape) != 3:
-                raise IOError('Invalid number of dimensions for input image. Expecting HW or HWC dimension ordering.')
-
-            if len(tile.shape) == 2:
-                # add a channel dimension
-                tile = tile.reshape((tile.shape[0], tile.shape[1], 1))
-
-            if post_pad_x > 0 or post_pad_y > 0:
-                # ensure its correct size (if tile exists at the edge of the image
-                tile = np.pad(tile, pad_width=((0, post_pad_y), (0, post_pad_x), (0, 0)), mode='reflect')
 
             # convert HWC to CHW
             batch_data = tile.transpose((2, 0, 1))
             # convert CHW to NCHW
             batch_data = batch_data.reshape((1, batch_data.shape[0], batch_data.shape[1], batch_data.shape[2]))
 
-            softmax = model(batch_data) # model output defined in unet_model is softmax
-            softmax = np.squeeze(softmax)
-            pred = np.squeeze(np.argmax(softmax, axis=-1).astype(np.int32))
+            sm = model(batch_data)  # model output defined in unet_model is softmax
+            sm = np.squeeze(sm)
+            pred = np.squeeze(np.argmax(sm, axis=-1).astype(np.int32))
 
             # radius_pre_x
             if radius_pre_x > 0:
                 pred = pred[:, radius_pre_x:]
+                sm = sm[:, radius_pre_x:]
 
             # radius_pre_y
             if radius_pre_y > 0:
                 pred = pred[radius_pre_y:, :]
+                sm = sm[radius_pre_y:, :]
 
             # radius_post_x
             if radius_post_x > 0:
                 pred = pred[:, :-radius_post_x]
+                sm = sm[:, :-radius_post_x]
 
             # radius_post_y
             if radius_post_y > 0:
                 pred = pred[:-radius_post_y, :]
+                sm = sm[:-radius_post_y, :]
 
             mask[y_st_z:y_end_z, x_st_z:x_end_z] = pred
 
+    # undo and CPU side image padding to make the image a multiple of U-Net Size Factor
+    if pad_x > 0:
+        mask = mask[:, 0:-pad_x]
+    if pad_y > 0:
+        mask = mask[0:-pad_y, :]
     return mask
 
 
