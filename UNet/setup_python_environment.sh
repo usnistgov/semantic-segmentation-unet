@@ -10,7 +10,7 @@ source ./tf/bin/activate
 
 pip install --upgrade pip
 pip install --upgrade setuptools
-pip install tensorflow-gpu==2.0.0-beta1
+pip install tensorflow-gpu==2.0.0-rc0
 pip install lmdb
 pip install scikit-image
 pip install pydot
