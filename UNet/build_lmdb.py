@@ -200,7 +200,7 @@ if __name__ == "__main__":
     parser.add_argument('--dataset_name', dest='dataset_name', type=str, help='name of the dataset to be used in creating the lmdb files', default='HES')
     parser.add_argument('--train_fraction', dest='train_fraction', type=float, help='what fraction of the dataset to use for training (0.0, 1.0)', default=0.8)
     parser.add_argument('--image_format', dest='image_format', type=str, help='format (extension) of the input images. E.g {tif, jpg, png)', default='tif')
-    parser.add_argument('--use_tiling', dest='use_tiling', type=int, help='Whether to shard the image into tile [0 = False, 1 = True]', default=0)
+    parser.add_argument('--use_tiling', dest='use_tiling', type=int, help='Whether to shard the image into tiles [0 = False, 1 = True]', default=0)
     parser.add_argument('--tile_size', dest='tile_size', type=int, help='The size of the tiles to crop out of the source images, striding across all available pixels in the source images', default=512)
 
 

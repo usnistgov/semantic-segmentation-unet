@@ -7,7 +7,7 @@ Semantic Segmentation Tesnorflow models ready to run on Enki.
 
 
 # Input Data Constraints
-There is example input data included in the repo under the [data](https://gitlab.nist.gov/gitlab/mmajursk/Semantic-Segmentation/tree/master/data) folder
+There is example input data included in the repo under the data folder.
 
 Input data assumptions:
 - image type: N channel image with one of these pixel types: uint8, uint16, int32, float32
@@ -28,10 +28,11 @@ The input folder of images and masks needs to be split into train and test. Trai
 ```
 python build_lmdb.py -h
 usage: build_lmdb [-h] [--image_folder IMAGE_FOLDER]
-                  [--mask_folder MASK_FOLDER]
-                  [--output_filepath OUTPUT_FILEPATH]
+                  [--mask_folder MASK_FOLDER] [--output_folder OUTPUT_FOLDER]
                   [--dataset_name DATASET_NAME]
                   [--train_fraction TRAIN_FRACTION]
+                  [--image_format IMAGE_FORMAT] [--use_tiling USE_TILING]
+                  [--tile_size TILE_SIZE]
 
 Script which converts two folders of images and masks into a pair of lmdb
 databases for training.
@@ -42,49 +43,62 @@ optional arguments:
                         filepath to the folder containing the images
   --mask_folder MASK_FOLDER
                         filepath to the folder containing the masks
-  --output_filepath OUTPUT_FILEPATH
+  --output_folder OUTPUT_FOLDER
                         filepath to the folder where the outputs will be
                         placed
   --dataset_name DATASET_NAME
                         name of the dataset to be used in creating the lmdb
                         files
   --train_fraction TRAIN_FRACTION
-                        what fraction of the dataset to use for training
+                        what fraction of the dataset to use for training (0.0,
+                        1.0)
+  --image_format IMAGE_FORMAT
+                        format (extension) of the input images. E.g {tif, jpg,
+                        png)
+  --use_tiling USE_TILING
+                        Whether to shard the image into tiles [0 = False, 1 =
+                        True]
+  --tile_size TILE_SIZE
+                        The size of the tiles to crop out of the source
+                        images, striding across all available pixels in the
+                        source images
 ```
 
 
 # Training
-With the lmdb build there are two methods for training a model. 
-
-Single Node Multi GPU
-	- If you want to train the model on local hardware use python and launch `train_unet.py`
-
+With the lmdb built, the script `train_unet.py` will perform single-node multi-gpu training using Tensorflow 2.0's Distribution Strategy.
 
 The full help for the training script is:
 
 
 ```
 python train_unet.py -h
-usage: train_unet [-h] [--batch_size BATCH_SIZE]
+usage: train_unet [-h] --train_database TRAIN_DATABASE_FILEPATH
+                  --test_database TEST_DATABASE_FILEPATH 
+                  --output_dir OUTPUT_FOLDER 
+                  [--batch_size BATCH_SIZE]
                   [--number_classes NUMBER_CLASSES]
-                  [--learning_rate LEARNING_RATE] --output_dir OUTPUT_FOLDER
+                  [--learning_rate LEARNING_RATE]
                   [--test_every_n_steps TEST_EVERY_N_STEPS]
                   [--balance_classes BALANCE_CLASSES]
-                  [--use_augmentation USE_AUGMENTATION] --train_database
-                  TRAIN_DATABASE_FILEPATH --test_database
-                  TEST_DATABASE_FILEPATH
-                  [--early_stopping TERMINATE_AFTER_NUM_EPOCHS_WITHOUT_TEST_LOSS_IMPROVEMENT]
+                  [--use_augmentation USE_AUGMENTATION]
+                  [--early_stopping EARLY_STOPPING_COUNT]
+                  [--reader_count READER_COUNT]
 
 Script which trains a unet model
 
 optional arguments:
   -h, --help            show this help message and exit
+  --train_database TRAIN_DATABASE_FILEPATH
+                        lmdb database to use for (Required)
+  --test_database TEST_DATABASE_FILEPATH
+                        lmdb database to use for testing (Required)
+  --output_dir OUTPUT_FOLDER
+                        Folder where outputs will be saved (Required)
   --batch_size BATCH_SIZE
                         training batch size
   --number_classes NUMBER_CLASSES
   --learning_rate LEARNING_RATE
-  --output_dir OUTPUT_FOLDER
-                        Folder where outputs will be saved (Required)
   --test_every_n_steps TEST_EVERY_N_STEPS
                         number of gradient update steps to take between test
                         epochs
@@ -92,14 +106,12 @@ optional arguments:
                         whether to balance classes [0 = false, 1 = true]
   --use_augmentation USE_AUGMENTATION
                         whether to use data augmentation [0 = false, 1 = true]
-  --train_database TRAIN_DATABASE_FILEPATH
-                        lmdb database to use for (Required)
-  --test_database TEST_DATABASE_FILEPATH
-                        lmdb database to use for testing (Required)
-  --early_stopping TERMINATE_AFTER_NUM_EPOCHS_WITHOUT_TEST_LOSS_IMPROVEMENT
+  --early_stopping EARLY_STOPPING_COUNT
                         Perform early stopping when the test loss does not
                         improve for N epochs.
-
+  --reader_count READER_COUNT
+                        how many threads to use for disk I/O and augmentation
+                        per gpu
 ```
 
 A few of the arguments require explanation.
@@ -116,7 +128,7 @@ There are typically 1 or more reader threads feeding each GPU.
 
 Each ImageReader class instance:
 - selects the next image (potentially at random from the shuffled dataset)
-- loads images from a shared lmdb read-only reference
+- loads images from a shared lmdb read-only instance
 - determines the image augmentation parameters from by defining augmentation limits
 - applies the augmentation transformation to the image and mask pair
 - add the augmented image to the batch that reader is building
@@ -169,3 +181,30 @@ self._scale_augmentation_severity = 0.1  # vary size by x%
 self._blur_max_sigma = 2  # pixels
 # self._intensity_augmentation_severity = 0.05
 ``` 
+
+# Inference
+
+Once you have a trained model, the script `inference_unet.py` will take the `saved_model` from the training run and use it to inference all of the images in a specified folder.
+
+```
+python inference_unet.py -h
+usage: inference [-h] --saved_model_filepath SAVED_MODEL_FILEPATH
+                 --image_folder IMAGE_FOLDER 
+                 --output_folder OUTPUT_FOLDER
+                 [--image_format IMAGE_FORMAT]
+
+Script to detect stars with the selected unet model
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --saved_model_filepath SAVED_MODEL_FILEPATH
+                        SavedModel filepath to the model to use
+  --image_folder IMAGE_FOLDER
+                        filepath to the folder containing tif images to
+                        inference (Required)
+  --output_folder OUTPUT_FOLDER
+  --image_format IMAGE_FORMAT
+                        format (extension) of the input images. E.g {tif, jpg,
+                        png)
+
+```
