@@ -4,8 +4,12 @@
 
 import sys
 if sys.version_info[0] < 3:
-    print('Python3 required')
-    sys.exit(1)
+    raise Exception('Python3 required')
+
+import tensorflow as tf
+tf_version = tf.__version__.split('.')
+if int(tf_version[0]) != 2:
+    raise Exception('Tensorflow 2.x.x required')
 
 import multiprocessing
 from multiprocessing import Process
@@ -19,11 +23,6 @@ import os
 import skimage.io
 import skimage.transform
 from isg_ai_pb2 import ImageMaskPair
-import tensorflow as tf
-tf_version = tf.__version__.split('.')
-if int(tf_version[0]) != 2:
-    import warnings
-    warnings.warn('Codebase designed for Tensorflow 2.x.x')
 import unet_model
 
 
@@ -287,7 +286,11 @@ class ImageReader:
                 h, w = M.shape
                 M = M.reshape(-1)
                 fM = np.zeros((len(M), self.nb_classes), dtype=np.int32)
-                fM[np.arange(len(M)), M] = 1
+                try:
+                    fM[np.arange(len(M)), M] = 1
+                except IndexError as e:
+                    print('ImageReader Error: Number of classes specified differs from number of observed classes in data')
+                    raise e
                 fM = fM.reshape((h, w, self.nb_classes))
 
                 # add the batch in the output queue

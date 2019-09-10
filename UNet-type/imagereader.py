@@ -287,7 +287,11 @@ class ImageReader:
                 h, w = M.shape
                 M = M.reshape(-1)
                 fM = np.zeros((len(M), self.nb_classes), dtype=np.int32)
-                fM[np.arange(len(M)), M] = 1
+                try:
+                    fM[np.arange(len(M)), M] = 1
+                except IndexError as e:
+                    print('ImageReader Error: Number of classes specified differs from number of observed classes in data')
+                    raise e
                 fM = fM.reshape((h, w, self.nb_classes))
 
                 # add the batch in the output queue

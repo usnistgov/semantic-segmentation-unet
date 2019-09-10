@@ -103,7 +103,7 @@ def train_model(output_folder, batch_size, reader_count, train_lmdb_filepath, te
 
                 # Iterate over the batches of the train dataset.
                 for step, (batch_images, batch_labels) in enumerate(train_dataset):
-                    if step > train_epoch_size:
+                    if step > cur_train_epoch_size:
                         break
 
                     inputs = (batch_images, batch_labels, train_loss_metric, train_acc_metric)

@@ -2,26 +2,25 @@
 # NIST-developed software is expressly provided "AS IS." NIST MAKES NO WARRANTY OF ANY KIND, EXPRESS, IMPLIED, IN FACT OR ARISING BY OPERATION OF LAW, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTY OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, NON-INFRINGEMENT AND DATA ACCURACY. NIST NEITHER REPRESENTS NOR WARRANTS THAT THE OPERATION OF THE SOFTWARE WILL BE UNINTERRUPTED OR ERROR-FREE, OR THAT ANY DEFECTS WILL BE CORRECTED. NIST DOES NOT WARRANT OR MAKE ANY REPRESENTATIONS REGARDING THE USE OF THE SOFTWARE OR THE RESULTS THEREOF, INCLUDING BUT NOT LIMITED TO THE CORRECTNESS, ACCURACY, RELIABILITY, OR USEFULNESS OF THE SOFTWARE.
 # You are solely responsible for determining the appropriateness of using and distributing the software and you assume all risks associated with its use, including but not limited to the risks and costs of program errors, compliance with applicable laws, damage to or loss of data, programs or equipment, and the unavailability or interruption of operation. This software is not intended to be used in any situation where a failure could cause risk of injury or damage to property. The software developed by NIST employees is not subject to copyright protection within the United States.
 
+
 import sys
 if sys.version_info[0] < 3:
-    print('Python3 required')
-    sys.exit(1)
+    raise Exception('Python3 required')
 
-import argparse
-import os
 import tensorflow as tf
 tf_version = tf.__version__.split('.')
 if int(tf_version[0]) != 2:
-    print('Tensorflow 2.x.x required')
-    sys.exit(1)
+    raise Exception('Tensorflow 2.x.x required')
 
+import argparse
+import os
 import unet_model
 import numpy as np
 import imagereader
 import skimage.io
 
 
-def _inference_tiling(img, model, tile_size, radius):
+def _inference_tiling(img, model, tile_size):
 
     # Pad the input image in CPU memory to ensure its dimensions are multiples of the U-Net Size Factor
     pad_x = 0
@@ -47,6 +46,7 @@ def _inference_tiling(img, model, tile_size, radius):
     width = img.shape[1]
     mask = np.zeros((height, width), dtype=np.int32)
 
+    radius = unet_model.UNet.RADIUS
     assert tile_size % unet_model.UNet.SIZE_FACTOR == 0
     assert radius % unet_model.UNet.SIZE_FACTOR == 0
     zone_of_responsibility_size = tile_size - 2 * radius
@@ -189,7 +189,8 @@ def inference(saved_model_filepath, image_folder, output_folder, image_format):
         print('  img.shape={}'.format(img.shape))
 
         if img.shape[0] > 1024 or img.shape[1] > 1024:
-            tile_size = 512
+            tile_size = 1024  # in theory UNet takes about 420x the amount of memory of the input image
+            # to a tile size of 1024 should require 1.7 GB of GPU memory
             segmented_mask = _inference_tiling(img, model, tile_size)
         else:
             segmented_mask = _inference(img, model)
