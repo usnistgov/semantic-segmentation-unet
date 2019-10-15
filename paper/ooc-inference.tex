@@ -25,7 +25,7 @@
 % TODO setup camera ready document
 \pdfinfo{
 	/Title (Error-Free Semantic Segmentation Inference of Images Larger than GPU Memory)
-%	/Author (Michael Majurski, Peter Bajcsy)
+	/Author (Michael Majurski, Peter Bajcsy)
 } %Leave this	
 % /Title ()
 % Put your actual complete title (no codes, scripts, shortcuts, or LaTeX commands) within the parentheses in mixed case
@@ -51,12 +51,12 @@
 % nouns, adverbs, adjectives should be capitalized, including both words in hyphenated terms, while
 % articles, conjunctions, and prepositions are lower case unless they
 % directly follow a colon or long dash
-%\author{Michael Majurski and Peter Bajcsy\\
-%	National Institute of Standards and Technology\\
-%	Information Technology Lab\\
-%	Gaithersburg, MD 20899, USA\\
-%	\{michael.majurski, peter.bajcsy\}@nist.gov
-%}
+\author{Michael Majurski and Peter Bajcsy\\
+	National Institute of Standards and Technology\\
+	Information Technology Lab\\
+	Gaithersburg, MD 20899, USA\\
+	\{michael.majurski, peter.bajcsy\}@nist.gov
+}
 
 \begin{document}
 
@@ -87,9 +87,9 @@ Both U-Net \cite{Ronneberger2015a} and the original FCN network \cite{Long2015} 
 FCNNs enable training the network on images much smaller than those of interest at inference time. 
 For example, one can train a U-Net model on $512 \times 512$ pixel tiles and then perform inference on many $\num{20000} \times \num{20000}$ pixel images. This decoupling of training and inference image sizes means the semantic segmentation models can be applied to images much larger than the memory available on current GPU cards. 
 
-The ability of FCNN networks to inference of arbitrarily large images differs from other types of CNNs where the training and inference image sizes must be identical. Usually this static image size requirement is not a problem since the input images can be resized to fit the network. For example, if one trained a CNN on ImageNet \cite{Russakovsky2015} to classify pictures into two classes: \{Cat, Dog\}, the content of the image does not change drastically if the cat photo is resized to $224 \times 224$ pixels before inference.
+The ability of FCNN networks to inference arbitrarily large images differs from other types of CNNs where the training and inference image sizes must be identical. Usually this static image size requirement is not a problem since the input images can be resized to fit the network. For example, if one trained a CNN on ImageNet \cite{Russakovsky2015} to classify pictures into two classes: \{Cat, Dog\}, the content of the image does not change drastically if the cat photo is resized to $224 \times 224$ pixels before inference.
 
-In another example, performing semantic segmentation of the scene acquired by a self driving car's front camera, one can infer which surfaces are drivable at the native camera resolution of 720p ($1280 \times 720$ pixels - $\SI{1}{\mega pixel}$). Alternatively, one can inference images after down-samplings if compute time must be decreased in such a time-critical application. 
+In another example, performing semantic segmentation of the scene acquired by a self driving car's front camera, one can infer which surfaces are drivable at the native camera resolution of 720p ($1280 \times 720$ pixels $\sim \SI{1}{\mega pixel}$). Alternatively, one can inference images after down-samplings if compute time must be decreased in such a time-critical application. 
 
 In contrast to the above two examples, there are applications where resizing (re-scaling or down-sampling) the image is not acceptable due to loss of information. For example, in digital pathology, one cannot take a whole slide microscopy image ($\num{100000} \times \num{50000}$ pixels) and fit it into GPU memory; nor can one reasonably downsample the image to fit as too much image detail would be lost. 
 
@@ -104,7 +104,7 @@ The original U-Net paper by Ronneberger et al. \cite{Ronneberger2015a} also hint
 
 There are two common approaches for applying CNN models to large images: sliding window (overlapping tiles) and patch-based inference. Sliding window (i.e. overlapping tiles) has been used for object detection \cite{Sermanet2013,VanEtten2019} as well as for semantic segmentation \cite{Lin2019,Volpi2017a} inference. Patch-based inference also supports arbitrarily large images, but it is very inefficient \cite{Volpi2017a,Maggiori2016}.
 
-Huang et al. directly examine the problem of operating on images which cannot be inferenced in a single forward pass. However, the authors focus on different methods for reducing the error in labeling that arises from different overlapping tile-based processing schemes \cite{Huang2019a}. They examine label averaging and the impacts of different tile sizes on the resulting output error and conclude that using as large a tile as possible will minimize the error \cite{Huang2019a}. Huang et al. also examines the effects of zero-padding, documenting how much error it introduces \cite{Huang2019a}. At no point do they produce error-free tile-based inference. Iglovikov et al. also remark upon error in the logits near the edge of tiles during inference and suggest overlapping predictions or cropping the output to reduce that error \cite{Iglovikov2017}. 
+Huang et al. directly examine the problem of operating on images which cannot be inferenced in a single forward pass. However, the authors focus on different methods for reducing the error in labeling that arises from different overlapping tile-based processing schemes \cite{Huang2019a}. They examine label averaging and the impacts of different tile sizes on the resulting output error and conclude that using as large a tile as possible will minimize the error \cite{Huang2019a}. Huang et al. also examine the effects of zero-padding, documenting how much error it introduces \cite{Huang2019a}. At no point do they produce error-free tile-based inference. Iglovikov et al. also remark upon error in the logits near the edge of tiles during inference and suggest overlapping predictions or cropping the output to reduce that error \cite{Iglovikov2017}. 
 
 To the best of our knowledge, no published method fully explores a methodology for error-free tile-based (out-of-core) inference of arbitrarily large images. While tile-based processing schemes have been outlined, the past publications do not provide a framework for achieving error-free tile-based inference results.
 
@@ -211,15 +211,14 @@ Equation \ref{eq:radius} has two terms. The $2^{l_c}$ term is the number of pixe
 Let us assume that the U-Net architecture satisfies the following design constraints:
 $k_c = k = const$ and each level has the same number of convolutional layers on both decoder and encoder sides $n_l = n = const$. These constraints are satisfied for the published U-Net where $k = 3$ and $n_l = 2$.
 
-In this case, the minimum required radius can be calculated according to the Equation \ref{eq:radius2}. 
+In this case, the minimum required radius can be calculated according to the Equation \ref{eq:radius2}, 
 \begin{equation}
 Radius = \lfloor \frac{k}{2} \rfloor \times n \times (3 \times 2^{M} - 2)
 \label{eq:radius2}
 \end{equation}
+where $M$ is the maximum level value $l_c$ over all values of $c$ (i.e., $M=max_{\forall c} (l_c)$). The radius is linearly proportional to the kernel size $k$ and to the number of convolutional layers per level $n$ and exponentially proportional to the maximum level $M$. The derivation of Equation \ref{eq:radius2} from Equation \ref{eq:radius} is provided in Appendix A.
 
-Where $M$ is the maximum level value $l_c$ over all values of $c$ (i.e., $M=max_{\forall c} (l_c)$). The radius is linearly proportional to the kernel size $k$ and to the number of convolutional layers per level $n$ and exponentially proportional to the maximum level $M$. The derivation of Equation \ref{eq:radius2} from Equation \ref{eq:radius} is provided in Appendix A.
-
-The published U-Net (Figure \ref{fig:unet-levels}) has one level per horizontal stripe of layers. The input image enters on level $l_{c=1} = l_{c=2} = 0$. The first max-pool layer halves the spatial resolution of the network, changing the level. Convolution layers $c = \{3, 4\}$ after that first max-pool layer up to the next max-pool layer belong to level $l_{c=3}=l_{c=4} = 1$. This continues through level 4, where the bottleneck of the U-Net model occurs. In Figure \ref{fig:unet-levels} the bottleneck is the feature map at the bottom with dimensions: $N \times 1024 \times 32 \times 32$ (\texttt{NCHW} dimension ordering), this occurs right before the first up-conv layer. After the bottleneck, the level number decreases with each subsequent up-conv layer, until level $l_{N} = 0$ right before the output image is generated. This is summarized in Figure \ref{fig:unet-levels} where the levels each convolutional layer are indicated.
+The published U-Net (Figure \ref{fig:unet-levels}) has one level per horizontal stripe of layers. The input image enters on level $l_{c=1} = l_{c=2} = 0$. The first max-pool layer halves the spatial resolution of the network, changing the level. Convolution layers $c = \{3, 4\}$ after that first max-pool layer up to the next max-pool layer belong to level $l_{c=3}=l_{c=4} = 1$. This continues through level 4, where the bottleneck of the U-Net model occurs. In Figure \ref{fig:unet-levels} the bottleneck is the feature map at the bottom with dimensions: $N \times 1024 \times 32 \times 32$ (\texttt{NCHW} dimension ordering); this occurs right before the first up-conv layer. After the bottleneck, the level number decreases with each subsequent up-conv layer, until level $l_{N} = 0$ right before the output image is generated. This is summarized in Figure \ref{fig:unet-levels} where the levels of each convolutional layer are indicated.
 
 Following Equation \ref{eq:radius} or \ref{eq:radius2} for U-Net results in a minimum required radius of 92 pixels in order to provide the network with all of the local context it needs to predict the outputs correctly. See Appendix B for details on applying Equation \ref{eq:radius} to U-Net. This radius needs to be provided both before and after each spatial dimension and hence the input image to the network will need to be $2 \times 92 = 184$ pixels larger. This value is exactly the number of pixels the original U-Net paper has the output being shrunk by to avoid using \texttt{SAME} convolutions; a 572 pixel input shrunk by 184 results in the 388 pixel output \cite{Ronneberger2015a}. 
 However, this runs afoul of our additional restriction on the U-Net input size, which requires images to be a multiple of 16. So rounding up to the nearest multiple of 16 results in a radius of 96 pixels. Unfortunately, one cannot just adjust the ZoR size to ensure $(ZoR + Radius) \% 16 = 0$ because of how convolutional arithmetic works. 
@@ -265,8 +264,7 @@ The limitation on the radius comes from the fact that if we have arbitrary radiu
 
 \subsubsection{ZoR and Radius Constraints}
 
-Both problems, (1) collaboratively building feature maps and (2) different full image edge reflection padding requirements disappear if both the zone of responsibility and the radius are multiples of 16. Thus, we constrain the final values of ZoR and radius to be the closest higher multiple of the ratio $F$ between the image size $I$ and minimum feature map size (Equation \ref{eq:constraints}) where $F=16$ for the published U-Net.
-
+Both problems, (1) collaboratively building feature maps and (2) different full image edge reflection padding requirements disappear if both the zone of responsibility and the radius are multiples of 16. Thus, we constrain the final values of ZoR and radius to be the closest higher multiple of the ratio $F$ between the image size $I$ and minimum feature map size (Equation \ref{eq:constraints}) where $F=16$ for the published U-Net, 
 \begin{equation}
 \begin{aligned}
 F = \frac{ \min\{H_{I}, W_{I} \} }{ \min_{\forall l_{c}} \{ H_{l_{c}}, W_{l_{c}} \} } \\
@@ -275,8 +273,7 @@ ZoR = F \lceil \frac{ZoR}{F} \rceil
 \end{aligned}
 \label{eq:constraints}
 \end{equation}
-
-Where $H_{I}$ and $W_{I}$ are the input image height and width dimensions, and $H_{l_{c}}$ and $W_{l_{c}}$ are the feature map height and width dimensions. 
+where $H_{I}$ and $W_{I}$ are the input image height and width dimensions, and $H_{l_{c}}$ and $W_{l_{c}}$ are the feature map height and width dimensions. 
 
 \section{Experimental Results}
 \label{experimental-results}
@@ -295,7 +292,7 @@ Whether inferencing the whole image in a single forward pass or using tile-based
 
 Let us assume that we know how big an image we can fit into GPU memory, for example $1024 \times 1024$ pixels. Additionally, given that we are using U-Net we know that the required radius is 96 pixels. Then our zone of responsibility is $ZoR = 1024 - 2 \times Radius = 832$ pixels per spatial dimension. 
 %Refer back to Figure \ref{fig:zor} for a visual. 
-Despite inferencing $1024 \times 1024$ pixel tiles on the GPU per forward pass, the stride across the input image is 832 pixels because we need non-overlapping ZoR. Figure \ref{fig:all-zor} shows a full image with 6 non-overlapping ZoR in alternating colors (red and blue) with each radius as a shaded region surrounding each ZoR. The edges of the full image do not require radius context to ensure identical results when compared with a single inference pass. Intuitively, the the true context is unknown since its outside the existing image.
+Despite inferencing $1024 \times 1024$ pixel tiles on the GPU per forward pass, the stride across the input image is 832 pixels because we need non-overlapping ZoR. Figure \ref{fig:all-zor} shows a full image with 6 non-overlapping ZoR in alternating colors (red and blue) with each radius as a shaded region surrounding each ZoR. The edges of the full image do not require radius context to ensure identical results when compared with a single inference pass. Intuitively, the true context is unknown since it's outside the existing image.
 
 \begin{figure}[h!]
 	\centering
@@ -445,17 +442,17 @@ The test data used in this paper are available at
 
 The U-Net Tensorflow v2.0 source code used in this paper is available at
 % TODO setup camera ready document
-%\url{https://github.com/usnistgov/semantic-segmentation-unet/tree/ooc-inference}.
+\url{https://github.com/usnistgov/semantic-segmentation-unet/tree/ooc-inference}.
 
 While the available codebase in theory supports arbitrarily large images, we made the choice at implementation time to load the whole image into memory before processing it through the network. In practice this means the codebase is limited to inferencing images which fit into CPU memory. However, using a file format which supports reading sub-sections of the whole image would support inference of disk-backed images which do not fit into CPU memory. 
 
 
-% TODO setup camera ready document
-%\section{Disclaimer}
-%
-%Commercial products are identified in this document in order to specify the experimental procedure adequately. Such identification is not intended to imply recommendation or endorsement by NIST, nor is it intended to imply that the products identified are necessarily the best available for the purpose. Analysis performed [in part] on the NIST Enki HPC cluster.
 
-%The dataset for this study consisted of an H9 human embryonic stem cell line \cite{Thomson1998} was prepared and images were collected as previously described \cite{Bhadriraju2016}. The use of dataset was approved by NIST and carried out in accordance with the approved guidelines of the NIST Human Subjects Protection Office.
+% TODO setup camera ready document
+\section{Disclaimer}
+
+Commercial products are identified in this document in order to specify the experimental procedure adequately. Such identification is not intended to imply recommendation or endorsement by NIST, nor is it intended to imply that the products identified are necessarily the best available for the purpose. Analysis performed [in part] on the NIST Enki HPC cluster. Contribution of U.S. government not subject to copyright
+
 
 
 {\fontsize{9.0pt}{10.0pt} 
