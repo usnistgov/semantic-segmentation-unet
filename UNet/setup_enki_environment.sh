@@ -8,6 +8,5 @@ conda activate tf2
 
 conda install tensorflow2-gpu -y
 conda install tensorboard
-conda install lmdb -y
-
-
+conda install python-lmdb -y
+conda install scikit-image -y

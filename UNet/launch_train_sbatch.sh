@@ -16,7 +16,7 @@
 test_every_n_steps=1000
 batch_size=8 # 4x across the gpus
 
-train_lmdb_file="train-hes.lmdb"
+train_lmdb_file="train-hes-500.lmdb"
 test_lmdb_file="test-hes.lmdb"
 
 input_data_directory="/wrk/mmajursk/small-data-cnns/data"
@@ -24,7 +24,7 @@ output_directory="/wrk/mmajursk/tmp"
 
 experiment_name="unet-$(date +%Y%m%dT%H%M%S)"
 
-number_classes=4
+number_classes=2
 learning_rate=3e-4
 use_augmentation=1
 balance_classes=1

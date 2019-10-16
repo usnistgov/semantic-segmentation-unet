@@ -66,12 +66,12 @@ def train_model(output_folder, batch_size, reader_count, train_lmdb_filepath, te
 
             checkpoint = tf.train.Checkpoint(optimizer=model.get_optimizer(), model=model.get_keras_model())
 
-            # print the model summary to file
-            with open(os.path.join(output_folder, 'model.txt'), 'w') as summary_fh:
-                print_fn = lambda x: print(x, file=summary_fh)
-                model.get_keras_model().summary(print_fn=print_fn)
-            tf.keras.utils.plot_model(model.get_keras_model(), os.path.join(output_folder, 'model.png'), show_shapes=True)
-            tf.keras.utils.plot_model(model.get_keras_model(), os.path.join(output_folder, 'model.dot'), show_shapes=True)
+            # # print the model summary to file
+            # with open(os.path.join(output_folder, 'model.txt'), 'w') as summary_fh:
+            #     print_fn = lambda x: print(x, file=summary_fh)
+            #     model.get_keras_model().summary(print_fn=print_fn)
+            # tf.keras.utils.plot_model(model.get_keras_model(), os.path.join(output_folder, 'model.png'), show_shapes=True)
+            # tf.keras.utils.plot_model(model.get_keras_model(), os.path.join(output_folder, 'model.dot'), show_shapes=True)
 
             # train_epoch_size = train_reader.get_image_count()/batch_size
             train_epoch_size = test_every_n_steps
