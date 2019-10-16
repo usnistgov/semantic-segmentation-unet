@@ -66,6 +66,7 @@ def train_model(output_folder, batch_size, reader_count, train_lmdb_filepath, te
 
             checkpoint = tf.train.Checkpoint(optimizer=model.get_optimizer(), model=model.get_keras_model())
 
+            # This requires pydot and graphviz, so its commented out to obviate those
             # # print the model summary to file
             # with open(os.path.join(output_folder, 'model.txt'), 'w') as summary_fh:
             #     print_fn = lambda x: print(x, file=summary_fh)
