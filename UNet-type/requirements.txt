@@ -1,0 +1,6 @@
+setuptools
+tensorflow-gpu==2.0.0
+lmdb
+scikit-image
+pydot
+graphviz

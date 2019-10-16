@@ -4,7 +4,8 @@
 
 import sys
 if sys.version_info[0] < 3:
-    raise Exception('Python3 required')
+    print('Python3 required')
+    sys.exit(1)
 
 import skimage.io
 import numpy as np
@@ -16,7 +17,7 @@ import shutil
 import lmdb
 import random
 import argparse
-import unet_model
+import unet_type_model
 
 
 def read_image(fp):
@@ -58,13 +59,13 @@ def write_img_to_db(txn, img, msk, key_str):
     return
 
 
-def enforce_size_multiple(img):
+def enforce_size_multiple(img, SIZE_FACTOR):
     h = img.shape[0]
     w = img.shape[1]
 
     # this function crops the input image down slightly to be a size multiple of 16
 
-    factor = unet_model.UNet.SIZE_FACTOR
+    factor = SIZE_FACTOR
     tgt_h = int(np.floor(h / factor) * factor)
     tgt_w = int(np.floor(w / factor) * factor)
 
@@ -77,11 +78,11 @@ def enforce_size_multiple(img):
     return img
 
 
-def process_slide_tiling(img, msk, tile_size, block_key):
+def process_slide_tiling(img, msk, tile_size, block_key, RADIUS):
     # get the height of the image
     height = img.shape[0]
     width = img.shape[1]
-    delta = int(tile_size - unet_model.UNet.RADIUS)
+    delta = int(tile_size - RADIUS)
 
     img_list = []
     msk_list = []
@@ -124,7 +125,7 @@ def process_slide_tiling(img, msk, tile_size, block_key):
     return img_list, msk_list, key_list
 
 
-def generate_database(img_list, database_name, image_filepath, mask_filepath, output_folder, tile_size):
+def generate_database(img_list, database_name, image_filepath, mask_filepath, output_folder, tile_size, SIZE_FACTOR, RADIUS):
     output_image_lmdb_file = os.path.join(output_folder, database_name)
 
     if os.path.exists(output_image_lmdb_file):
@@ -152,7 +153,7 @@ def generate_database(img_list, database_name, image_filepath, mask_filepath, ou
 
         if tile_size > 0:
             # convert the image mask pair into tiles
-            img_tile_list, msk_tile_list, key_list = process_slide_tiling(img, msk, tile_size, block_key)
+            img_tile_list, msk_tile_list, key_list = process_slide_tiling(img, msk, tile_size, block_key, RADIUS)
 
             for k in range(len(img_tile_list)):
                 img = img_tile_list[k]
@@ -165,8 +166,8 @@ def generate_database(img_list, database_name, image_filepath, mask_filepath, ou
                     image_txn.commit()
                     image_txn = image_env.begin(write=True)
         else:
-            img = enforce_size_multiple(img)
-            msk = enforce_size_multiple(msk)
+            img = enforce_size_multiple(img, SIZE_FACTOR)
+            msk = enforce_size_multiple(msk, SIZE_FACTOR)
             present_classes = np.unique(msk)
             present_classes_str = ''
             for c in present_classes:
@@ -193,14 +194,19 @@ if __name__ == "__main__":
     # Setup the Argument parsing
     parser = argparse.ArgumentParser(prog='build_lmdb', description='Script which converts two folders of images and masks into a pair of lmdb databases for training.')
 
-    parser.add_argument('--image_folder', dest='image_folder', type=str, help='filepath to the folder containing the images', default='../data/images/')
-    parser.add_argument('--mask_folder', dest='mask_folder', type=str, help='filepath to the folder containing the masks', default='../data/masks/')
-    parser.add_argument('--output_folder', dest='output_folder', type=str, help='filepath to the folder where the outputs will be placed', default='../data/')
+    parser.add_argument('--image_folder', dest='image_folder', type=str, help='filepath to the folder containing the images', required=True)
+    parser.add_argument('--mask_folder', dest='mask_folder', type=str, help='filepath to the folder containing the masks', required=True)
+    parser.add_argument('--output_folder', dest='output_folder', type=str, help='filepath to the folder where the outputs will be placed', required=True)
+
     parser.add_argument('--dataset_name', dest='dataset_name', type=str, help='name of the dataset to be used in creating the lmdb files', default='HES')
     parser.add_argument('--train_fraction', dest='train_fraction', type=float, help='what fraction of the dataset to use for training (0.0, 1.0)', default=0.8)
     parser.add_argument('--image_format', dest='image_format', type=str, help='format (extension) of the input images. E.g {tif, jpg, png)', default='tif')
     parser.add_argument('--use_tiling', dest='use_tiling', type=int, help='Whether to shard the image into tiles [0 = False, 1 = True]', default=0)
     parser.add_argument('--tile_size', dest='tile_size', type=int, help='The size of the tiles to crop out of the source images, striding across all available pixels in the source images', default=512)
+
+    parser.add_argument('--unet_M', dest='unet_M', type=int, help='The maximum number of levels M used when defining the UNet network.', default=4)
+    parser.add_argument('--unet_nl', dest='unet_nl', type=int, help='The number of conv layers per level, the nl used when defining the UNet network.', default=2)
+    parser.add_argument('--unet_k', dest='unet_k', type=int, help='The kernel size k used when defining the UNet network.', default=3)
 
 
     args = parser.parse_args()
@@ -212,13 +218,19 @@ if __name__ == "__main__":
     image_format = args.image_format
     use_tiling = args.use_tiling
     tile_size = args.tile_size
+    unet_M = args.unet_M
+    unet_nl = args.unet_nl
+    unet_k = args.unet_k
+
+    SIZE_FACTOR = np.power(2, unet_M)
+    RADIUS = int(SIZE_FACTOR * (np.floor(unet_type_model.UNet._compute_radius(unet_M, unet_nl, unet_k) / SIZE_FACTOR) + 1))
 
     # zero out tile size with its turned off
     if not use_tiling:
         # tile_size <= 0 disables tiling
         tile_size = 0
     else:
-        assert tile_size % unet_model.UNet.SIZE_FACTOR == 0, 'UNet requires tiles with shapes that are multiples of 16'
+        assert tile_size % SIZE_FACTOR == 0, 'UNet requires tiles with shapes that are multiples of {}'.format(SIZE_FACTOR)
 
     if image_format.startswith('.'):
         # remove leading period
@@ -244,11 +256,11 @@ if __name__ == "__main__":
 
     print('building train database')
     database_name = 'train-{}.lmdb'.format(dataset_name)
-    generate_database(train_img_files, database_name, image_folder, mask_folder, output_folder, tile_size)
+    generate_database(train_img_files, database_name, image_folder, mask_folder, output_folder, tile_size, SIZE_FACTOR, RADIUS)
 
     print('building test database')
     database_name = 'test-{}.lmdb'.format(dataset_name)
-    generate_database(test_img_files, database_name, image_folder, mask_folder, output_folder, tile_size)
+    generate_database(test_img_files, database_name, image_folder, mask_folder, output_folder, tile_size, SIZE_FACTOR, RADIUS)
 
 
 

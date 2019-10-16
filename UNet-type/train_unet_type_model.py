@@ -19,17 +19,14 @@ tf_version = tf.__version__.split('.')
 if int(tf_version[0]) != 2:
     raise Exception('Tensorflow 2.x.x required')
 
-import unet_model
+
+import unet_type_model
 import imagereader
-import time
 
 
-def train_model(output_folder, batch_size, reader_count, train_lmdb_filepath, test_lmdb_filepath, use_augmentation, number_classes, balance_classes, learning_rate, test_every_n_steps, early_stopping_count):
+def train_model(output_folder, batch_size, reader_count, train_lmdb_filepath, test_lmdb_filepath, use_augmentation, number_classes, balance_classes, learning_rate, test_every_n_steps, early_stopping_count, M, nl, k, b, label_smoothing):
     if not os.path.exists(output_folder):
         os.makedirs(output_folder)
-
-    # TODO add ability to reload a checkpoint or saved model to resume training
-    training_checkpoint_filepath = None
 
     # uses all available devices
     mirrored_strategy = tf.distribute.MirroredStrategy()
@@ -41,11 +38,12 @@ def train_model(output_folder, batch_size, reader_count, train_lmdb_filepath, te
         reader_count = reader_count * mirrored_strategy.num_replicas_in_sync
 
         print('Setting up test image reader')
-        test_reader = imagereader.ImageReader(test_lmdb_filepath, use_augmentation=False, shuffle=False, num_workers=reader_count, balance_classes=False, number_classes=number_classes)
+        test_reader = imagereader.ImageReader(test_lmdb_filepath, use_augmentation=False, shuffle=False, num_workers=reader_count, balance_classes=False, number_classes=number_classes, M=M)
         print('Test Reader has {} images'.format(test_reader.get_image_count()))
 
         print('Setting up training image reader')
-        train_reader = imagereader.ImageReader(train_lmdb_filepath, use_augmentation=use_augmentation, shuffle=True, num_workers=reader_count, balance_classes=balance_classes, number_classes=number_classes)
+        train_reader = imagereader.ImageReader(train_lmdb_filepath, use_augmentation=use_augmentation, shuffle=True, num_workers=reader_count, balance_classes=balance_classes, number_classes=number_classes, M=M)
+        img_channel_count = train_reader.get_image_size()[2]
         print('Train Reader has {} images'.format(train_reader.get_image_count()))
 
         try:  # if any errors happen we want to catch them and shut down the multiprocess readers
@@ -62,16 +60,10 @@ def train_model(output_folder, batch_size, reader_count, train_lmdb_filepath, te
             test_dataset = mirrored_strategy.experimental_distribute_dataset(test_dataset)
 
             print('Creating model')
-            model = unet_model.UNet(number_classes, global_batch_size, train_reader.get_image_size(), learning_rate)
+            model = unet_type_model.UNet()
+            model.configure(number_classes=number_classes, global_batch_size=global_batch_size, input_channel_count=img_channel_count, learning_rate=learning_rate, M=M, nl=nl, k=k, b=b, label_smoothing=label_smoothing)
 
-            checkpoint = tf.train.Checkpoint(optimizer=model.get_optimizer(), model=model.get_keras_model())
-
-            # print the model summary to file
-            with open(os.path.join(output_folder, 'model.txt'), 'w') as summary_fh:
-                print_fn = lambda x: print(x, file=summary_fh)
-                model.get_keras_model().summary(print_fn=print_fn)
-            tf.keras.utils.plot_model(model.get_keras_model(), os.path.join(output_folder, 'model.png'), show_shapes=True)
-            tf.keras.utils.plot_model(model.get_keras_model(), os.path.join(output_folder, 'model.dot'), show_shapes=True)
+            model.write_model_summary(output_folder)
 
             # train_epoch_size = train_reader.get_image_count()/batch_size
             train_epoch_size = test_every_n_steps
@@ -110,7 +102,6 @@ def train_model(output_folder, batch_size, reader_count, train_lmdb_filepath, te
                     model.set_learning_rate(learning_rate)
 
                 # Iterate over the batches of the train dataset.
-                start_time = time.time()
                 for step, (batch_images, batch_labels) in enumerate(train_dataset):
                     if step > cur_train_epoch_size:
                         break
@@ -150,14 +141,12 @@ def train_model(output_folder, batch_size, reader_count, train_lmdb_filepath, te
                         csvfile.write(str(test_loss[i]))
                         csvfile.write('\n')
 
-                print('Epoch took: {} s'.format(time.time() - start_time))
-
                 # determine if to record a new checkpoint based on best test loss
                 if (len(test_loss) - 1) == np.argmin(test_loss):
                     # save tf checkpoint
                     print('Test loss improved: {}, saving checkpoint'.format(np.min(test_loss)))
-                    # checkpoint.save(os.path.join(output_folder, 'checkpoint', "ckpt")) # does not overwrite
-                    training_checkpoint_filepath = checkpoint.write(os.path.join(output_folder, 'checkpoint', "ckpt"))
+                    training_checkpoint_folder = os.path.join(output_folder, 'checkpoint')
+                    model.save_checkpoint(os.path.join(output_folder, 'checkpoint'))
 
                 # determine early stopping
                 CONVERGENCE_TOLERANCE = 1e-4
@@ -181,12 +170,9 @@ def train_model(output_folder, batch_size, reader_count, train_lmdb_filepath, te
             test_reader.shutdown()
 
     # convert training checkpoint to the saved model format
-    if training_checkpoint_filepath is not None:
+    if training_checkpoint_folder is not None:
         # restore the checkpoint and generate a saved model
-        model = unet_model.UNet(number_classes, global_batch_size, train_reader.get_image_size(), learning_rate)
-        checkpoint = tf.train.Checkpoint(optimizer=model.get_optimizer(), model=model.get_keras_model())
-        checkpoint.restore(training_checkpoint_filepath)
-        tf.saved_model.save(model.get_keras_model(), os.path.join(output_folder, 'saved_model'))
+        unet_type_model.UNet.convert_checkpoint_to_saved_model(training_checkpoint_folder, os.path.join(output_folder, 'saved_model'))
 
 
 def main():
@@ -200,14 +186,19 @@ def main():
     parser.add_argument('--batch_size', dest='batch_size', type=int, help='training batch size', default=4)
     parser.add_argument('--number_classes', dest='number_classes', type=int, default=2)
     parser.add_argument('--learning_rate', dest='learning_rate', type=float, default=3e-4)
+
     parser.add_argument('--test_every_n_steps', dest='test_every_n_steps', type=int, help='number of gradient update steps to take between test epochs', default=1000)
     parser.add_argument('--balance_classes', dest='balance_classes', type=int, help='whether to balance classes [0 = false, 1 = true]', default=0)
     parser.add_argument('--use_augmentation', dest='use_augmentation', type=int, help='whether to use data augmentation [0 = false, 1 = true]', default=1)
 
     parser.add_argument('--early_stopping', dest='early_stopping_count', type=int, help='Perform early stopping when the test loss does not improve for N epochs.', default=10)
     parser.add_argument('--reader_count', dest='reader_count', type=int, help='how many threads to use for disk I/O and augmentation per gpu', default=1)
+    parser.add_argument('--label_smoothing', dest='label_smoothing', type=int, help='Whether to use label smoothing or not [0 = false, 1 = true]', default=0)
+    parser.add_argument('--M', dest='M', type=int, help='Maximum level for UNet architecture (>=1)', default=4)
+    parser.add_argument('--nl', dest='nl', type=int, help='Number of conv layers to use per level of UNet architecture (>=1)', default=2)
+    parser.add_argument('--k', dest='k', type=int, help='Kernel size to use throughout UNet architecture', default=3)
+    parser.add_argument('--b', dest='b', type=int, help='Baseline Feature Depth', default=64)
 
-    # TODO add parameter to specify the devices to use for training
 
     args = parser.parse_args()
     batch_size = args.batch_size
@@ -221,6 +212,11 @@ def main():
     balance_classes = args.balance_classes
     use_augmentation = args.use_augmentation
     reader_count = args.reader_count
+    label_smoothing = args.label_smoothing
+    M = args.M
+    nl = args.nl
+    k = args.k
+    b = args.b
 
     print('Arguments:')
     print('batch_size = {}'.format(batch_size))
@@ -236,8 +232,14 @@ def main():
 
     print('early_stopping count = {}'.format(early_stopping_count))
     print('reader_count = {}'.format(reader_count))
+    print('label_smoothing = {}'.format(label_smoothing))
 
-    train_model(output_folder, batch_size, reader_count, train_lmdb_filepath, test_lmdb_filepath, use_augmentation, number_classes, balance_classes, learning_rate, test_every_n_steps, early_stopping_count)
+    print('M = {}'.format(M))
+    print('nl = {}'.format(nl))
+    print('k = {}'.format(k))
+    print('b = {}'.format(b))
+
+    train_model(output_folder, batch_size, reader_count, train_lmdb_filepath, test_lmdb_filepath, use_augmentation, number_classes, balance_classes, learning_rate, test_every_n_steps, early_stopping_count, M, nl, k, b, label_smoothing)
 
 
 if __name__ == "__main__":

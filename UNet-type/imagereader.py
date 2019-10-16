@@ -6,11 +6,6 @@ import sys
 if sys.version_info[0] < 3:
     raise Exception('Python3 required')
 
-import tensorflow as tf
-tf_version = tf.__version__.split('.')
-if int(tf_version[0]) != 2:
-    raise Exception('Tensorflow 2.x.x required')
-
 import multiprocessing
 from multiprocessing import Process
 import queue
@@ -23,7 +18,12 @@ import os
 import skimage.io
 import skimage.transform
 from isg_ai_pb2 import ImageMaskPair
-import unet_model
+import tensorflow as tf
+
+tf_version = tf.__version__.split('.')
+if int(tf_version[0]) != 2:
+    raise Exception('Tensorflow 2.x.x required')
+import unet_type_model
 
 
 def zscore_normalize(image_data):
@@ -72,9 +72,9 @@ class ImageReader:
     _noise_augmentation_severity = 0.02  # vary noise by x% of the dynamic range present in the image
     _scale_augmentation_severity = 0.1  # vary size by x%
     _blur_max_sigma = 2  # pixels
-    _intensity_augmentation_severity = None # vary intensity by x% of the dynamic range present in the image
+    _intensity_augmentation_severity = None  # vary intensity by x% of the dynamic range present in the image
 
-    def __init__(self, img_db, use_augmentation=True, balance_classes=False, shuffle=True, num_workers=1, number_classes=2):
+    def __init__(self, img_db, use_augmentation=True, balance_classes=False, shuffle=True, num_workers=1, number_classes=2, M=4):
         random.seed()
 
         # copy inputs to class variables
@@ -84,10 +84,11 @@ class ImageReader:
         self.shuffle = shuffle
         self.nb_workers = num_workers
         self.nb_classes = number_classes
+        self.SIZE_FACTOR = np.power(2, M)
 
         # init class state
         self.queue_starvation = False
-        self.maxOutQSize = num_workers * 100 # queue 100 images per reader
+        self.maxOutQSize = num_workers * 100  # queue 100 images per reader
         self.workers = None
         self.done = False
 
@@ -107,7 +108,7 @@ class ImageReader:
         self.keys = list()
         self.keys.append(list())  # there will always be at least one class
 
-        self.lmdb_env = lmdb.open(self.image_db, map_size=int(2e10), readonly=True) # 20 GB
+        self.lmdb_env = lmdb.open(self.image_db, map_size=int(2e10), readonly=True)  # 20 GB
         self.lmdb_txns = list()
 
         datum = ImageMaskPair()  # create a datum for decoding serialized protobuf objects
@@ -123,9 +124,9 @@ class ImageReader:
             # record the image size
             self.image_size = [datum.img_height, datum.img_width, datum.channels]
 
-            if self.image_size[0] % unet_model.UNet.SIZE_FACTOR != 0:
+            if self.image_size[0] % self.SIZE_FACTOR != 0:
                 raise IOError('Input Image tile height needs to be a multiple of 16 to allow integer sized downscaled feature maps. Input images should be either HW or HWC dimension ordering')
-            if self.image_size[1] % unet_model.UNet.SIZE_FACTOR != 0:
+            if self.image_size[1] % self.SIZE_FACTOR != 0:
                 raise IOError('Input Image tile height needs to be a multiple of 16 to allow integer sized downscaled feature maps. Input images should be either HW or HWC dimension ordering')
 
             cursor = lmdb_txn.cursor().iternext(keys=True, values=False)
@@ -203,7 +204,7 @@ class ImageReader:
                 label_idx = random.randint(0, self.nb_classes - 1)  # randint has inclusive endpoints
                 # randomly select an example from the database of the required label
                 nb_examples = len(self.keys[label_idx])
-                
+
                 while nb_examples == 0:
                     # select a class to add at random from the set of classes
                     label_idx = random.randint(0, self.nb_classes - 1)  # randint has inclusive endpoints
@@ -308,11 +309,11 @@ class ImageReader:
 
     def get_example(self):
         # get a ready to train batch from the output queue and pass to to the caller
-        if self.outQ.qsize() < int(0.1*self.maxOutQSize):
+        if self.outQ.qsize() < int(0.1 * self.maxOutQSize):
             if not self.queue_starvation:
                 print('Input Queue Starvation !!!!')
             self.queue_starvation = True
-        if self.queue_starvation and self.outQ.qsize() > int(0.5*self.maxOutQSize):
+        if self.queue_starvation and self.outQ.qsize() > int(0.5 * self.maxOutQSize):
             print('Input Queue Starvation Over')
             self.queue_starvation = False
         return self.outQ.get()
