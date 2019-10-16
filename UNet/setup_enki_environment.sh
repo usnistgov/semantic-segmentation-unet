@@ -7,5 +7,7 @@ conda create --name tf2 python=3.6 -y
 conda activate tf2
 
 conda install tensorflow2-gpu -y
+conda install tensorboard
 conda install lmdb -y
+
 
