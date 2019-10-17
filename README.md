@@ -9,7 +9,7 @@ Enki AI Cluster page:
 - [https://gitlab.nist.gov/gitlab/aihpc/pages/wikis/home](https://gitlab.nist.gov/gitlab/aihpc/pages/wikis/home)
 
 
-*This codebase is designed to work with Python3 and Tensorflow 2.0*
+*This codebase is designed to work with Python3 and Tensorflow 2.x*
 
 
 # Input Data Constraints
