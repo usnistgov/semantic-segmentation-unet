@@ -1,0 +1,54 @@
+
+# AAAI-2020 Reviews
+
+
+
+## Reviewer 1
+
+o   The main contribution of the paper is:
+(i) the proposed approach tiles the output image into non-overlapping Zone of responsibility (ZoR) regions whereas the size of the input image is equal to the Radius plus Zone or Responsibility, and then only the ZoR output is used to generate the final semantic segmentation. This radius is an overhead of the algorithm and it is much lower than the size of the ZoR.
+
+However, the main weaknesses of the proposed approach are the following:
+(i) The validation of the proposed approach only uses FCN UNet and give number of the Radius for such network. Since the proposed method is generic for any architecture, it should be computed for different architectures with different backbones.
+(ii) Eq (1) formulates the computation of the Radius, but there is a key component missing that is used on semantic segmentation. This key component is the dilation factor to increase the receptive field; hence increase the radius. Therefore, it would be interesting how the radius will increase if we introduce the dilation, and how the overhead is also increased.
+(iii) Finally, the reference [1] is missing and it would be interesting to exploit the effective receptive field in order to compute the Radius and minimize the Radius and overhead for inferring on large images.
+
+References:
+[1] W. Luo, Y. Li, Yujia, R. Urtasun and R. Zemel. Understanding the Effective Receptive Field in Deep Convolutional Neural Networks. NeurIPS16.
+
+
+
+## Reviewer 2
+
+[Detailed Comments] Please elaborate on your assessments and provide constructive feedback.
+
+o   1. As far as I know, the large-image inference problem is not a big issue. It is also easy to solve by overlapping tiles, which has been adopted in previous works. Solving such a minor problem is merely a small part of a paper rather than the entire thing.
+2. The approach is technically sound but very trivial. The defined "radius" is actually the region influenced by padding. Neglecting such region solves this problem. Again, I think it's a trivial problem.
+3. The experiments and analyses are not sufficient. There are only some studies on the inference of some parameters. There are no comparisons with previous works. There is no computational cost analysis. There are no visualized results.
+4. The presentation of this paper is not good enough. Figures 1,2,4 are suspected to be copy-pasted from previous publications. Figure 4 is not necessary because UNet is not the contribution of this paper. The reader can refer to UNet original paper for details.
+
+[QUESTIONS FOR THE AUTHORS] Please provide questions for authors to address during the author feedback period.
+
+o   1. What's the percentage of the tiling error out of the segmentation algorithm error in a baseline method? I mean, for example, if the performance of a certain semantic segmentation algorithm with a baseline tiling scheme is 65% mIoU, while this error-free inference scheme yields 65.01%, I don't think it contributes too much.
+
+
+## Reviewer #3
+
+Questions
+
+[Detailed Comments] Please elaborate on your assessments and provide constructive feedback.
+
+o   The paper focuses on the practical problem. Images much larger than 10k x 10k is not common in current papers but is really needed.
+However,
+1) I think the concept radius is almost identical to "receptive field", whose calculation method is well-known.
+2) The paper only focuses on U-Net...
+3) In the perspective of computational efficiency, as radius increases, the duplicated computation area would also be increased. Analysis of theoretical MACs and actual GPU time regarding tiling size would enrich the paper.
+
+[QUESTIONS FOR THE AUTHORS] Please provide questions for authors to address during the author feedback period.
+
+o   1) Error is only computed between reference (CPU) and tiling (GPU), but there should be direct performance report (in terms of IOU or pixel accuracy)
+2) As the network goes deeper (Resnet-50 and Resnet-101 are already common in segmentation CNN backbone) radius would increase greatly. Is the proposed approach also useful in much deeper networks?
+
+
+ 
+
