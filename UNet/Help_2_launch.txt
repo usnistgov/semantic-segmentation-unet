@@ -1,0 +1,30 @@
+
+go to source folder: cd /mnt/isgnas/home/chalfoun/semantic-segmentation-unet/UNet
+run: source tf/bin/activate
+
+then you can run:
+
+bash ./build_database.sh
+bash ./launch_train.sh
+bash ./launch_inference.sh
+
+Launch screen:
+screen -S Name_of_screen
+screen -ls
+screen -r name
+ctrl+a d == disconnect (you need to disconnect ot make it run behind the scenes)
+ctrl+d == kill it
+
+nvidia-smi to see used GPU
+
+
+Help installing AI-UNet
+
+conda create -n tf-gpu 
+conda activate tf-gpu
+conda install tensorflow-gpu
+conda install lmdb
+conda install scikit-image
+conda install spyder-kernels
+
+Go to tools - preferences- Python interpreter to change the path to where tenserflow environement is.
