@@ -4,7 +4,7 @@
 
 import sys
 if sys.version_info[0] < 3:
-    raise Exception('Python3 required')
+    raise RuntimeError('Python3 required')
 
 import os
 # set the system environment so that the PCIe GPU ids match the Nvidia ids in nvidia-smi
