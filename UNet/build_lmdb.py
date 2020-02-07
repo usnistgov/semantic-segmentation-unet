@@ -131,7 +131,7 @@ def generate_database(img_list, database_name, image_filepath, mask_filepath, ou
         print('Deleting existing database')
         shutil.rmtree(output_image_lmdb_file)
 
-    image_env = lmdb.open(output_image_lmdb_file, map_size=int(5e12))
+    image_env = lmdb.open(output_image_lmdb_file, map_size=int(5e10))
     image_txn = image_env.begin(write=True)
 
     with open(os.path.join(output_image_lmdb_file, 'img_filenames.csv'), 'w') as csvfile:
@@ -185,34 +185,7 @@ def generate_database(img_list, database_name, image_filepath, mask_filepath, ou
     image_txn.commit()
     image_env.close()
 
-
-if __name__ == "__main__":
-    # Define the inputs
-    # ****************************************************
-
-    # Setup the Argument parsing
-    parser = argparse.ArgumentParser(prog='build_lmdb', description='Script which converts two folders of images and masks into a pair of lmdb databases for training.')
-
-    parser.add_argument('--image_folder', dest='image_folder', type=str, help='filepath to the folder containing the images', default='../data/images/')
-    parser.add_argument('--mask_folder', dest='mask_folder', type=str, help='filepath to the folder containing the masks', default='../data/masks/')
-    parser.add_argument('--output_folder', dest='output_folder', type=str, help='filepath to the folder where the outputs will be placed', default='../data/')
-    parser.add_argument('--dataset_name', dest='dataset_name', type=str, help='name of the dataset to be used in creating the lmdb files', default='HES')
-    parser.add_argument('--train_fraction', dest='train_fraction', type=float, help='what fraction of the dataset to use for training (0.0, 1.0)', default=0.8)
-    parser.add_argument('--image_format', dest='image_format', type=str, help='format (extension) of the input images. E.g {tif, jpg, png)', default='tif')
-    parser.add_argument('--use_tiling', dest='use_tiling', type=int, help='Whether to shard the image into tiles [0 = False, 1 = True]', default=0)
-    parser.add_argument('--tile_size', dest='tile_size', type=int, help='The size of the tiles to crop out of the source images, striding across all available pixels in the source images', default=512)
-
-
-    args = parser.parse_args()
-    image_folder = args.image_folder
-    mask_folder = args.mask_folder
-    output_folder = args.output_folder
-    dataset_name = args.dataset_name
-    train_fraction = args.train_fraction
-    image_format = args.image_format
-    use_tiling = args.use_tiling
-    tile_size = args.tile_size
-
+def main(image_folder,mask_folder,output_folder,dataset_name,train_fraction,image_format,use_tiling,tile_size):
     # zero out tile size with its turned off
     if not use_tiling:
         # tile_size <= 0 disables tiling
@@ -249,6 +222,35 @@ if __name__ == "__main__":
     print('building test database')
     database_name = 'test-{}.lmdb'.format(dataset_name)
     generate_database(test_img_files, database_name, image_folder, mask_folder, output_folder, tile_size)
+
+if __name__ == "__main__":
+    # Define the inputs
+    # ****************************************************
+
+    # Setup the Argument parsing
+    parser = argparse.ArgumentParser(prog='build_lmdb', description='Script which converts two folders of images and masks into a pair of lmdb databases for training.')
+
+    parser.add_argument('--image_folder', dest='image_folder', type=str, help='filepath to the folder containing the images', default='../data/images/')
+    parser.add_argument('--mask_folder', dest='mask_folder', type=str, help='filepath to the folder containing the masks', default='../data/masks/')
+    parser.add_argument('--output_folder', dest='output_folder', type=str, help='filepath to the folder where the outputs will be placed', default='../data/')
+    parser.add_argument('--dataset_name', dest='dataset_name', type=str, help='name of the dataset to be used in creating the lmdb files', default='HES')
+    parser.add_argument('--train_fraction', dest='train_fraction', type=float, help='what fraction of the dataset to use for training (0.0, 1.0)', default=0.8)
+    parser.add_argument('--image_format', dest='image_format', type=str, help='format (extension) of the input images. E.g {tif, jpg, png)', default='tif')
+    parser.add_argument('--use_tiling', dest='use_tiling', type=int, help='Whether to shard the image into tiles [0 = False, 1 = True]', default=0)
+    parser.add_argument('--tile_size', dest='tile_size', type=int, help='The size of the tiles to crop out of the source images, striding across all available pixels in the source images', default=512)
+
+
+    args = parser.parse_args()
+    image_folder = args.image_folder
+    mask_folder = args.mask_folder
+    output_folder = args.output_folder
+    dataset_name = args.dataset_name
+    train_fraction = args.train_fraction
+    image_format = args.image_format
+    use_tiling = args.use_tiling
+    tile_size = args.tile_size
+    
+    main(image_folder,mask_folder,output_folder,dataset_name,train_fraction,image_format,use_tiling,tile_size)
 
 
 

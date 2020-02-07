@@ -7,9 +7,9 @@ if sys.version_info[0] < 3:
     raise Exception('Python3 required')
 
 import tensorflow as tf
-tf_version = tf.__version__.split('.')
-if int(tf_version[0]) != 2:
-    raise Exception('Tensorflow 2.x.x required')
+# tf_version = tf.__version__.split('.')
+# if int(tf_version[0]) != 2:
+#     raise Exception('Tensorflow 2.x.x required')
 
 
 class UNet():

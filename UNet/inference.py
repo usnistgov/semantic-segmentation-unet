@@ -165,7 +165,13 @@ def _inference(img, model):
     return pred
 
 
-def inference(saved_model_filepath, image_folder, output_folder, image_format):
+def main(saved_model_filepath, image_folder, output_folder, image_format):
+    print('Arguments:')
+    print('saved_model_filepath = {}'.format(saved_model_filepath))
+    print('image_folder = {}'.format(image_folder))
+    print('output_folder = {}'.format(output_folder))
+    print('image_format = {}'.format(image_format))
+    
     # create output filepath
     if not os.path.exists(output_folder):
         os.mkdir(output_folder)
@@ -222,11 +228,5 @@ if __name__ == "__main__":
     output_folder = args.output_folder
     image_format = args.image_format
 
-    print('Arguments:')
-    print('saved_model_filepath = {}'.format(saved_model_filepath))
-    print('image_folder = {}'.format(image_folder))
-    print('output_folder = {}'.format(output_folder))
-    print('image_format = {}'.format(image_format))
-
-    inference(saved_model_filepath, image_folder, output_folder, image_format)
+    main(saved_model_filepath, image_folder, output_folder, image_format)
 

@@ -1,0 +1,54 @@
+
+go to source folder: cd /mnt/isgnas/home/chalfoun/semantic-segmentation-unet/UNet
+run: source tf/bin/activate
+
+then you can run:
+
+bash ./build_database.sh
+bash ./launch_train.sh
+bash ./launch_inference.sh
+
+Launch screen:
+screen -S Name_of_screen
+screen -ls
+screen -r name
+ctrl+a d == disconnect (you need to disconnect ot make it run behind the scenes)
+ctrl+d == kill it
+
+nvidia-smi to see used GPU
+
+
+----Help installing AI-UNet
+
+-Create an environement called: tensorflow_gpu with python 3.7:
+conda create -n tensorflow_gpu python=3.6
+conda activate tensorflow_gpu
+
+-install necessary toolboxes in that environement:
+conda install spyder-kernels=0.*
+conda install tensorflow-gpu==2.0.0
+conda install -c conda-forge python-lmdb
+conda install numpy matplotlib scipy scikit-learn scikit-image
+conda install -c conda-forge opencv
+
+#pip install --upgrade lmdb
+
+if you need to update conda type: conda update -n base -c defaults conda
+
+
+Go to tools - preferences- Python interpreter to change the path to where tenserflow environement is.
+C:\Users\chalfoun\AppData\Local\Continuum\anaconda3\envs\tensorflow_gpu\python.exe
+
+to deactivate an environement: conda deactivate
+to remove an environement: conda remove --name myenv --all
+
+To Run python script in Anaconda Prompt
+go the correct drive by typing only D:
+then cd to the working directory
+then dir to list the name of the files
+then type python followed by the file name
+
+
+
+
+
