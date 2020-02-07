@@ -8,13 +8,13 @@
 # ************************************
 # MODIFY THESE OPTIONS
 
-image_folder="/mnt/isgnas/project/Car-T_Cell_Project/CAR-T training dataset 20190823/AI_training_images"
-mask_folder="/mnt/isgnas/project/Car-T_Cell_Project/CAR-T training dataset 20190823/Segmented_images"
+image_folder="/path/to/your/image/folder"
+mask_folder="/path/to/your/mask/folder"
 
-output_folder="/mnt/isgnas/project/Car-T_Cell_Project/CAR-T training dataset 20190823/lmdb_folders"
+output_folder="/path/to/output/directory/where/results/are/saved"
 
 # what common name to use in saving the lmdb dataset
-dataset_name="GFP_"
+dataset_name="my_dataset"
 
 # what fraction of your data to use for training. Test is 1.0 - train_fraction of the data
 train_fraction=0.8 # (0.0, 1.0)

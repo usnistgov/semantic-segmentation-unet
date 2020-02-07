@@ -10,9 +10,6 @@
 # Modify this: which gpu (according to nvidia-smi) do you want to use for training
 # this can be a single number, or a list. E.g "3" or "0,1" "0,2,3"
 # the training script will use all gpus you list
-
-# source /mnt/data_nas1/cnl29/src/Semantic-Segmentation-tf2.0b/UNet/tf/bin/activate
-
 GPU="0"
 
 # how large is an epoch, or sub/super epoch test dataset evaluation
@@ -20,16 +17,16 @@ test_every_n_step=1000
 batch_size=8
 
 # where is your training lmdb database
-train_database="/mnt/isgnas/project/Car-T_Cell_Project/CAR-T training dataset 20190823/lmdb_folders/train-GFP_.lmdb"
-test_database="/mnt/isgnas/project/Car-T_Cell_Project/CAR-T training dataset 20190823/lmdb_folders/test-GFP_.lmdb"
+train_database="path/to/the/training/database.lmdb"
+test_database="path/to/the/training/database.lmdb"
 
-output_folder="/mnt/isgnas/project/Car-T_Cell_Project/CAR-T training dataset 20190823/Trained_model"
+output_folder="/path/to/output/directory/where/results/are/saved"
 
 # how many classes exist in your training dataset (e.g. 2 for binary segmentation)
-number_classes=2
+number_classes=4
 
 # what learning rate should the network use
-learning_rate=3e-4 # Karpathy Constant
+learning_rate=1e-4 # Karpathy Constant
 
 use_augmentation=1 # {0, 1}
 balance_classes=1 # {0, 1}

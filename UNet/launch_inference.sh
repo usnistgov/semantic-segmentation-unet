@@ -12,13 +12,13 @@
 GPU="0"
 
 # where is your image data is for inferencing
-input_data_directory="/mnt/isgnas/home/chalfoun/Footware_Impressions/Test_with_tiff"
+input_data_directory="/path/to/your/images"
 
 # where to save your results
-output_directory="/mnt/isgnas/home/chalfoun/Footware_Impressions/AI_test_output"
+output_directory="/path/to/your/results"
 
 # which model checkpoint to use for inferencing
-saved_model_filepath="/mnt/isgnas/home/chalfoun/Footware_Impressions/Trained_model/saved_model/saved_model.pb"
+saved_model_filepath="/path/to/your/model/checkpoint/ckpt"
 
 image_format='tif'
 
@@ -34,6 +34,3 @@ export CUDA_VISIBLE_DEVICES=${GPU}
 
 
 python3 inference.py --saved_model_filepath=${saved_model_filepath} --image_folder=${input_data_directory} --output_folder=${output_directory} --image_format=${image_format}
-
-
-

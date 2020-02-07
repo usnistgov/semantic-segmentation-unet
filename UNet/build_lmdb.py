@@ -131,7 +131,7 @@ def generate_database(img_list, database_name, image_filepath, mask_filepath, ou
         print('Deleting existing database')
         shutil.rmtree(output_image_lmdb_file)
 
-    image_env = lmdb.open(output_image_lmdb_file, map_size=int(5e10))
+    image_env = lmdb.open(output_image_lmdb_file, map_size=int(5e12))
     image_txn = image_env.begin(write=True)
 
     with open(os.path.join(output_image_lmdb_file, 'img_filenames.csv'), 'w') as csvfile:
@@ -185,7 +185,8 @@ def generate_database(img_list, database_name, image_filepath, mask_filepath, ou
     image_txn.commit()
     image_env.close()
 
-def main(image_folder,mask_folder,output_folder,dataset_name,train_fraction,image_format,use_tiling,tile_size):
+
+def main(image_folder, mask_folder, output_folder, dataset_name, train_fraction, image_format, use_tiling, tile_size):
     # zero out tile size with its turned off
     if not use_tiling:
         # tile_size <= 0 disables tiling
@@ -223,6 +224,7 @@ def main(image_folder,mask_folder,output_folder,dataset_name,train_fraction,imag
     database_name = 'test-{}.lmdb'.format(dataset_name)
     generate_database(test_img_files, database_name, image_folder, mask_folder, output_folder, tile_size)
 
+
 if __name__ == "__main__":
     # Define the inputs
     # ****************************************************
@@ -249,8 +251,10 @@ if __name__ == "__main__":
     image_format = args.image_format
     use_tiling = args.use_tiling
     tile_size = args.tile_size
-    
-    main(image_folder,mask_folder,output_folder,dataset_name,train_fraction,image_format,use_tiling,tile_size)
+
+    main(image_folder, mask_folder, output_folder, dataset_name, train_fraction, image_format, use_tiling, tile_size)
+
+
 
 
 

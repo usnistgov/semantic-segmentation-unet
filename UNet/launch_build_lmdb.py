@@ -8,13 +8,13 @@ import build_lmdb
 # ************************************
 # MODIFY THESE OPTIONS
 
-image_folder="D:/Programming/Car_T_cell/Data/CAR-T_training_dataset_20190823/Raw_training_images"
-mask_folder="D:/Programming/Car_T_cell/Data/CAR-T_training_dataset_20190823/Segmented_images"
+image_folder="/path/to/images/"
+mask_folder="/path/to/masks/"
 
-output_folder="D:/Programming/Car_T_cell/Data/CAR-T_training_dataset_20190823/lmdb_folders"
+output_folder="/path/to/output/folder"
 
 # what common name to use in saving the lmdb dataset
-dataset_name="GFP_"
+dataset_name="img_"
 
 # what fraction of your data to use for training. Test is 1.0 - train_fraction of the data
 train_fraction=0.8 # (0.0, 1.0)

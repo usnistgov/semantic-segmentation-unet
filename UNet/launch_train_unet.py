@@ -3,21 +3,20 @@
 # You are solely responsible for determining the appropriateness of using and distributing the software and you assume all risks associated with its use, including but not limited to the risks and costs of program errors, compliance with applicable laws, damage to or loss of data, programs or equipment, and the unavailability or interruption of operation. This software is not intended to be used in any situation where a failure could cause risk of injury or damage to property. The software developed by NIST employees is not subject to copyright protection within the United States.
 
 import train_unet
-import os
 
 # Which gpu do you want to use for training
 # this can be a single number, or a list. E.g "3" or "0,1" "0,2,3"
-GPU="0"
+gpu_ids="0"
 
 # how large is an epoch, or sub/super epoch test dataset evaluation
 test_every_n_steps=1000
 batch_size=8
 
 # where is your training lmdb database
-train_lmdb_filepath="D:/Programming/Car_T_cell/Data/CAR-T_training_dataset_20190823/lmdb_folders/train-GFP_.lmdb"
-test_lmdb_filepath="D:/Programming/Car_T_cell/Data/CAR-T_training_dataset_20190823/lmdb_folders/test-GFP_.lmdb"
+train_lmdb_filepath="path/to/the/training/database.lmdb"
+test_lmdb_filepath="path/to/the/training/database.lmdb"
 
-output_folder="D:/Programming/Car_T_cell/Data/CAR-T_training_dataset_20190823/Trained_model"
+output_folder="/path/to/output/directory/where/results/are/saved"
 
 # how many classes exist in your training dataset (e.g. 2 for binary segmentation)
 number_classes=2
@@ -30,10 +29,7 @@ balance_classes=1 # {0, 1}
 early_stopping_count=10 # Perform early stopping when the test loss does not improve for N epochs.
 reader_count = 1 # how many threads to use for disk I/O and augmentation per gpu
 
-# limit the script to only the GPUs you selected above
-os.environ['CUDA_DEVICE_ORDER']="PCI_BUS_ID"
-os.environ['CUDA_VISIBLE_DEVICES']=GPU
 
 # Launch Training
-train_unet.main(output_folder, batch_size, reader_count, train_lmdb_filepath, test_lmdb_filepath, use_augmentation, number_classes, balance_classes, learning_rate, test_every_n_steps, early_stopping_count)
+train_unet.main(output_folder, batch_size, reader_count, train_lmdb_filepath, test_lmdb_filepath, use_augmentation, number_classes, balance_classes, learning_rate, test_every_n_steps, early_stopping_count, gpu_ids)
 
