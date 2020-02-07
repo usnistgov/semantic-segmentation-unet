@@ -51,15 +51,18 @@ def train_model(output_folder, batch_size, reader_count, train_lmdb_filepath, te
         try:  # if any errors happen we want to catch them and shut down the multiprocess readers
             print('Starting Readers')
             train_reader.startup()
+            print('  train_reader online')
             test_reader.startup()
+            print('  test_reader online')
 
             train_dataset = train_reader.get_tf_dataset()
             train_dataset = train_dataset.batch(global_batch_size).prefetch(reader_count)
             train_dataset = mirrored_strategy.experimental_distribute_dataset(train_dataset)
-
+            
             test_dataset = test_reader.get_tf_dataset()
             test_dataset = test_dataset.batch(global_batch_size).prefetch(reader_count)
             test_dataset = mirrored_strategy.experimental_distribute_dataset(test_dataset)
+            
 
             print('Creating model')
             model = unet_model.UNet(number_classes, global_batch_size, train_reader.get_image_size(), learning_rate)
@@ -190,40 +193,9 @@ def train_model(output_folder, batch_size, reader_count, train_lmdb_filepath, te
         tf.saved_model.save(model.get_keras_model(), os.path.join(output_folder, 'saved_model'))
 
 
-def main():
-    # Setup the Argument parsing
-    parser = argparse.ArgumentParser(prog='train_unet', description='Script which trains a unet model')
-
-    parser.add_argument('--train_database', dest='train_database_filepath', type=str, help='lmdb database to use for (Required)', required=True)
-    parser.add_argument('--test_database', dest='test_database_filepath', type=str, help='lmdb database to use for testing (Required)', required=True)
-    parser.add_argument('--output_dir', dest='output_folder', type=str, help='Folder where outputs will be saved (Required)', required=True)
-
-    parser.add_argument('--batch_size', dest='batch_size', type=int, help='training batch size', default=4)
-    parser.add_argument('--number_classes', dest='number_classes', type=int, default=2)
-    parser.add_argument('--learning_rate', dest='learning_rate', type=float, default=3e-4)
-    parser.add_argument('--test_every_n_steps', dest='test_every_n_steps', type=int, help='number of gradient update steps to take between test epochs', default=1000)
-    parser.add_argument('--balance_classes', dest='balance_classes', type=int, help='whether to balance classes [0 = false, 1 = true]', default=0)
-    parser.add_argument('--use_augmentation', dest='use_augmentation', type=int, help='whether to use data augmentation [0 = false, 1 = true]', default=1)
-
-    parser.add_argument('--early_stopping', dest='early_stopping_count', type=int, help='Perform early stopping when the test loss does not improve for N epochs.', default=10)
-    parser.add_argument('--reader_count', dest='reader_count', type=int, help='how many threads to use for disk I/O and augmentation per gpu', default=1)
-
-    # TODO add parameter to specify the devices to use for training
-
-    args = parser.parse_args()
-    batch_size = args.batch_size
-    output_folder = args.output_folder
-    number_classes = args.number_classes
-    early_stopping_count = args.early_stopping_count
-    train_lmdb_filepath = args.train_database_filepath
-    test_lmdb_filepath = args.test_database_filepath
-    learning_rate = args.learning_rate
-    test_every_n_steps = args.test_every_n_steps
-    balance_classes = args.balance_classes
-    use_augmentation = args.use_augmentation
-    reader_count = args.reader_count
-
-    print('Arguments:')
+def main(output_folder, batch_size, reader_count, train_lmdb_filepath, test_lmdb_filepath, use_augmentation, number_classes, balance_classes, learning_rate, test_every_n_steps, early_stopping_count):
+    
+    print('Main Arguments:')
     print('batch_size = {}'.format(batch_size))
     print('number_classes = {}'.format(number_classes))
     print('learning_rate = {}'.format(learning_rate))
@@ -242,4 +214,36 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+     # Setup the Argument parsing
+     parser = argparse.ArgumentParser(prog='train_unet', description='Script which trains a unet model')
+
+     parser.add_argument('--train_database', dest='train_database_filepath', type=str, help='lmdb database to use for (Required)', required=True)
+     parser.add_argument('--test_database', dest='test_database_filepath', type=str, help='lmdb database to use for testing (Required)', required=True)
+     parser.add_argument('--output_dir', dest='output_folder', type=str, help='Folder where outputs will be saved (Required)', required=True)
+
+     parser.add_argument('--batch_size', dest='batch_size', type=int, help='training batch size', default=4)
+     parser.add_argument('--number_classes', dest='number_classes', type=int, default=2)
+     parser.add_argument('--learning_rate', dest='learning_rate', type=float, default=3e-4)
+     parser.add_argument('--test_every_n_steps', dest='test_every_n_steps', type=int, help='number of gradient update steps to take between test epochs', default=1000)
+     parser.add_argument('--balance_classes', dest='balance_classes', type=int, help='whether to balance classes [0 = false, 1 = true]', default=0)
+     parser.add_argument('--use_augmentation', dest='use_augmentation', type=int, help='whether to use data augmentation [0 = false, 1 = true]', default=1)
+
+     parser.add_argument('--early_stopping', dest='early_stopping_count', type=int, help='Perform early stopping when the test loss does not improve for N epochs.', default=10)
+     parser.add_argument('--reader_count', dest='reader_count', type=int, help='how many threads to use for disk I/O and augmentation per gpu', default=1)
+
+     # TODO add parameter to specify the devices to use for training
+
+     args = parser.parse_args()
+     batch_size = args.batch_size
+     output_folder = args.output_folder
+     number_classes = args.number_classes
+     early_stopping_count = args.early_stopping_count
+     train_lmdb_filepath = args.train_database_filepath
+     test_lmdb_filepath = args.test_database_filepath
+     learning_rate = args.learning_rate
+     test_every_n_steps = args.test_every_n_steps
+     balance_classes = args.balance_classes
+     use_augmentation = args.use_augmentation
+     reader_count = args.reader_count
+
+     main(output_folder, batch_size, reader_count, train_lmdb_filepath, test_lmdb_filepath, use_augmentation, number_classes, balance_classes, learning_rate, test_every_n_steps, early_stopping_count)

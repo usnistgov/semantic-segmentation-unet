@@ -131,7 +131,7 @@ def generate_database(img_list, database_name, image_filepath, mask_filepath, ou
         print('Deleting existing database')
         shutil.rmtree(output_image_lmdb_file)
 
-    image_env = lmdb.open(output_image_lmdb_file, map_size=int(5e12))
+    image_env = lmdb.open(output_image_lmdb_file, map_size=int(5e10))
     image_txn = image_env.begin(write=True)
 
     with open(os.path.join(output_image_lmdb_file, 'img_filenames.csv'), 'w') as csvfile:

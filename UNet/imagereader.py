@@ -170,7 +170,7 @@ class ImageReader:
         [self.lmdb_txns.append(self.lmdb_env.begin(write=False)) for i in range(self.nb_workers)]
         # launch workers
         self.workers = [Process(target=self.__image_loader) for i in range(self.nb_workers)]
-
+        
         # start workers
         for w in self.workers:
             w.start()
