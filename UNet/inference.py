@@ -201,7 +201,20 @@ def inference(saved_model_filepath, image_folder, output_folder, image_format):
             segmented_mask = segmented_mask.astype(np.uint16)
         if np.max(segmented_mask) > 65536:
             segmented_mask = segmented_mask.astype(np.int32)
-        skimage.io.imsave(os.path.join(output_folder, slide_name), segmented_mask, compress=6)
+        if 'tif' in image_format:
+            skimage.io.imsave(os.path.join(output_folder, slide_name), segmented_mask, compress=6, bigtiff=True, tile=(1024,1024))
+        else:
+            skimage.io.imsave(os.path.join(output_folder, slide_name), segmented_mask, compress=6)
+
+
+def main(saved_model_filepath, image_folder, output_folder, image_format):
+    print('Arguments:')
+    print('saved_model_filepath = {}'.format(saved_model_filepath))
+    print('image_folder = {}'.format(image_folder))
+    print('output_folder = {}'.format(output_folder))
+    print('image_format = {}'.format(image_format))
+
+    inference(saved_model_filepath, image_folder, output_folder, image_format)
 
 
 if __name__ == "__main__":
@@ -222,11 +235,6 @@ if __name__ == "__main__":
     output_folder = args.output_folder
     image_format = args.image_format
 
-    print('Arguments:')
-    print('saved_model_filepath = {}'.format(saved_model_filepath))
-    print('image_folder = {}'.format(image_folder))
-    print('output_folder = {}'.format(output_folder))
-    print('image_format = {}'.format(image_format))
+    main(saved_model_filepath, image_folder, output_folder, image_format)
 
-    inference(saved_model_filepath, image_folder, output_folder, image_format)
 
