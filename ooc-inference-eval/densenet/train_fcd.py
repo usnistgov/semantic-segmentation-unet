@@ -3,10 +3,12 @@
 # You are solely responsible for determining the appropriateness of using and distributing the software and you assume all risks associated with its use, including but not limited to the risks and costs of program errors, compliance with applicable laws, damage to or loss of data, programs or equipment, and the unavailability or interruption of operation. This software is not intended to be used in any situation where a failure could cause risk of injury or damage to property. The software developed by NIST employees is not subject to copyright protection within the United States.
 
 import sys
+
 if sys.version_info[0] < 3:
-    raise Exception('Python3 required')
+    raise RuntimeError('Python3 required')
 
 import os
+
 # set the system environment so that the PCIe GPU ids match the Nvidia ids in nvidia-smi
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"  # so the IDs match nvidia-smi
 
@@ -15,18 +17,27 @@ import datetime
 import numpy as np
 
 import tensorflow as tf
+
 tf_version = tf.__version__.split('.')
 if int(tf_version[0]) != 2:
-    raise Exception('Tensorflow 2.x.x required')
+    raise RuntimeError('Tensorflow 2.x.x required')
 
-
-import unet_type_model
+import fcd_model
 import imagereader
+import time
 
 
-def train_model(output_folder, batch_size, reader_count, train_lmdb_filepath, test_lmdb_filepath, use_augmentation, number_classes, balance_classes, learning_rate, test_every_n_steps, early_stopping_count, M, nl, k, b, label_smoothing):
+def train_model(output_folder, batch_size, reader_count, train_lmdb_filepath, test_lmdb_filepath, use_augmentation,
+                number_classes, balance_classes, learning_rate, test_every_n_steps, early_stopping_count, gpu_ids=""):
+    if gpu_ids is not None and len(gpu_ids) > 0:
+        # gpus_to_use must bs comma separated list of gpu ids, e.g. "1,3,4"
+        os.environ["CUDA_VISIBLE_DEVICES"] = gpu_ids  # "0, 1" for multiple
+
     if not os.path.exists(output_folder):
         os.makedirs(output_folder)
+
+    # TODO add ability to reload a checkpoint or saved model to resume training
+    training_checkpoint_filepath = None
 
     # uses all available devices
     mirrored_strategy = tf.distribute.MirroredStrategy()
@@ -38,18 +49,23 @@ def train_model(output_folder, batch_size, reader_count, train_lmdb_filepath, te
         reader_count = reader_count * mirrored_strategy.num_replicas_in_sync
 
         print('Setting up test image reader')
-        test_reader = imagereader.ImageReader(test_lmdb_filepath, use_augmentation=False, shuffle=False, num_workers=reader_count, balance_classes=False, number_classes=number_classes, M=M)
+        test_reader = imagereader.ImageReader(test_lmdb_filepath, use_augmentation=False, shuffle=False,
+                                              num_workers=reader_count, balance_classes=False,
+                                              number_classes=number_classes)
         print('Test Reader has {} images'.format(test_reader.get_image_count()))
 
         print('Setting up training image reader')
-        train_reader = imagereader.ImageReader(train_lmdb_filepath, use_augmentation=use_augmentation, shuffle=True, num_workers=reader_count, balance_classes=balance_classes, number_classes=number_classes, M=M)
-        img_channel_count = train_reader.get_image_size()[2]
+        train_reader = imagereader.ImageReader(train_lmdb_filepath, use_augmentation=use_augmentation, shuffle=True,
+                                               num_workers=reader_count, balance_classes=balance_classes,
+                                               number_classes=number_classes)
         print('Train Reader has {} images'.format(train_reader.get_image_count()))
 
         try:  # if any errors happen we want to catch them and shut down the multiprocess readers
             print('Starting Readers')
             train_reader.startup()
+            print('  train_reader online')
             test_reader.startup()
+            print('  test_reader online')
 
             train_dataset = train_reader.get_tf_dataset()
             train_dataset = train_dataset.batch(global_batch_size).prefetch(reader_count)
@@ -60,10 +76,17 @@ def train_model(output_folder, batch_size, reader_count, train_lmdb_filepath, te
             test_dataset = mirrored_strategy.experimental_distribute_dataset(test_dataset)
 
             print('Creating model')
-            model = unet_type_model.UNet()
-            model.configure(number_classes=number_classes, global_batch_size=global_batch_size, input_channel_count=img_channel_count, learning_rate=learning_rate, M=M, nl=nl, k=k, b=b, label_smoothing=label_smoothing)
+            model = fcd_model.FCDensenet(number_classes, global_batch_size, train_reader.get_image_size(), learning_rate)
 
-            model.write_model_summary(output_folder)
+            checkpoint = tf.train.Checkpoint(optimizer=model.get_optimizer(), model=model.get_keras_model())
+
+            # This requires pydot and graphviz, so its commented out to obviate those
+            # # print the model summary to file
+            # with open(os.path.join(output_folder, 'model.txt'), 'w') as summary_fh:
+            #     print_fn = lambda x: print(x, file=summary_fh)
+            #     model.get_keras_model().summary(print_fn=print_fn)
+            # tf.keras.utils.plot_model(model.get_keras_model(), os.path.join(output_folder, 'model.png'), show_shapes=True)
+            # tf.keras.utils.plot_model(model.get_keras_model(), os.path.join(output_folder, 'model.dot'), show_shapes=True)
 
             # train_epoch_size = train_reader.get_image_count()/batch_size
             train_epoch_size = test_every_n_steps
@@ -102,17 +125,21 @@ def train_model(output_folder, batch_size, reader_count, train_lmdb_filepath, te
                     model.set_learning_rate(learning_rate)
 
                 # Iterate over the batches of the train dataset.
+                start_time = time.time()
                 for step, (batch_images, batch_labels) in enumerate(train_dataset):
-                    if step > train_epoch_size:
+                    if step > cur_train_epoch_size:
                         break
 
                     inputs = (batch_images, batch_labels, train_loss_metric, train_acc_metric)
                     model.dist_train_step(mirrored_strategy, inputs)
 
-                    print('Train Epoch {}: Batch {}/{}: Loss {} Accuracy = {}'.format(epoch, step, train_epoch_size, train_loss_metric.result(), train_acc_metric.result()))
+                    print('Train Epoch {}: Batch {}/{}: Loss {} Accuracy = {}'.format(epoch, step, train_epoch_size,
+                                                                                      train_loss_metric.result(),
+                                                                                      train_acc_metric.result()))
                     with train_summary_writer.as_default():
                         tf.summary.scalar('loss', train_loss_metric.result(), step=int(epoch * train_epoch_size + step))
-                        tf.summary.scalar('accuracy', train_acc_metric.result(), step=int(epoch * train_epoch_size + step))
+                        tf.summary.scalar('accuracy', train_acc_metric.result(),
+                                          step=int(epoch * train_epoch_size + step))
                     train_loss_metric.reset_states()
                     train_acc_metric.reset_states()
 
@@ -129,10 +156,11 @@ def train_model(output_folder, batch_size, reader_count, train_lmdb_filepath, te
                     # print('Test Epoch {}: Batch {}/{}: Loss {}'.format(epoch, step, test_epoch_size, loss_value))
                 test_loss.append(np.mean(epoch_test_loss))
 
-                print('Test Epoch: {}: Loss = {} Accuracy = {}'.format(epoch, test_loss_metric.result(), test_acc_metric.result()))
+                print('Test Epoch: {}: Loss = {} Accuracy = {}'.format(epoch, test_loss_metric.result(),
+                                                                       test_acc_metric.result()))
                 with test_summary_writer.as_default():
-                    tf.summary.scalar('loss', test_loss_metric.result(), step=int((epoch+1) * train_epoch_size))
-                    tf.summary.scalar('accuracy', test_acc_metric.result(), step=int((epoch+1) * train_epoch_size))
+                    tf.summary.scalar('loss', test_loss_metric.result(), step=int((epoch + 1) * train_epoch_size))
+                    tf.summary.scalar('accuracy', test_acc_metric.result(), step=int((epoch + 1) * train_epoch_size))
                 test_loss_metric.reset_states()
                 test_acc_metric.reset_states()
 
@@ -141,12 +169,14 @@ def train_model(output_folder, batch_size, reader_count, train_lmdb_filepath, te
                         csvfile.write(str(test_loss[i]))
                         csvfile.write('\n')
 
+                print('Epoch took: {} s'.format(time.time() - start_time))
+
                 # determine if to record a new checkpoint based on best test loss
                 if (len(test_loss) - 1) == np.argmin(test_loss):
                     # save tf checkpoint
                     print('Test loss improved: {}, saving checkpoint'.format(np.min(test_loss)))
-                    training_checkpoint_folder = os.path.join(output_folder, 'checkpoint')
-                    model.save_checkpoint(os.path.join(output_folder, 'checkpoint'))
+                    # checkpoint.save(os.path.join(output_folder, 'checkpoint', "ckpt")) # does not overwrite
+                    training_checkpoint_filepath = checkpoint.write(os.path.join(output_folder, 'checkpoint', "ckpt"))
 
                 # determine early stopping
                 CONVERGENCE_TOLERANCE = 1e-4
@@ -156,68 +186,31 @@ def train_model(output_folder, batch_size, reader_count, train_lmdb_filepath, te
                 min_test_loss = np.min(test_loss)
                 error_from_best = np.abs(test_loss - min_test_loss)
                 error_from_best[error_from_best < CONVERGENCE_TOLERANCE] = 0
-                best_epoch = np.where(error_from_best == 0)[0][0] # unpack numpy array, select first time since that value has happened
+                best_epoch = np.where(error_from_best == 0)[0][
+                    0]  # unpack numpy array, select first time since that value has happened
                 print('Best epoch: {}'.format(best_epoch))
 
-                # TODO remove
-                if len(test_loss) > 1 or len(test_loss) - best_epoch > early_stopping_count:
+                if len(test_loss) - best_epoch > early_stopping_count:
                     break  # break the epoch loop
                 epoch = epoch + 1
 
-        finally: # if any erros happened during training, shut down the disk readers
+        finally:  # if any erros happened during training, shut down the disk readers
             print('Shutting down train_reader')
             train_reader.shutdown()
             print('Shutting down test_reader')
             test_reader.shutdown()
 
     # convert training checkpoint to the saved model format
-    if training_checkpoint_folder is not None:
+    if training_checkpoint_filepath is not None:
         # restore the checkpoint and generate a saved model
-        unet_type_model.UNet.convert_checkpoint_to_saved_model(training_checkpoint_folder, os.path.join(output_folder, 'saved_model'))
+        model = fcd_model.FCDensenet(number_classes, global_batch_size, train_reader.get_image_size(), learning_rate)
+        checkpoint = tf.train.Checkpoint(optimizer=model.get_optimizer(), model=model.get_keras_model())
+        checkpoint.restore(training_checkpoint_filepath)
+        tf.saved_model.save(model.get_keras_model(), os.path.join(output_folder, 'saved_model'))
 
 
-def main():
-    # Setup the Argument parsing
-    parser = argparse.ArgumentParser(prog='train_unet', description='Script which trains a unet model')
-
-    parser.add_argument('--batch_size', dest='batch_size', type=int, help='training batch size', default=4)
-    parser.add_argument('--number_classes', dest='number_classes', type=int, default=2)
-    parser.add_argument('--learning_rate', dest='learning_rate', type=float, default=3e-4)
-    parser.add_argument('--output_dir', dest='output_folder', type=str, help='Folder where outputs will be saved (Required)', required=True)
-    parser.add_argument('--test_every_n_steps', dest='test_every_n_steps', type=int, help='number of gradient update steps to take between test epochs', default=1000)
-    parser.add_argument('--balance_classes', dest='balance_classes', type=int, help='whether to balance classes [0 = false, 1 = true]', default=0)
-    parser.add_argument('--use_augmentation', dest='use_augmentation', type=int, help='whether to use data augmentation [0 = false, 1 = true]', default=1)
-
-    parser.add_argument('--train_database', dest='train_database_filepath', type=str, help='lmdb database to use for (Required)', required=True)
-    parser.add_argument('--test_database', dest='test_database_filepath', type=str, help='lmdb database to use for testing (Required)', required=True)
-    parser.add_argument('--early_stopping', dest='early_stopping_count', type=int, help='Perform early stopping when the test loss does not improve for N epochs.', default=10)
-    parser.add_argument('--reader_count', dest='reader_count', type=int, help='how many threads to use for disk I/O and augmentation per gpu', default=1)
-    parser.add_argument('--label_smoothing', dest='label_smoothing', type=int, help='Whether to use label smoothing or not [0 = false, 1 = true]', default=0)
-    parser.add_argument('--M', dest='M', type=int, help='Maximum level for UNet architecture (>=1)', default=4)
-    parser.add_argument('--nl', dest='nl', type=int, help='Number of conv layers to use per level of UNet architecture (>=1)', default=2)
-    parser.add_argument('--k', dest='k', type=int, help='Kernel size to use throughout UNet architecture', default=3)
-    parser.add_argument('--b', dest='b', type=int, help='Baseline Feature Depth', default=64)
-
-
-    args = parser.parse_args()
-    batch_size = args.batch_size
-    output_folder = args.output_folder
-    number_classes = args.number_classes
-    early_stopping_count = args.early_stopping_count
-    train_lmdb_filepath = args.train_database_filepath
-    test_lmdb_filepath = args.test_database_filepath
-    learning_rate = args.learning_rate
-    test_every_n_steps = args.test_every_n_steps
-    balance_classes = args.balance_classes
-    use_augmentation = args.use_augmentation
-    reader_count = args.reader_count
-    label_smoothing = args.label_smoothing
-    M = args.M
-    nl = args.nl
-    k = args.k
-    b = args.b
-
-    print('Arguments:')
+def main(output_folder, batch_size, reader_count, train_lmdb_filepath, test_lmdb_filepath, use_augmentation,
+         number_classes, balance_classes, learning_rate, test_every_n_steps, early_stopping_count, gpu_ids):
     print('batch_size = {}'.format(batch_size))
     print('number_classes = {}'.format(number_classes))
     print('learning_rate = {}'.format(learning_rate))
@@ -231,15 +224,53 @@ def main():
 
     print('early_stopping count = {}'.format(early_stopping_count))
     print('reader_count = {}'.format(reader_count))
-    print('label_smoothing = {}'.format(label_smoothing))
+    print('gpu_ids = {}'.format(gpu_ids))
 
-    print('M = {}'.format(M))
-    print('nl = {}'.format(nl))
-    print('k = {}'.format(k))
-    print('b = {}'.format(b))
-
-    train_model(output_folder, batch_size, reader_count, train_lmdb_filepath, test_lmdb_filepath, use_augmentation, number_classes, balance_classes, learning_rate, test_every_n_steps, early_stopping_count, M, nl, k, b, label_smoothing)
+    train_model(output_folder, batch_size, reader_count, train_lmdb_filepath, test_lmdb_filepath, use_augmentation,
+                number_classes, balance_classes, learning_rate, test_every_n_steps, early_stopping_count, gpu_ids)
 
 
 if __name__ == "__main__":
-    main()
+    # Setup the Argument parsing
+    parser = argparse.ArgumentParser(prog='train_fcdensenet', description='Script which trains a FCDenseNet model')
+
+    parser.add_argument('--train_database', dest='train_database_filepath', type=str,
+                        help='lmdb database to use for (Required)', required=True)
+    parser.add_argument('--test_database', dest='test_database_filepath', type=str,
+                        help='lmdb database to use for testing (Required)', required=True)
+    parser.add_argument('--output_dir', dest='output_folder', type=str,
+                        help='Folder where outputs will be saved (Required)', required=True)
+
+    parser.add_argument('--batch_size', dest='batch_size', type=int, help='training batch size', default=4)
+    parser.add_argument('--number_classes', dest='number_classes', type=int, default=2)
+    parser.add_argument('--learning_rate', dest='learning_rate', type=float, default=1e-4)
+    parser.add_argument('--test_every_n_steps', dest='test_every_n_steps', type=int,
+                        help='number of gradient update steps to take between test epochs', default=1000)
+    parser.add_argument('--balance_classes', dest='balance_classes', type=int,
+                        help='whether to balance classes [0 = false, 1 = true]', default=0)
+    parser.add_argument('--use_augmentation', dest='use_augmentation', type=int,
+                        help='whether to use data augmentation [0 = false, 1 = true]', default=1)
+
+    parser.add_argument('--early_stopping', dest='early_stopping_count', type=int,
+                        help='Perform early stopping when the test loss does not improve for N epochs.', default=10)
+    parser.add_argument('--reader_count', dest='reader_count', type=int,
+                        help='how many threads to use for disk I/O and augmentation per gpu', default=1)
+    parser.add_argument('--gpu_ids', dest='gpu_ids', type=str, help='Which gpu ids (shown in nvidia-smi) to use',
+                        default=None)
+
+    args = parser.parse_args()
+    batch_size = args.batch_size
+    output_folder = args.output_folder
+    number_classes = args.number_classes
+    early_stopping_count = args.early_stopping_count
+    train_lmdb_filepath = args.train_database_filepath
+    test_lmdb_filepath = args.test_database_filepath
+    learning_rate = args.learning_rate
+    test_every_n_steps = args.test_every_n_steps
+    balance_classes = args.balance_classes
+    use_augmentation = args.use_augmentation
+    reader_count = args.reader_count
+    gpu_ids = args.gpu_ids
+
+    main(output_folder, batch_size, reader_count, train_lmdb_filepath, test_lmdb_filepath, use_augmentation,
+         number_classes, balance_classes, learning_rate, test_every_n_steps, early_stopping_count, gpu_ids)

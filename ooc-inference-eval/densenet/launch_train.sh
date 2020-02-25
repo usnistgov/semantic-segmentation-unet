@@ -10,23 +10,28 @@
 # Modify this: which gpu (according to nvidia-smi) do you want to use for training
 # this can be a single number, or a list. E.g "3" or "0,1" "0,2,3"
 # the training script will use all gpus you list
-GPU="0,1,2,3"
+GPU="0"
 
 # how large is an epoch, or sub/super epoch test dataset evaluation
 test_every_n_step=1000
 batch_size=2
 
 # where is your training lmdb database
-train_database="../data/train-phase.lmdb"
-test_database="../data/test-phase.lmdb"
+#train_database="/mnt/m2/mmajursk/ooc/train-hes.lmdb"
+#test_database="/mnt/m2/mmajursk/ooc/test-hes.lmdb"
+train_database="/home/mmajursk/Downloads/todo/ooc/train-hes.lmdb"
+test_database="/home/mmajursk/Downloads/todo/ooc/test-hes.lmdb"
+
+#output_folder="/mnt/m2/mmajursk/ooc/fcd-model/"
+output_folder="/home/mmajursk/Downloads/todo/ooc/fcd-model/"
 
 # how many classes exist in your training dataset (e.g. 2 for binary segmentation)
 number_classes=2
 
 # what learning rate should the network use
-learning_rate=3e-4 # Karpathy Constant
+learning_rate=1e-4 # Karpathy Constant
 
-use_augmentation=0 # {0, 1}
+use_augmentation=1 # {0, 1}
 balance_classes=1 # {0, 1}
 
 # END MODIFY THESE OPTIONS
@@ -38,12 +43,4 @@ export CUDA_DEVICE_ORDER="PCI_BUS_ID"
 export CUDA_VISIBLE_DEVICES=${GPU}
 
 
-# train default UNet Model
-output_folder="../stock_unet_model"
-
-python train_unet_type_model.py --test_every_n_steps=${test_every_n_step} --batch_size=${batch_size} --train_database=${train_database} --test_database=${test_database} --output_dir=${output_folder} --number_classes=${number_classes} --learning_rate=${learning_rate}  --use_augmentation=${use_augmentation} --balance_classes=${balance_classes} --early_stopping=10
-
-
-output_folder="../modified_unet_model"
-
-python train_unet_type_model.py --test_every_n_steps=${test_every_n_step} --batch_size=${batch_size} --train_database=${train_database} --test_database=${test_database} --output_dir=${output_folder} --number_classes=${number_classes} --learning_rate=${learning_rate}  --use_augmentation=${use_augmentation} --balance_classes=${balance_classes} --early_stopping=10 --M=3 --nl=3
+python train_fcd.py --test_every_n_steps=${test_every_n_step} --batch_size=${batch_size} --train_database=${train_database} --test_database=${test_database} --output_dir=${output_folder} --number_classes=${number_classes} --learning_rate=${learning_rate}  --use_augmentation=${use_augmentation} --balance_classes=${balance_classes}

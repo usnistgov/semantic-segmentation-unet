@@ -6,7 +6,7 @@ import os
 import skimage.io
 import numpy as np
 import inference_unet_type_model_softmax
-import imagereader
+from unet import imagereader
 import unet_type_model
 
 
