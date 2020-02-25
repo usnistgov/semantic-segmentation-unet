@@ -5,12 +5,7 @@
 # You are solely responsible for determining the appropriateness of using and distributing the software and you assume all risks associated with its use, including but not limited to the risks and costs of program errors, compliance with applicable laws, damage to or loss of data, programs or equipment, and the unavailability or interruption of operation. This software is not intended to be used in any situation where a failure could cause risk of injury or damage to property. The software developed by NIST employees is not subject to copyright protection within the United States.
 
 
-python3 -m venv tf
-source ./tf/bin/activate
+conda create -n ooc python=3.6
+conda activate ooc
 
-pip install --upgrade pip
-pip install tensorflow-gpu==2.0.0-beta1
-pip install lmdb
-pip install scikit-image
-pip install pydot
-pip install graphviz
+conda install tensorflow-gpu python-lmdb scikit-image
