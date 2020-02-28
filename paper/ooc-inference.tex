@@ -1,62 +1,68 @@
-\def\year{2020}\relax
+% updated April 2002 by Antje Endemann
+% Based on CVPR 07 and LNCS, with modifications by DAF, AZ and elle, 2008 and AA, 2010, and CC, 2011; TT, 2014; AAS, 2016; AAS, 2020
 
-\documentclass[letterpaper]{article} % DO NOT CHANGE THIS
-\usepackage{aaai20}  % DO NOT CHANGE THIS
-\usepackage{times}  % DO NOT CHANGE THIS
-\usepackage{helvet} % DO NOT CHANGE THIS
-\usepackage{courier}  % DO NOT CHANGE THIS
-\usepackage[hyphens]{url}  % DO NOT CHANGE THIS
-\usepackage{graphicx} % DO NOT CHANGE THIS
-\urlstyle{rm} % DO NOT CHANGE THIS
-\def\UrlFont{\rm}  % DO NOT CHANGE THIS
-\usepackage{graphicx}  % DO NOT CHANGE THIS
-\frenchspacing  % DO NOT CHANGE THIS
-\setlength{\pdfpagewidth}{8.5in}  % DO NOT CHANGE THIS
-\setlength{\pdfpageheight}{11in}  % DO NOT CHANGE THIS
+\documentclass[runningheads]{llncs}
+\usepackage{graphicx}
+\usepackage{comment}
+\usepackage{amsmath,amssymb} % define this before the line numbering.
+\usepackage{color}
 
-\usepackage{amsmath}
-%\usepackage{amssymb}
 \usepackage[binary-units]{siunitx}
 
-%\nocopyright
-%PDF Info Is REQUIRED.
-% For /Author, add all authors within the parentheses, separated by commas. No accents or commands.
-% For /Title, add Title in Mixed Case. No accents or commands. Retain the parentheses.
 % TODO setup camera ready document
-\pdfinfo{
-	/Title (Error-Free Semantic Segmentation Inference of Images Larger than GPU Memory)
-	/Author (Michael Majurski, Peter Bajcsy)
-} %Leave this	
-% /Title ()
-% Put your actual complete title (no codes, scripts, shortcuts, or LaTeX commands) within the parentheses in mixed case
-% Leave the space between \Title and the beginning parenthesis alone
-% /Author ()
-% Put your actual complete list of authors (no codes, scripts, shortcuts, or LaTeX commands) within the parentheses in mixed case. 
-% Each author should be only by a comma. If the name contains accents, remove them. If there are any LaTeX commands, 
-% remove them. 
+\newif\ifcamera
+\cameratrue
+%\camerafalse
 
 
-\setcounter{secnumdepth}{0} %May be changed to 1 or 2 if section numbers are desired.
+\ifcamera
+% Do nothing
+\else
+\usepackage{ruler}
+\usepackage[width=122mm,left=12mm,paperwidth=146mm,height=193mm,top=12mm,paperheight=217mm]{geometry}
+\fi
 
-% The file aaai20.sty is the style file for AAAI Press 
-% proceedings, working notes, and technical reports.
+\title{Error-Free Semantic Segmentation Inference of Images Larger than GPU Memory}
+
+\pagestyle{headings}
+\mainmatter
+\def\ECCVSubNumber{5548}  % Insert your submission number here
+
+\ifcamera
+% CAMERA READY SUBMISSION
+%******************
+\titlerunning{Error-Free Out-of-Core FCNN Inference}
+% If the paper title is too long for the running head, you can set
+% an abbreviated paper title here
+
+%\author{First Author\inst{1}\orcidID{0000-1111-2222-3333} \and
+%Second Author\inst{2,3}\orcidID{1111-2222-3333-4444} \and
+%Third Author\inst{3}\orcidID{2222--3333-4444-5555}}
+
+\author{Michael Majurski\inst{1} \and Peter Bajcsy\inst{1}}
+
 %
-\setlength\titlebox{2.5in} % If your paper contains an overfull \vbox too high warning at the beginning of the document, use this
-% command to correct it. You may not alter the value below 2.5 in
-% TODO setup camera ready document
-\title{Error-Free Semantic Segmentation Inference of \\
-	Images Larger than GPU Memory}
-%Your title must be in mixed case, not sentence case. 
-% That means all verbs (including short verbs like be, is, using,and go), 
-% nouns, adverbs, adjectives should be capitalized, including both words in hyphenated terms, while
-% articles, conjunctions, and prepositions are lower case unless they
-% directly follow a colon or long dash
-\author{Michael Majurski and Peter Bajcsy\\
-	National Institute of Standards and Technology\\
+\authorrunning{M. Majurski and P. Bajcsy}
+% First names are abbreviated in the running head.
+% If there are more than two authors, 'et al.' is used.
+%
+\institute{National Institute of Standards and Technology\\
 	Information Technology Lab\\
 	Gaithersburg, MD 20899, USA\\
-	\{michael.majurski, peter.bajcsy\}@nist.gov
-}
+	\email{\{michael.majurski,peter.bajcsy\}@nist.gov}}
+
+%******************
+\else
+% INITIAL SUBMISSION 
+%******************
+\titlerunning{ECCV-20 submission ID \ECCVSubNumber} 
+\authorrunning{ECCV-20 submission ID \ECCVSubNumber} 
+\author{Anonymous ECCV submission}
+\institute{Paper ID \ECCVSubNumber}
+%******************
+\fi
+
+
 
 \begin{document}
 
@@ -66,14 +72,14 @@
 %%%%%%%%% ABSTRACT
 \begin{abstract}
 
-We address the problem of performing error-free out-of-core inference of arbitrarily large images for semantic segmentation using fully convolutional neural networks (FCNN). FCNN models have the property that once a model is trained it can be applied on arbitrarily sized images, though it is still constrained by the available memory (RAM) of the GPU executing the inference. This work is motivated by overcoming the GPU memory size constraint via a tile-based inferencing methodology which does not numerically impact the final result.
+We address the problem of performing error-free out-of-core semantic segmentation inference of arbitrarily large images using fully convolutional neural networks (FCNN). FCNN models have the property that once a model is trained it can be applied on arbitrarily sized images, though it is still constrained by the available memory (RAM) of the GPU executing the inference. This work is motivated by overcoming the GPU memory size constraint via a tile-based inferencing methodology which does not numerically impact the final result. This enables inference of whole slide microscopy images generated by a slide scanner, for example.
 
-We developed mathematical formulas for determining the tile size and stride of tiles created from an input image too large to inference on a GPU. The formulas are validated on multiple configurations of an FCNN U-Net model and tiling parameters. The numerical accuracy is evaluated by executing the forward (inference) pass of the U-Net network with each parameter setting on $\num{20000} \times \num{20000}$ pixel grayscale images. 
+We documented the mathematical formulas for determining the tile size and stride of tiles created from an input image too large to inference on a GPU. The formulas are validated on U-Net and FC-DenseNet architectures. The numerical accuracy is evaluated by inferencing on $\num{20000} \times \num{20000}$ pixel grayscale images. 
 
 This method decomposes the full inference image into small, overlapping tiles each of which fit into GPU memory for the forward (inference) pass of the network. 
 This tiling scheme produces a segmented result as if the whole image had been inferenced in a single pass. 
 The primary contribution of this work lies in demonstrating that one can achieve error-free inference using a tile-based (out-of-core) approach if the tiling parameters are chosen according to the mathematical analysis of the FCNN model and GPU specification. 
-In addition, we document the segmentation errors due to tiling configurations that do not satisfy the formulas. 
+In addition, we document the errors due to tiling configurations which do not satisfy the constraints, and explore using network effective receptive fields to estimate the tiling parameters. 
 
 \end{abstract}
 
@@ -81,17 +87,16 @@ In addition, we document the segmentation errors due to tiling configurations th
 \section{Introduction}
 
 The task of semantic segmentation, assigning a label to each image pixel, is often performed using deep learning based convolutional neural networks (CNNs) \cite{Badrinarayanan2015a,Ronneberger2015a}, for instance, by using a special type of CNN which only uses convolutional layers.
-%The U-Net architecture is an encoder-decoder type CNN network with skip connections at equivalent feature map sizes \cite{Ronneberger2015a}. Models like U-Net are a special type of CNN which only uses convolutional layers. 
 These so-called "fully convolutional neural networks" (FCNN) have a very useful property which allows altering the input image size. 
 Both U-Net \cite{Ronneberger2015a} and the original FCN network \cite{Long2015} are examples of FCNN type CNNs. 
 FCNNs enable training the network on images much smaller than those of interest at inference time. 
-For example, one can train a U-Net model on $512 \times 512$ pixel tiles and then perform inference on many $\num{20000} \times \num{20000}$ pixel images. This decoupling of training and inference image sizes means the semantic segmentation models can be applied to images much larger than the memory available on current GPU cards. 
+For example, one can train a U-Net model on $512 \times 512$ pixel tiles and then perform inference on many $\num{20000} \times \num{20000}$ pixel images. This decoupling of training and inference image sizes means the semantic segmentation models can be applied to images much larger than the memory available on current GPUs. 
 
 The ability of FCNN networks to inference arbitrarily large images differs from other types of CNNs where the training and inference image sizes must be identical. Usually this static image size requirement is not a problem since the input images can be resized to fit the network. For example, if one trained a CNN on ImageNet \cite{Russakovsky2015} to classify pictures into two classes: \{Cat, Dog\}, the content of the image does not change drastically if the cat photo is resized to $224 \times 224$ pixels before inference.
 
 In another example, performing semantic segmentation of the scene acquired by a self driving car's front camera, one can infer which surfaces are drivable at the native camera resolution of 720p ($1280 \times 720$ pixels $\sim \SI{1}{\mega pixel}$). Alternatively, one can inference images after down-samplings if compute time must be decreased in such a time-critical application. 
 
-In contrast to the above two examples, there are applications where resizing (re-scaling or down-sampling) the image is not acceptable due to loss of information. For example, in digital pathology, one cannot take a whole slide microscopy image ($\num{100000} \times \num{50000}$ pixels) and fit it into GPU memory; nor can one reasonably downsample the image to fit as too much image detail would be lost. 
+In contrast to the above two examples, there are applications where resizing (re-scaling or down-sampling) the image is not acceptable due to loss of information. For example, in digital pathology, one cannot take a whole slide microscopy image generated by a slide scanner (upwards of $\num{100000} \times \num{100000}$ pixels) and fit it into GPU memory; nor can one reasonably downsample the image as too much image detail would be lost. 
 
 Our work is motivated by the need to design a methodology for arbitrarily large image inference on GPU memory constrained hardware in those applications where the loss of information due to image resizing is not acceptable. The original U-Net paper \cite{Ronneberger2015a} briefly hinted at the feasibility of an inference scheme similar to the one we present in this paper but did not fully document and explain the inference scheme. 
 The novelty of our work lies in presenting a methodology for large image tiling which enables error-free inference on GPUs with limited memory. This work draws on FastImage, a high-performance accessor library for processing gigapixel images in a tile-based manner \cite{Bardakoff2019}.
@@ -108,10 +113,13 @@ Huang et al. directly examine the problem of operating on images which cannot be
 
 To the best of our knowledge, no published method fully explores a methodology for error-free tile-based (out-of-core) inference of arbitrarily large images. While tile-based processing schemes have been outlined, the past publications do not provide a framework for achieving error-free tile-based inference results.
 
+The ability to perform error-free tile-based inference relies on the limited receptive field of convolutional layers as explored by Luo et al. \cite{Luo2016}. Luo et al. discuss the receptive fields of convolutional architectures, highlighting that for a given output pixel, there is limited context/information from the input that can influence that output. Input data outside the receptive field cannot influence that output pixel \cite{Luo2016}. The receptive field of a model is highly dependent upon architecture and layer connectivity. 
+
+
 \section{Methods}
 \label{methods}
 
-To explain out-of-core image inference we use U-Net \cite{Ronneberger2015a} as the case study FCNN. The structure of U-Net can be seen in Figure \ref{fig:unet-levels}. Nonetheless, the presented methodology applies to any FCNN network, just the specific numerical values will be different. 
+To explain out-of-core image inference we use U-Net \cite{Ronneberger2015a} as the case study FCNN. Nonetheless, the presented methodology applies to any FCNN network, just the specific numerical values will be different. 
 
 \subsection{U-Net Configuration}
 
@@ -122,36 +130,17 @@ Before delving into the out-of-core inference methodology details, we clarify tw
 	\item Convolution Type: Convolutional type was changed to \texttt{SAME} from \texttt{VALID} as used in the original paper \cite{Ronneberger2015a}.
 \end{enumerate}
 
-The original U-Net paper uses \texttt{VALID} type convolutions which shrink the spatial size of the feature maps by 2 pixels for each layer. Figure \ref{fig:valid} shows an illustration showing why \texttt{VALID} causes the feature maps to shrink. The effect of \texttt{VALID} convolutions can also be seen in the first layer of the original U-Net where the input image size of $572 \times 572$ pixels shrinks to $570 \times 570$ \cite{Ronneberger2015a}. 
-%At the original U-Net output, the feature maps have shrunk down to $388 \times 388$ pixels.
-
-\begin{figure}[h]
-	\centering
-	\includegraphics[width=0.4\linewidth]{figs/valid_padding.png}
-	\caption{Illustration of \texttt{VALID} type convolution where no padding is applied to the feature maps, resulting in the feature maps shrinking from $4 \times 4$ to a $2 \times 2$. In this case, all convolution input values must be present to generate valid outputs.}
-	\label{fig:valid}
-\end{figure}
-
-Switching to \texttt{SAME} type convolutions requires that within each convolutional layer zero padding is applied to each feature map to ensure the output has the same spatial size as the input. Figure \ref{fig:same} shows an illustration where an input $4 \times 4$ remains $4 \times 4$ after the convolution is applied. 
+The original U-Net paper uses \texttt{VALID} type convolutions which shrink the spatial size of the feature maps by 2 pixels for each layer \cite{Dumoulin2018}\footnote{For an excellent review of convolutional arithmetic, including transposed convolutions (i.e., up-conv), see "A guide to convolutional arithmetic for deep learning by Dumoulin and Visin" \cite{Dumoulin2018}.}. 
+%Figure 2.1 from Dumoulin and Visin "A guide to convolutional arithmetic for deep learning" \cite{Dumoulin2018} shows an illustration showing why \texttt{VALID} causes the feature maps to shrink. The effect of \texttt{VALID} convolutions can also be seen in the first layer of the original U-Net where the input image size of $572 \times 572$ pixels shrinks to $570 \times 570$ \cite{Ronneberger2015a}. 
+Switching to \texttt{SAME} type convolutions requires that within each convolutional layer zero padding is applied to each feature map to ensure the output has the same spatial size as the input. 
+%Figure 2.3 from Dumoulin and Visin \cite{Dumoulin2018} shows an illustration where a input $5 \times 5$ remains $5 \times 5$ after the convolution is applied. 
 While \texttt{VALID} type convolutions avoid the negative effects of the zero padding within \texttt{SAME} type convolutions, which can affect the results as outlined by Huang et al. \cite{Huang2019a}, users prefer input and output images of the same size. Additionally, our tiling scheme overcomes all negative effects that zero padding can introduce, justifying the choice of \texttt{SAME} type convolutions. 
-For an excellent review of convolutional arithmetic, including transposed convolutions (i.e., up-conv), see "A guide to convolutional arithmetic for deep learning" \cite{Dumoulin2018}.
-
-\begin{figure}[h]
-	\centering
-		\includegraphics[width=\linewidth]{figs/same_padding.png}
-		\caption{Illustration of \texttt{SAME} type convolutions where zero padding (empty white squares) is applied to ensure the output feature map has the same spatial dimensions as the input.}
-	\label{fig:same}
-\end{figure}
 
 The change to \texttt{SAME} type convolutions introduces an additional constraint on U-Net that needs to be mentioned. Given the skip connections between the encoder and decoder elements for matching feature maps, we need to ensure that the tensors being concatenated together are the same size. The feature map at the bottleneck of U-Net is spatially $16 \times$ smaller than the input image. 
-As we go deeper into a network we trade spatial resolution for feature depth. Given a $512 \times 512$ pixel input image, the bottleneck shape will be $N \times 1024 \times 32 \times 32$ (assuming \texttt{NCHW} \footnote{NCHW Tensor dimension ordering: N (batch size), Channels, Height, Width} dimension ordering with unknown batch size). Thus the input image height divided by the bottleneck feature map height is $\frac{512}{32} = 16$. However, if the input image is $500 \times 500$ pixels, the bottleneck would be (in theory) $N \times 1024 \times 31.25 \times 31.25$. When there are not enough input pixels in a feature map to perform the $2 \times 2$ max pooling, the output feature map size is the floor of the input size divided by $2$. 
+As we go deeper into a network we trade spatial resolution for feature depth. Given a $512 \times 512$ pixel input image, the bottleneck shape will be $N \times 1024 \times 32 \times 32$ (assuming \texttt{NCHW}\footnote{NCHW Tensor dimension ordering: N (batch size), Channels, Height, Width} dimension ordering with unknown batch size). Thus the input image height divided by the bottleneck feature map height is $\frac{512}{32} = 16$. However, if the input image is $500 \times 500$ pixels, the bottleneck would be (in theory) $N \times 1024 \times 31.25 \times 31.25$. When there are not enough input pixels in a feature map to perform the $2 \times 2$ max pooling, the output feature map size is the floor of the input size divided by $2$. 
 Thus, for an input image of $500 \times 500$ pixels the feature map heights after each max pooling layer in the encoder are: [$500, 250, 125, 62, 31$]. Now following the up-conv (fractionally strided/transposed convolution \cite{Dumoulin2018}) layers through the decoder, each of which doubles the spatial resolution, we end up with the following feature map heights: [$31, 62, 124, 248, 496$]. This results in a different feature map spatial size at the third level; encoder 125, decoder 124. If the input image size is a multiple of $16$ this mismatch cannot happen. 
 
 To ensure the input image is always a multiple of 16, we pad the end of each spatial dimension via reflection to meet the size requirement. So a $500 \times 500$ pixel image will be padded on the right and bottom with 12 pixels to bring its size to $512 \times 512$ pixels. Conversely, a $512 \times 512$ pixel image will be inferenced unmodified. Reflection padding is used to ensure that the summary statistics of the whole image are not unduly skewed since z-score normalization is used during inference. 
-%The input image to U-Net flows through the encoder, reaches the bottleneck feature map, and then flows through the decoder to create an output image of identical spatial size as the input. 
-%With the change to \texttt{SAME} convolutions, the input image creates an output image of identical spatial size.
-
-%See Dumoulin and Visin \cite{Dumoulin2018} for a more detailed explanation of the math behind transposed convolution/up-conv/fractionally strided convolution. 
 For the purpose of brevity, we will use 'up-conv' (as the U-Net paper does) to refer to fractionally strided convolutions with a stride of $\frac{1}{2}$ which double the feature map spatial resolution \cite{Dumoulin2018}.
 
 \subsection{Conceptual Framework}
@@ -173,27 +162,30 @@ Since the pixels within the ZoR and the radius need to be passed through the net
 	\label{fig:zor}
 \end{figure}
 
-Inferencing arbitrarily large input images requires that we only inference a small enough tile to fit in GPU memory for any single forward pass and then operate tile-by-tile. To form a tile, the whole image being inferenced is broken down into non-overlapping zones of responsibility. For each ZoR, the local context defined by the radius (where available) is included and passed through the network. The ZoR within the inferenced tile result (without the radius) is copied to the output image being constructed in CPU memory. The radius provides the network with all the information it needs to make correct, deterministic predictions for the entirety of the zone of responsibility. Hence the name, since each ZoR is responsible for a specific zone of the output. Therefore, while the full image was broken into tiles for inference, each pixel had all of the local context required to be predicted as if the whole image were passed through the network as one block of memory. 
+Inferencing arbitrarily large input images requires that we inference only a small enough tile to fit in GPU memory for any single forward pass and then operate tile-by-tile. To form a tile, the whole image being inferenced is broken down into non-overlapping zones of responsibility. For each ZoR, the local context defined by the radius (where that context is available) is included and passed through the network. The ZoR within the inferenced tile result (without the radius) is copied to the output image being constructed in CPU memory. The radius provides the network with all the information it needs to make correct, deterministic predictions for the entirety of the zone of responsibility. 
+%Hence the name, since each ZoR is responsible for a specific zone of the output. 
+Therefore, while the full image was broken into tiles for inference, each pixel had all of the local context required to be predicted as if the whole image were passed through the network as one block of memory. 
 
-This tile-based inferencing can be thought of as a series of forward passes, each computing a subregion (ZoR) of the feature maps that would be created while inferencing the whole image in one pass. In summary, each tile's feature maps are created (inferenced), its ZoR output extracted, and then the GPU memory is recycled for the next tile. By building each ZoR in a separate forward pass we can construct the network output within a fixed GPU memory footprint for arbitrarily large images. 
+This tile-based inferencing can be thought of as a series of forward passes, each computing a subregion (ZoR) of the feature maps that would be created while inferencing the whole image in one pass. 
+In summary, each tile's feature maps are created (inferenced), its ZoR output extracted, and then the GPU memory is recycled for the next tile. By building each ZoR in a separate forward pass we can construct the network output within a fixed GPU memory footprint for arbitrarily large images. 
 
 
 \subsection{Determining The Radius}
 
-\begin{figure*}[h!]
-	\centering
-		\includegraphics[width=\linewidth]{figs/unet-levels.png}
-	\caption{U-Net model architecture showing the different convolutional layers (blue arrows) and their respective levels. Each blue box is a multi-channel feature map with the channel count denoted on top of the box and the spatial dimension at the lower left edge. White boxes represent copied and concatenated feature maps. Each convolutional layer is numbered sequentially along the longest path through the network from input image to output segmentation result.}
-	\label{fig:unet-levels}
-\end{figure*}
+%\begin{figure*}[h!]
+%	\centering
+%		\includegraphics[width=\linewidth]{figs/unet-levels.png}
+%	\caption{U-Net model architecture showing the different convolutional layers (blue arrows) and their respective levels. Each blue box is a multi-channel feature map with the channel count denoted on top of the box and the spatial dimension at the lower left edge. White boxes represent copied and concatenated feature maps. Each convolutional layer is numbered sequentially along the longest path through the network from input image to output segmentation result.}
+%	\label{fig:unet-levels}
+%\end{figure*}
 
 Let U-Net be described by an ordered sequence of convolutional layers $c={1, ..., N}$ with each layer being associated with a level $l_{c}$ and a square kernel $k_{c} \times k_{c}$. 
 A convolutional layer (1) convolves a kernel and its input feature maps to create a set of output feature maps, (2) applies an element-wise a non-linearity (ReLu \cite{lecun2015deep}), and (3) performs batch normalization \cite{ioffe2015batch} on its output feature maps.
-For the network, $N$ defines the number of convolutional layers along the longest path from input to output. The index of $c$ for each convolutional layer is written on each blue arrow in Figure \ref{fig:unet-levels}.
+For the network, $N$ defines the number of convolutional layers along the longest path from input to output. 
+%The index of $c$ for each convolutional layer is written on each blue arrow in Figure \ref{fig:unet-levels}.
 
 Let us define the level $l_{c}$ of an encoder-decoder network architecture as the number of max-pool layers minus the number of up-conv layers between the input image and the current convolutional layer $c$ along the longest path through the network. Levels start at 0; each max pool encountered along the longest path increases the level by 1 and each up-conv reduces the level by 1. 
 
-%A spatial resolution changing layer is any layer which modifies the width or height of its input tensor. There are two examples present in U-Net: max-pool and up-conv. Max-pool halves the spatial resolution. Up-conv doubles the spatial resolution. All feature maps at the same level share a spatial resolution (when using \texttt{SAME} convolutions).
 
 \subsubsection{General Radius Calculation}
 The minimum required radius can be calculated according to the Equation \ref{eq:radius} for a general FCNN architecture. 
@@ -208,20 +200,21 @@ Equation \ref{eq:radius} has two terms. The $2^{l_c}$ term is the number of pixe
 
 \subsubsection{Radius Calculation for U-Net}
 
-Let us assume that the U-Net architecture satisfies the following design constraints:
-$k_c = k = const$ and each level has the same number of convolutional layers on both decoder and encoder sides $n_l = n = const$. These constraints are satisfied for the published U-Net where $k = 3$ and $n_l = 2$.
+%Let us assume that the U-Net architecture satisfies the following design constraints: $k_c = k = const$ and each level has the same number of convolutional layers on both decoder and encoder sides $n_l = n = const$. These constraints are satisfied for the published U-Net where $k = 3$ and $n_l = 2$.
 
-In this case, the minimum required radius can be calculated according to the Equation \ref{eq:radius2}, 
-\begin{equation}
-Radius = \lfloor \frac{k}{2} \rfloor \times n \times (3 \times 2^{M} - 2)
-\label{eq:radius2}
-\end{equation}
-where $M$ is the maximum level value $l_c$ over all values of $c$ (i.e., $M=max_{\forall c} (l_c)$). The radius is linearly proportional to the kernel size $k$ and to the number of convolutional layers per level $n$ and exponentially proportional to the maximum level $M$. The derivation of Equation \ref{eq:radius2} from Equation \ref{eq:radius} is provided in Appendix A.
+%In this case, the minimum required radius can be calculated according to the Equation \ref{eq:radius2}, 
+%\begin{equation}
+%Radius = \lfloor \frac{k}{2} \rfloor \times n \times (3 \times 2^{M} - 2)
+%\label{eq:radius2}
+%\end{equation}
+%where $M$ is the maximum level value $l_c$ over all values of $c$ (i.e., $M=max_{\forall c} (l_c)$). The radius is linearly proportional to the kernel size $k$ and to the number of convolutional layers per level $n$ and exponentially proportional to the maximum level $M$. The derivation of Equation \ref{eq:radius2} from Equation \ref{eq:radius} is provided in Appendix A.
 
-The published U-Net (Figure \ref{fig:unet-levels}) has one level per horizontal stripe of layers. The input image enters on level $l_{c=1} = l_{c=2} = 0$. The first max-pool layer halves the spatial resolution of the network, changing the level. Convolution layers $c = \{3, 4\}$ after that first max-pool layer up to the next max-pool layer belong to level $l_{c=3}=l_{c=4} = 1$. This continues through level 4, where the bottleneck of the U-Net model occurs. In Figure \ref{fig:unet-levels} the bottleneck is the feature map at the bottom with dimensions: $N \times 1024 \times 32 \times 32$ (\texttt{NCHW} dimension ordering); this occurs right before the first up-conv layer. After the bottleneck, the level number decreases with each subsequent up-conv layer, until level $l_{N} = 0$ right before the output image is generated. This is summarized in Figure \ref{fig:unet-levels} where the levels of each convolutional layer are indicated.
+The published U-Net (Figure 1 from \cite{Ronneberger2015a}) has one level per horizontal stripe of layers. The input image enters on level $l_{c=1} = l_{c=2} = 0$. The first max-pool layer halves the spatial resolution of the network, changing the level. Convolution layers $c = \{3, 4\}$ after that first max-pool layer up to the next max-pool layer belong to level $l_{c=3}=l_{c=4} = 1$. This continues through level 4, where the bottleneck of the U-Net model occurs. In U-Net's Figure 1 the bottleneck is the feature map at the bottom which occurs right before the first up-conv layer. After the bottleneck, the level number decreases with each subsequent up-conv layer, until level $l_{N} = 0$ right before the output image is generated. 
 
-Following Equation \ref{eq:radius} or \ref{eq:radius2} for U-Net results in a minimum required radius of 92 pixels in order to provide the network with all of the local context it needs to predict the outputs correctly. See Appendix B for details on applying Equation \ref{eq:radius} to U-Net. This radius needs to be provided both before and after each spatial dimension and hence the input image to the network will need to be $2 \times 92 = 184$ pixels larger. This value is exactly the number of pixels the original U-Net paper has the output being shrunk by to avoid using \texttt{SAME} convolutions; a 572 pixel input shrunk by 184 results in the 388 pixel output \cite{Ronneberger2015a}. 
-However, this runs afoul of our additional restriction on the U-Net input size, which requires images to be a multiple of 16. So rounding up to the nearest multiple of 16 results in a radius of 96 pixels. Unfortunately, one cannot just adjust the ZoR size to ensure $(ZoR + Radius) \% 16 = 0$ because of how convolutional arithmetic works. 
+Following Equation \ref{eq:radius} 
+%or \ref{eq:radius2} 
+for U-Net results in a minimum required radius of 92 pixels in order to provide the network with all of the local context it needs to predict the outputs correctly. See Appendix B for details on applying Equation \ref{eq:radius} to U-Net. This radius needs to be provided both before and after each spatial dimension and hence the input image to the network will need to be $2 \times 92 = 184$ pixels larger. This value is exactly the number of pixels the original U-Net paper has the output being shrunk by to avoid using \texttt{SAME} convolutions; a 572 pixel input shrunk by 184 results in the 388 pixel output \cite{Ronneberger2015a}. 
+However, this runs afoul of our additional restriction on the U-Net input size, which requires images to be a multiple of 16. So rounding up to the nearest multiple of 16 results in a radius of 96 pixels. Unfortunately, one cannot just adjust the ZoR size to ensure $(ZoR + Radius) \% 16 = 0$ due to convolutional arithmetic mechanics. 
 
 \subsection{Constraints on Image Partitioning}
 
@@ -231,14 +224,6 @@ Our tile-based processing methodology operates on the principle of constructing 
 To properly construct this feature map subregion one cannot stride across the input image in a different manner than would be used to inference the whole image. The smallest feature map in U-Net is spatially $16 \times$ smaller than the input image. Therefore, 16 pixels is the smallest offset one can have between two tile-based inference passes while having both collaboratively build subregions of a single feature map representation. Figure \ref{fig:offset} shows a simplified 1D example with a kernel of size 3 performing addition. When two applications of the same kernel are offset by less than the size of the kernel they can produce different results. 
 %The output in the first row is \{$6, 15$\} whereas the output in the second row is \{$9, 18$\}. 
 For U-Net, each $16 \times 16$ pixel block in the input image becomes a single pixel in the lowest spatial resolution feature map. A stride other than a multiple of 16 would result in subtly different feature maps because each feature map pixel was constructed from a different set of $16 \times 16$ input pixels. 
-
-%\begin{figure}[h!]
-%	\begin{center}
-%		\includegraphics[width=\linewidth]{figs/offset_conv.png}
-%	\end{center}
-%	\caption{Simplified 1D example of an addition kernel of size 3 being applied at an offset less than the kernel size, producing different results.}
-%	\label{fig:offset}
-%\end{figure}
 
 \begin{figure}[h!]
 	\centering
@@ -252,14 +237,6 @@ This requirement means that we always need to start our tiling of the full image
 
 \subsubsection{Border Padding}
 The limitation on the radius comes from the fact that if we have arbitrary radius values, we will need to use different padding schemes between the full image inference and the tile-based inference to handle the image edge effects. Figure \ref{fig:offset} shows for a 1D case how reflection padding can (1) alter the stride across the full image which needs to be maintained as a multiple of 16 to collaboratively build subregions of a single feature map and (2) change the reflection padding required to have an input image whose spatial dimensions are a multiple of 16.
-
-%\begin{figure}[h!]
-%	\begin{center}
-%		\includegraphics[width=0.7\linewidth]{figs/reflection_padding.png}
-%	\end{center}
-%	\caption{Simplified 1D example of reflection padding (reflected through dotted line) causing a different stride pattern across a set of pixels. The altered stride prevents the tile-based processing from collaboratively building subregions of a single feature map.}
-%	\label{fig:reflection-padding}
-%\end{figure}
 
 
 \subsubsection{ZoR and Radius Constraints}
@@ -292,14 +269,16 @@ Whether inferencing the whole image in a single forward pass or using tile-based
 
 Let us assume that we know how big an image we can fit into GPU memory, for example $1024 \times 1024$ pixels. Additionally, given that we are using U-Net we know that the required radius is 96 pixels. Then our zone of responsibility is $ZoR = 1024 - 2 \times Radius = 832$ pixels per spatial dimension. 
 %Refer back to Figure \ref{fig:zor} for a visual. 
-Despite inferencing $1024 \times 1024$ pixel tiles on the GPU per forward pass, the stride across the input image is 832 pixels because we need non-overlapping ZoR. Figure \ref{fig:all-zor} shows a full image with 6 non-overlapping ZoR in alternating colors (red and blue) with each radius as a shaded region surrounding each ZoR. The edges of the full image do not require radius context to ensure identical results when compared with a single inference pass. Intuitively, the true context is unknown since it's outside the existing image.
+Despite inferencing $1024 \times 1024$ pixel tiles on the GPU per forward pass, the stride across the input image is 832 pixels because we need non-overlapping ZoR. 
+%Figure \ref{fig:all-zor} shows a full image with 6 non-overlapping ZoR in alternating colors (red and blue) with each radius as a shaded region surrounding each ZoR. 
+The edges of the full image do not require radius context to ensure identical results when compared with a single inference pass. Intuitively, the true context is unknown since it's outside the existing image.
 
-\begin{figure}[h!]
-	\centering
-		\includegraphics[width=\linewidth]{figs/all_zor.png}
-	\caption{Non-overlapping ZoR with radius shown in the interior of a large image being inferenced. Each ZoR (denoted with a line) has a shaded radius region outside the square. }
-	\label{fig:all-zor}
-\end{figure}
+%\begin{figure}[h!]
+%	\centering
+%		\includegraphics[width=\linewidth]{figs/all_zor.png}
+%	\caption{Non-overlapping ZoR with radius shown in the interior of a large image being inferenced. Each ZoR (denoted with a line) has a shaded radius region outside the square. }
+%	\label{fig:all-zor}
+%\end{figure}
 
 %Image tiling starts at $[x_{st}, y_{st}, x_{end}, y_{end}] = [0, 0, 832, 832]$ and proceeds across the image with stride 832. 
 In the last row and column of tiles, there might not be enough pixels to fill out a full $1024 \times 1024$ tile. However, because U-Net can alter its spatial size on demand, as long as the tile is a multiple of 16 a narrower (last column) or shorter (last row) tile can be used. 
@@ -309,11 +288,12 @@ In the last row and column of tiles, there might not be enough pixels to fill ou
 
 To experimentally confirm that our out-of-core image inference methodology does not impact the inference results we determined the largest image we could inference on our GPU, performed the forward pass, and saved the resulting softmax output values as ground truth data. We then inference the same image using our tiling scheme with varying radius values. We show that there are numerical differences (greater than floating point error) when using radius values less 96. 
 
-We trained our U-Net model to perform binary (foreground/background) segmentation of the phase contrast microscopy images. The largest image we could inference on our GPU with $\SI{24}{\giga\byte}$ of memory is $3824 \times 3824$ pixels. We created 20 reference inference results by cropping out $K = 20$ random $3824 \times 3824$ subregions of the dataset. 
+We trained our U-Net model to perform binary (foreground/background) segmentation of the phase contrast microscopy images. The largest image we could inference on our GPU with $\SI{24}{\giga\byte}$ of memory is $3584 \times 3584$ pixels. We created 20 reference inference results by cropping out $K = 20$ random $3584 \times 3584$ subregions of the dataset. 
 
 We performed tile-based out-of-core inference for each of the 20 reference images using a tile size of 512 pixels, meeting the multiple of 16 constraint. Radius values from 0 to 128 pixels were evaluated in 16 pixel increments. 
 
-The tiling codebase seamlessly constructs the softmax output in CPU memory as if the whole image had been inferenced as a single forward pass. So our evaluation methodology consists of looking for differences in the output softmax produced by the reference forward pass ($R$) as well as the tile-based forward pass ($T$). We used the following two metrics for evaluation: Root Mean Squared Error (RMSE Equation \ref{eq:rmse}) of the softmax and Misclassification Error (ME Equation \ref{eq:me}) of the resulting binary segmentation masks. ME is the number of misclassified pixels, which provides a very intuitive understanding of the error since it directly measures how many output pixels were incorrect. Both metrics are averaged across the $K = 20$ reference images.
+The tiling codebase seamlessly constructs the softmax output in CPU memory as if the whole image had been inferenced as a single forward pass. So our evaluation methodology consists of looking for differences in the output softmax produced by the reference forward pass ($R$) as well as the tile-based forward pass ($T$). We used the following two metrics for evaluation: Root Mean Squared Error (RMSE, Equation \ref{eq:rmse}) of the softmax and Misclassification Error (ME, Equation \ref{eq:me}) of the resulting binary segmentation masks. ME is the number of misclassified pixels, which provides a very intuitive understanding of the error since it directly measures how many output pixels were incorrect. We also include Normalized Misclassification Error (NME, Equation \ref{eq:nme}) normalized by the number of pixels; and Relative Runtime, where compute time to perform inference is shown relative by the runtime without the tiling scheme. This runtime highlights that there is a tradeoff to be made between the error introduced due to the out-of-core GPU inference and the compute overhead required to do so. The NME metric can be multiplied by $100$ to compute the percent of pixels errors due to the tiling scheme.
+All metrics are averaged across the $K = 20$ reference images.
 
 \begin{equation}
 RMSE = \frac{1}{K} \sum_{i=1}^{K} \sqrt{ \frac{\sum_{i = 1}^{m} \sum_{j = 1}^{n} (R_{ij} - T_{ij})^2}{mn}}
@@ -326,47 +306,51 @@ ME = \frac{1}{K} \sum_{i=1}^{K} \left( \sum_{i = 1}^{m} \sum_{j = 1}^{n} [ R_{ij
 \label{eq:me}
 \end{equation}
 
-The error metrics are shown in Table \ref{tab:tile_size_512} for 512 pixel tiles. Once the required 96 pixel radius is met the RMSE falls into the range of floating point error and ME goes to zero. Beyond the minimum required radius, all error metrics remain equivalent to the minimum radius. 
-The ME metric is especially informative, because when it is zero, the output segmentation results are identical regardless of whether the whole image was inferenced in a single pass or it was decomposed into tiles. 
+\begin{equation}
+NME = \frac{1}{K} \sum_{i=1}^{K} \left( \frac{\sum_{i = 1}^{m} \sum_{j = 1}^{n} [ R_{ij} \neq T_{ij} ]}{nm} \right) 
+% https://en.wikipedia.org/wiki/Iverson_bracket
+\label{eq:nme}
+\end{equation}
+
+The error metrics are shown in Table \ref{tab:tile_size_512} for 512 pixel tiles. Once the required 96 pixel radius is met the RMSE falls into the range of floating point error and ME goes to zero. Beyond the minimum required radius, all error metrics remain equivalent to the minimum radius. The first row shows the data for the whole image being inferenced without the tiling scheme. 
+The ME metric is especially informative, because when it is zero, the output segmentation results are identical regardless of whether the whole image was inferenced in a single pass or it was decomposed into tiles. Table \ref{tab:tile_size_512} highlights the engineering tradeoff that must be made, obtaining zero inference error requires $2.69 \times$ the wall runtime. The normalized error (NME) with naive tailing is $\num{6.1e-4}$ or $\num{0.06} \%$. Depending on your application, this level of error might be acceptable despite the potential for edge effects between the non-overlapping tiles. One consideration, larger tile sizes are more compute efficient because the ratio of the ZoR area to the tile area increases.
 
 \begin{table}[h!]
 	\centering
 \caption{Error Metrics for Tile Size 512}
 \label{tab:tile_size_512}
-\begin{tabular}{rrrrrr}
-	TileSize & ZoR & Radius & RMSE    & ME  \\ 
+\begin{tabular}{r|r|r|r|r|r|r}
+	TileSize & ZoR & Radius & RMSE    & ME & PME & RelativeRuntime \\ 
 	\hline
-512 & 512 & 0 & 1.30e-2 & 6052.6 \\
-512 & 480 & 16 & 5.85e-3 & 1555.0 \\
-512 & 448 & 32 & 2.89e-3 & 432.1 \\
-512 & 416 & 48 & 9.32e-4 & 77.4 \\
-512 & 384 & 64 & 1.75e-4 & 10.8 \\
-512 & 352 & 80 & 1.17e-5 & 0.4 \\
-512 & 320 & 96 & 0.0 & 0.0 \\
-512 & 288 & 112 & 2.61e-8 & 0.0 \\
-512 & 256 & 128 & 0.0 & 0.0 \\
-%512 & 224 & 144 & 2.61e-8 & 0.0 \\
-%512 & 192 & 160 & 2.86e-9 & 0.0 \\
+3584 & n/a & n/a & 0.0 & 0.0 & 0.0 & 1.0 \\
+512 & 512 & 0 & $\num{1.11e-02}$ & 7773.4 & $\num{6.1e-04}$ & 1.08 \\
+512 & 480 & 16 & $\num{6.35e-03}$ & 5455.4 & $\num{4.2e-04}$ & 1.31 \\
+512 & 448 & 32 & $\num{3.29e-03}$ & 2372.2 & $\num{1.8e-04}$ & 1.36 \\
+512 & 416 & 48 & $\num{1.95e-03}$ & 1193.7 & $\num{9.3e-05}$ & 1.61 \\
+512 & 384 & 64 & $\num{7.79e-04}$ & 434.1 & $\num{3.4e-05}$ & 1.85 \\
+512 & 352 & 80 & $\num{1.50e-04}$ & 71.6 & $\num{5.6e-06}$ & 2.21 \\
+512 & 320 & 96 & $\num{4.17e-10}$ & 0.0 & 0.0 & 2.58 \\
 \end{tabular}
 \end{table}
 
 These error metrics only evaluate the error coming from the tiling scheme. There is no evaluation of how accurately U-Net itself is performing. 
-To demonstrate this, results for 1024 pixel tiles (Table \ref{tab:tile_size_1024}) were generated using an untrained 4 class U-Net model, whose weights were left randomly initialized. Additionally, the image data for that result was normally distributed random noise with $\mu = 0, \sigma = 1$. No doubt the segmentation results from that U-Net were nonsense, but the error coming from tile-based processing is 0 once the required radius is met.
+To demonstrate this, results for 1024 pixel tiles (Table \ref{tab:tile_size_1024}) were generated using an untrained 4 class U-Net model, whose weights were left randomly initialized. Additionally, the image data for that result was normally distributed random noise with $\mu = 0, \sigma = 1$. No doubt the segmentation results were nonsense, but the error coming from tile-based processing is 0 once the required radius is met.
 
 \begin{table}[h!]
 	\centering
 \caption{UnTrained U-Net Error Metrics for Tile Size 1024}
 \label{tab:tile_size_1024}
-\begin{tabular}{rrrrrr}
-	TileSize & ZoR & Radius & RMSE   & ME \\ 
+\begin{tabular}{r|r|r|r|r|r|r}
+	TileSize & ZoR & Radius & RMSE    & ME & PME & RelativeRuntime \\ 
 	\hline
-1024 & 1024 & 0 & 2.70e-4 & 55796.3 \\
-1024 & 992 & 16 & 1.32e-6 & 532.4 \\
-1024 & 960 & 32 & 2.49e-7 & 113.8 \\
-1024 & 928 & 48 & 7.71e-8 & 43.5 \\
-1024 & 896 & 64 & 2.00e-8 & 8.5 \\
-1024 & 864 & 80 & 8.71e-9 & 3.7 \\
-1024 & 832 & 96 & 0.0 & 0.0 \\
+3584 & n/a & n/a & 0.0 & 0.0 & 0.0 & 1.0 \\
+1024 & 1024 & 0 & $\num{2.36e-04}$ & 21856.9 & $\num{1.7e-03}$ & 1.08 \\
+1024 & 992 & 16 & $\num{1.05e-06}$ & 234.8 & $\num{1.8e-05}$ & 1.23 \\
+1024 & 960 & 32 & $\num{1.92e-07}$ & 49.7 & $\num{3.9e-06}$ & 1.30 \\
+1024 & 928 & 48 & $\num{5.47e-08}$ & 13.2 & $\num{1.0e-06}$ & 1.35 \\
+1024 & 896 & 64 & $\num{1.44e-08}$ & 2.8 & $\num{2.1e-07}$ & 1.31 \\
+1024 & 864 & 80 & $\num{5.87e-09}$ & 1.4 & $\num{1.1e-07}$ & 1.5 \\
+1024 & 832 & 96 & $\num{3.54e-10}$ & 0.0 & 0.0 & 1.58 \\
 \end{tabular}
 \end{table}
 
@@ -384,81 +368,110 @@ To demonstrate how the inference results differ as a function of how the network
 \end{figure} 
 
 
-\subsection{Application to a Modified U-Net Architecture}
+\subsection{Application to a Fully Convolutional DenseNet}
 
-Up to this point we have shown that our ZoR and Radius tiling scheme produces error-free out-of-core semantic segmentation inference for arbitrarily large images when using the published U-Net model architecture. 
-This section demonstrates the tiling scheme on a modified U-Net as a proxy for any modification to a FCNN that someone might want to make. 
-First, the number of convolutional layers between each spatial resolution changing layer is increased to $n_l = 3$. Second the lowest level $l = 4$ is removed, changing $M = 3$. 
-%The modified U-Net is shown in Figure \ref{fig:unet-mod}. 
-Following Equation \ref{eq:radius} or \ref{eq:radius2} for this modified U-Net model produces a required radius value of 66. 
+Up to this point we have shown that our ZoR and Radius tiling scheme produces error-free out-of-core semantic segmentation inference for arbitrarily large images when using the published U-Net architecture \cite{Ronneberger2015a}. 
+This section demonstrates the tiling scheme on a Fully Convolutional DenseNet configured for Semantic Segmentation \cite{Jegou2017}. DenseNets \cite{Huang2017} replace stacked convolutional layers with densely connected blocks where each convolutional layer is connected to all previous convolutional layers in that block. Jegou et al. \cite{Jegou2017} extended this original DenseNet idea to create a fully convolutional DenseNet based semantic segmentation architecture. 
 
-%\begin{figure}[h!]
-%	\begin{center}
-%		\includegraphics[width=\linewidth]{figs/unet-mod.png}
-%	\end{center}
-%	\caption{Modified U-Net model architecture with $n_l = 3$ and $M = 3$.}
-%	\label{fig:unet-mod}
-%\end{figure}
+While the architecture of DenseNets significantly differs from U-Net, the model is still fully convolutional and thus our tiling scheme is applicable. Following Equation \ref{eq:radius} 
+%or \ref{eq:radius2} 
+for a FC-DenseNet-56 \cite{Jegou2017} model produces a required radius value of 377. This is significantly higher than U-Net due to the architecture depth. FC-DenseNet-56 also has a ratio between the input image size and the smallest feature map of $F = 32$. Therefore the inference image sizes need to be a multiple of 32, not 16 like the original U-Net. Thus, the computed 377 pixel radius is adjusted up to 384. 
 
-This modified U-Net has one additional difference from the published U-Net. With $M = 3$ the smallest feature map is [$N \times 512 \times 64 \times 64$] which according to Equation \ref{eq:constraints} means the size ratio between the input image and the smallest feature map is $F = 8$. Therefore the inference image sizes need to be a multiple of 8, not 16 like the original U-Net. Thus, the computed 66 pixel radius is adjusted to 72. 
-
-Table \ref{tab:tile_size_1032} shows the error metrics for a tile size of 1032 pixels (multiple of 8) over a range of radius values from 0 to 72 with a step of 8. 
+This analysis relies on versions of the same 20 test images from the U-Net analysis, but cropped to $\num{2304} \times \num{2304}$, which was the largest image we were able to inference using FC-DenseNet-56 on our $\SI{24}{\giga\byte}$ GPU in a single forward pass. 
 
 \begin{table}[h!]
 	\centering
-		\caption{Modified U-Net Error Metrics for Tile Size 1032}
-		\label{tab:tile_size_1032}
-		\begin{tabular}{rrrrrr}
-			TileSize & ZoR & Radius & RMSE    & ME \\ 
-			\hline
-1032 & 1032 & 0 & 7.51e-3  & 2688.4 \\
-1032 & 1016 & 8 & 5.18e-3  & 1678.0 \\
-1032 & 1000 & 16 & 3.81e-3 & 947.5 \\
-1032 & 984 & 24 & 2.33e-3  & 545.8 \\
-1032 & 968 & 32 & 1.31e-3  & 203.1 \\
-1032 & 952 & 40 & 4.16e-4  & 61.6 \\
-1032 & 936 & 48 & 6.50e-5  & 7.9 \\
-1032 & 920 & 56 & 1.81e-6  & 0.1 \\
-1032 & 904 & 64 & 3.70e-8  & 0.0 \\
-1032 & 888 & 72 & 1.20e-8  & 0.0 \\
-%1032 & 872 & 80 & 1.34e-8  & 0.0 \\
-%1032 & 856 & 88 & 1.14e-8  & 0.0 \\
-%1032 & 840 & 96 & 1.34e-8  & 0.0 \\
-		\end{tabular}
+	\caption{Error Metrics for FC-DenseNet Tile Size 1152}
+	\label{tab:tile_size_1152}
+	\begin{tabular}{r|r|r|r|r|r|r}
+		TileSize & ZoR & Radius & RMSE    & ME & PME & RelativeRuntime \\ 
+		\hline
+2304 & n/a & n/a & 0.0 & 0.0 & 0.0 & 1.0 \\
+1152 & 1152 & 0 & $\num{5.40e-03}$ & 821.5 & $\num{1.5e-04}$ & 1.15 \\
+1152 & 1088 & 32 & $\num{1.81e-03}$ & 376.1 & $\num{7.1e-05}$ & 1.42 \\
+1152 & 1024 & 64 & $\num{9.16e-04}$ & 168.0 & $\num{3.2e-05}$ & 1.54 \\
+1152 & 960 & 96 & $\num{3.36e-04}$ & 51.6 & $\num{9.7e-06}$ & 1.59 \\
+1152 & 896 & 128 & $\num{5.63e-05}$ & 5.3 & $\num{1.0e-06}$ & 1.67 \\
+1152 & 832 & 160 & $\num{4.97e-06}$ & 0.2 & $\num{4.7e-08}$ & 1.76 \\
+1152 & 768 & 192 & $\num{2.44e-07}$ & 0.0 & 0.0 & 2.32 \\
+1152 & 704 & 224 & $\num{1.92e-08}$ & 0.0 & 0.0 & 2.22 \\
+1152 & 640 & 256 & $\num{1.37e-08}$ & 0.0 & 0.0 & 2.33 \\
+1152 & 576 & 288 & $\num{1.44e-08}$ & 0.0 & 0.0 & 2.39 \\
+1152 & 512 & 320 & $\num{1.37e-08}$ & 0.0 & 0.0 & 2.52 \\
+1152 & 448 & 352 & $\num{1.45e-08}$ & 0.0 & 0.0 & 4.65 \\
+1152 & 384 & 384 & $\num{1.37e-08}$ & 0.0 & 0.0 & 5.89 \\
+	\end{tabular}
 \end{table}
+
+
+\subsection{Radius Approximation via Effective Receptive Field}
+
+The Radius value required to achieve error free inference increases with the depth of the network. For example, see Table \ref{tab:common_radii} which show the Radius values for a few common semantic segmentation architectures. The deeper networks, like FC-DenseNet-103 require very large radius values to guarantee error free tile based inference.
+
+\begin{table}[h!]
+	\centering
+	\caption{Common Segmentation Architecture Radii}
+	\label{tab:common_radii}
+	\begin{tabular}{r|r|r}
+		Architecture & Radius &  \\ 
+		\hline
+		FCN-VGG16 \cite{Long2015} & 96 \\
+		U-Net \cite{Ronneberger2015a} & 96 \\
+		SegNet \cite{Badrinarayanan2015a} & 192 \\
+		FC-DenseNet-56 \cite{Jegou2017} & 384 \\
+		FC-DenseNet-67 \cite{Jegou2017} & 480 \\
+		FC-DenseNet-103 \cite{Jegou2017} & 1120 \\
+	\end{tabular}
+\end{table}
+
+Additionally, according to Table \ref{tab:tile_size_1152} for FC-DenseNet-56, there is no benifit to using a Radius larger than 160; despite the theoretical required Radius (receptive field) being much larger. This reinforces research by Luo et al. \cite{Luo2016} showing that effective receptive fields of deep convolutional neural networks are considerably smaller than the theoretical receptive field. Using the empirical effective receptive field estimation method outlined by Luo et al. \cite{Luo2016} we can compute an estimate of the required Radius just before inference, without any input from the end user. 
+
+Doing this for our trained U-Net \cite{Ronneberger2015a} produces a Radius estimate of 96 pixels, exactly the theoretical Radius. This matches the data is Table \ref{tab:tile_size_512} and Table \ref{tab:tile_size_1024} where the ME metric did not fall to zero until the theoretical Radius was reached. Conversely, for our trained FC-DenseNet-56 the estimated Radius was 160 pixels. This is just below the empirically minimum Radius of 192 as shown in Table \ref{tab:tile_size_1152}. Thus, using the effective receptive field for estimating the required Radius is not foolproof. However, it does provide a good proxy for automatically reducing the error due to tile-based inference if not completely eliminating it. 
 
 
 \section{Conclusions}
 \label{conclusion}
 
 This paper outlines a methodology for performing error-free out-of-core semantic segmentation inference of arbitrarily large images. 
-We provide formulas for determining the tile-based inference scheme parameters and demonstrated the inference results are identical whether or not tiling was used.
-While we used U-Net (and its modifications) as an example FCNN model for this work, the same principles apply to any FCNN model while being robust across different choices of tile size. 
+We document the formulas for determining the tile-based inference scheme parameters and demonstrated the inference results are identical whether or not tiling was used. These inference scheme parameters were related back to the theoretical and effective receptive fields of deep convolutional networks as previously studied in literature. The effective receptive field was used to provide a rough estimate of the inference tiling scheme parameters without requiring any knowledge of the architecture.
+While we used U-Net and FC-DenseNets as example FCNN models, these principles apply to any FCNN model while being robust across different choices of tile size. 
+
+In this work we did not consider any FCNN networks with dilated convolutions which are known to increase the receptive field side of the network. While the dilation factor should be a multiplicative influence on the $2^{l_c}$ term in Equation \ref{eq:radius}; this would need to be empirically validated in future work. 
+
+% TODO include future work discussion about building the finaly layer feature map for things like classification or regression networks (resnet50) using a tiling scheme and then performing the final layer calculation on CPU in order to inference arbitrarily large images for classification and regresion. Mention that those problems are less common than having to segment an entire whole slide image.
 
 
 \section{Test Data and Source Code}
-The test data used in this paper are available at 
-\url{https://isg.nist.gov/deepzoomweb/data/stemcellpluripotency}. 
+The test data used in this paper are available at: 
+\ifcamera
+\\\url{https://isg.nist.gov/deepzoomweb/data/stemcellpluripotency}. 
+\fi
 
-The U-Net Tensorflow v2.0 source code used in this paper is available at
-% TODO setup camera ready document
-\url{https://github.com/usnistgov/semantic-segmentation-unet/tree/ooc-inference}.
+The U-Net Tensorflow v2.0 source code used in this paper is available at: 
+\ifcamera
+\\\url{https://github.com/usnistgov/semantic-segmentation-unet/tree/ooc-inference}.
+\fi
 
 While the available codebase in theory supports arbitrarily large images, we made the choice at implementation time to load the whole image into memory before processing it through the network. In practice this means the codebase is limited to inferencing images which fit into CPU memory. However, using a file format which supports reading sub-sections of the whole image would support inference of disk-backed images which do not fit into CPU memory. 
 
 
-
-% TODO setup camera ready document
+\ifcamera
 \section{Disclaimer}
 
 Commercial products are identified in this document in order to specify the experimental procedure adequately. Such identification is not intended to imply recommendation or endorsement by NIST, nor is it intended to imply that the products identified are necessarily the best available for the purpose. Analysis performed [in part] on the NIST Enki HPC cluster. Contribution of U.S. government not subject to copyright
+\fi
 
 
-
+\clearpage
+% ---- Bibliography ----
+%
+% BibTeX users should specify bibliography style 'splncs04'.
+% References will then be sorted and formatted in the correct style.
+%
 {\fontsize{9.0pt}{10.0pt} 
 \selectfont
 \bibliography{ooc-inference}
-\bibliographystyle{aaai}
+\bibliographystyle{splncs04}
 }
 
 

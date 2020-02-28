@@ -10,9 +10,9 @@ if int(tf_version[0]) != 2:
 
 import unet_model
 
-number_classes = 2
+number_classes = 4
 global_batch_size = 1
-img_size = [1, 512, 512]
+img_size = [512, 512, 1]
 learning_rate = 1e-4
 
 model = unet_model.UNet(number_classes, global_batch_size, img_size, learning_rate)

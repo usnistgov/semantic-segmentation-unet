@@ -1,7 +1,7 @@
 # use glob syntax.
 syntax: glob
 
-data/images_random_3824
+data/*
 ooc-inference-eval/unet-model
 ooc-inference-eval/unet-model-modified
 ooc-inference-eval/unet-model-random

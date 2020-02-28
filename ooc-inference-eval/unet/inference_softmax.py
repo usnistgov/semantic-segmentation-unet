@@ -2,7 +2,6 @@
 # NIST-developed software is expressly provided "AS IS." NIST MAKES NO WARRANTY OF ANY KIND, EXPRESS, IMPLIED, IN FACT OR ARISING BY OPERATION OF LAW, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTY OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, NON-INFRINGEMENT AND DATA ACCURACY. NIST NEITHER REPRESENTS NOR WARRANTS THAT THE OPERATION OF THE SOFTWARE WILL BE UNINTERRUPTED OR ERROR-FREE, OR THAT ANY DEFECTS WILL BE CORRECTED. NIST DOES NOT WARRANT OR MAKE ANY REPRESENTATIONS REGARDING THE USE OF THE SOFTWARE OR THE RESULTS THEREOF, INCLUDING BUT NOT LIMITED TO THE CORRECTNESS, ACCURACY, RELIABILITY, OR USEFULNESS OF THE SOFTWARE.
 # You are solely responsible for determining the appropriateness of using and distributing the software and you assume all risks associated with its use, including but not limited to the risks and costs of program errors, compliance with applicable laws, damage to or loss of data, programs or equipment, and the unavailability or interruption of operation. This software is not intended to be used in any situation where a failure could cause risk of injury or damage to property. The software developed by NIST employees is not subject to copyright protection within the United States.
 
-
 import sys
 if sys.version_info[0] < 3:
     raise RuntimeError('Python3 required')
@@ -12,22 +11,20 @@ tf_version = tf.__version__.split('.')
 if int(tf_version[0]) != 2:
     raise RuntimeError('Tensorflow 2.x.x required')
 
-import argparse
 import os
 import unet_model
 import numpy as np
-from unet import imagereader
-import skimage.io
+import imagereader
 
 
-def _inference_tiling(img, model, tile_size):
+def _inference_tiling(img, unet, tile_size, radius, number_classes):
 
     # Pad the input image in CPU memory to ensure its dimensions are multiples of the U-Net Size Factor
     pad_x = 0
     pad_y = 0
     if img.shape[0] % unet_model.UNet.SIZE_FACTOR != 0:
         pad_y = (unet_model.UNet.SIZE_FACTOR - img.shape[0] % unet_model.UNet.SIZE_FACTOR)
-        print('image height needs to be a multiple of {}, padding with reflect'.format(unet_model.UNet.SIZE_FACTOR))
+        print('image height needs to be a multiple of {}, padding with reflect'.format(unet.SIZE_FACTOR))
     if img.shape[1] % unet_model.UNet.SIZE_FACTOR != 0:
         pad_x = (unet_model.UNet.SIZE_FACTOR - img.shape[1] % unet_model.UNet.SIZE_FACTOR)
         print('image width needs to be a multiple of {}, padding with reflect'.format(unet_model.UNet.SIZE_FACTOR))
@@ -45,8 +42,8 @@ def _inference_tiling(img, model, tile_size):
     height = img.shape[0]
     width = img.shape[1]
     mask = np.zeros((height, width), dtype=np.int32)
+    softmax = np.zeros((height, width, number_classes), dtype=np.float32)
 
-    radius = unet_model.UNet.RADIUS
     assert tile_size % unet_model.UNet.SIZE_FACTOR == 0
     assert radius % unet_model.UNet.SIZE_FACTOR == 0
     zone_of_responsibility_size = tile_size - 2 * radius
@@ -96,7 +93,8 @@ def _inference_tiling(img, model, tile_size):
             # convert CHW to NCHW
             batch_data = batch_data.reshape((1, batch_data.shape[0], batch_data.shape[1], batch_data.shape[2]))
 
-            sm = model(batch_data)  # model output defined in unet_model is softmax
+            batch_data = tf.convert_to_tensor(batch_data)
+            sm = unet(batch_data)  # model output defined in unet_model is softmax
             sm = np.squeeze(sm)
             pred = np.squeeze(np.argmax(sm, axis=-1).astype(np.int32))
 
@@ -121,22 +119,26 @@ def _inference_tiling(img, model, tile_size):
                 sm = sm[:-radius_post_y, :]
 
             mask[y_st_z:y_end_z, x_st_z:x_end_z] = pred
+            softmax[y_st_z:y_end_z, x_st_z:x_end_z, :] = sm
 
     # undo and CPU side image padding to make the image a multiple of U-Net Size Factor
     if pad_x > 0:
         mask = mask[:, 0:-pad_x]
+        softmax = softmax[:, 0:-pad_x]
     if pad_y > 0:
         mask = mask[0:-pad_y, :]
-    return mask
+        softmax = softmax[0:-pad_y, :]
+
+    return mask, softmax
 
 
-def _inference(img, model):
+def _inference(img, unet):
     pad_x = 0
     pad_y = 0
 
     if img.shape[0] % unet_model.UNet.SIZE_FACTOR != 0:
         pad_y = (unet_model.UNet.SIZE_FACTOR - img.shape[0] % unet_model.UNet.SIZE_FACTOR)
-        print('image height needs to be a multiple of {}, padding with reflect'.format(unet_model.UNet.SIZE_FACTOR))
+        print('image height needs to be a multiple of {}, padding with reflect'.format(unet.SIZE_FACTOR))
     if img.shape[1] % unet_model.UNet.SIZE_FACTOR != 0:
         pad_x = (unet_model.UNet.SIZE_FACTOR - img.shape[1] % unet_model.UNet.SIZE_FACTOR)
         print('image width needs to be a multiple of {}, padding with reflect'.format(unet_model.UNet.SIZE_FACTOR))
@@ -147,30 +149,37 @@ def _inference(img, model):
     if len(img.shape) == 2:
         # add a channel dimension
         img = img.reshape((img.shape[0], img.shape[1], 1))
-    img = np.pad(img, pad_width=((0, pad_y), (0, pad_x), (0, 0)), mode='reflect')
+    if pad_x > 0 or pad_y > 0:
+        img = np.pad(img, pad_width=((0, pad_y), (0, pad_x), (0, 0)), mode='reflect')
+        print('Padded Image Size: {}'.format(img.shape))
 
     # convert HWC to CHW
     batch_data = img.transpose((2, 0, 1))
     # convert CHW to NCHW
     batch_data = batch_data.reshape((1, batch_data.shape[0], batch_data.shape[1], batch_data.shape[2]))
-    batch_data = tf.convert_to_tensor(batch_data)
 
-    softmax = model(batch_data) # model output defined in unet_model is softmax
+    batch_data = tf.convert_to_tensor(batch_data)
+    softmax = unet(batch_data) # model output defined in unet_model is softmax
     softmax = np.squeeze(softmax)
     pred = np.squeeze(np.argmax(softmax, axis=-1).astype(np.int32))
 
     if pad_x > 0:
         pred = pred[:, 0:-pad_x]
+        softmax = softmax[:, 0:-pad_x]
     if pad_y > 0:
         pred = pred[0:-pad_y, :]
+        softmax = softmax[0:-pad_y, :]
 
-    return pred
+    return pred, softmax
 
 
-def inference(saved_model_filepath, image_folder, output_folder, image_format):
+def inference(saved_model_filepath, image_folder, output_folder, output_folder_softmax, image_format, tile_size, radius, number_classes):
     # create output filepath
-    if not os.path.exists(output_folder):
+
+    if output_folder is not None and not os.path.exists(output_folder):
         os.mkdir(output_folder)
+    if output_folder_softmax is not None and not os.path.exists(output_folder_softmax):
+        os.mkdir(output_folder_softmax)
 
     img_filepath_list = [os.path.join(image_folder, fn) for fn in os.listdir(image_folder) if fn.endswith('.{}'.format(image_format))]
 
@@ -190,55 +199,19 @@ def inference(saved_model_filepath, image_folder, output_folder, image_format):
         img = imagereader.zscore_normalize(img)
         print('  img.shape={}'.format(img.shape))
 
-        if img.shape[0] > 1024 or img.shape[1] > 1024:
-            tile_size = 1024  # in theory UNet takes about 420x the amount of memory of the input image
-            # to a tile size of 1024 should require 1.7 GB of GPU memory
-            segmented_mask = _inference_tiling(img, model, tile_size)
+        if tile_size > 0:
+            segmented_mask, softmax = _inference_tiling(img, model, tile_size, radius, number_classes)
         else:
-            segmented_mask = _inference(img, model)
+            segmented_mask, softmax = _inference(img, model)
 
-        if 0 <= np.max(segmented_mask) <= 255:
-            segmented_mask = segmented_mask.astype(np.uint8)
-        if 255 < np.max(segmented_mask) < 65536:
-            segmented_mask = segmented_mask.astype(np.uint16)
-        if np.max(segmented_mask) > 65536:
-            segmented_mask = segmented_mask.astype(np.int32)
-        if 'tif' in image_format:
-            skimage.io.imsave(os.path.join(output_folder, slide_name), segmented_mask, compress=6, bigtiff=True, tile=(1024,1024))
-        else:
-            skimage.io.imsave(os.path.join(output_folder, slide_name), segmented_mask, compress=6)
+        if output_folder is not None:
+            if 0 <= np.max(segmented_mask) <= 255:
+                segmented_mask = segmented_mask.astype(np.uint8)
+            if 255 < np.max(segmented_mask) < 65536:
+                segmented_mask = segmented_mask.astype(np.uint16)
+            if np.max(segmented_mask) > 65536:
+                segmented_mask = segmented_mask.astype(np.int32)
+            imagereader.imwrite(segmented_mask, os.path.join(output_folder, slide_name))
 
-            # imagereader.imwrite(softmax, os.path.join(output_folder_softmax, slide_name))
-
-
-def main(saved_model_filepath, image_folder, output_folder, image_format):
-    print('Arguments:')
-    print('saved_model_filepath = {}'.format(saved_model_filepath))
-    print('image_folder = {}'.format(image_folder))
-    print('output_folder = {}'.format(output_folder))
-    print('image_format = {}'.format(image_format))
-
-    inference(saved_model_filepath, image_folder, output_folder, image_format)
-
-
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(prog='inference',
-                                     description='Script to detect stars with the selected unet model')
-
-    parser.add_argument('--saved_model_filepath', dest='saved_model_filepath', type=str,
-                        help='SavedModel filepath to the  model to use', required=True)
-    parser.add_argument('--image_folder', dest='image_folder', type=str,
-                        help='filepath to the folder containing tif images to inference (Required)', required=True)
-    parser.add_argument('--output_folder', dest='output_folder', type=str, required=True)
-    parser.add_argument('--image_format', dest='image_format', type=str, help='format (extension) of the input images. E.g {tif, jpg, png)', default='tif')
-
-    args = parser.parse_args()
-
-    saved_model_filepath = args.saved_model_filepath
-    image_folder = args.image_folder
-    output_folder = args.output_folder
-    image_format = args.image_format
-
-    main(saved_model_filepath, image_folder, output_folder, image_format)
-
-
+        if output_folder_softmax is not None:
+            imagereader.imwrite(softmax, os.path.join(output_folder_softmax, slide_name))

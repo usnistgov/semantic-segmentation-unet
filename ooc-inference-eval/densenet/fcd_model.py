@@ -11,14 +11,19 @@ tf_version = tf.__version__.split('.')
 if int(tf_version[0]) != 2:
     raise RuntimeError('Tensorflow 2.x.x required')
 
+import numpy as np
+
 
 class FCDensenet():
 
     __BN_MOMENTUM = 0.9
-    __WEIGHT_DECAY = 1E-4
+    __WEIGHT_DECAY = 1e-4
     __DROPOUT_RATE = 0.2
 
-    SIZE_FACTOR = 16
+    SIZE_FACTOR = 32
+    RADIUS = 384  # for FCDenseNet56
+    # RADIUS = 480  # for FCDenseNet67
+    # RADIUS = 1120  # for FCDenseNet103
 
     @staticmethod
     def __conv_block(x, nb_filters):
@@ -77,17 +82,11 @@ class FCDensenet():
         self.img_size = img_size
         self.initial_kernel_size = (3, 3)
 
-        self.name_scope = 'DenseNetFCN'
-        self.nb_dense_block = 3
+        self.name_scope = 'FCDenseNet56'
+        self.nb_dense_block = 5
         self.nb_layers_per_block = 4
         self.init_conv_filters = 48
         self.growth_rate = 12
-
-        # self.name_scope = 'FCDenseNet56'
-        # self.nb_dense_block = 5
-        # self.nb_layers_per_block = 4
-        # self.init_conv_filters = 48
-        # self.growth_rate = 12
 
         # self.name_scope = 'FCDenseNet67'
         # self.nb_dense_block = 5
@@ -109,6 +108,10 @@ class FCDensenet():
         self.loss_fn = tf.keras.losses.CategoricalCrossentropy(from_logits=False, label_smoothing=label_smoothing, reduction=tf.keras.losses.Reduction.NONE)
 
         self.optimizer = tf.keras.optimizers.Adam(learning_rate=self.learning_rate)
+
+    def load_checkpoint(self, checkpoint_filepath: str):
+        checkpoint = tf.train.Checkpoint(optimizer=self.optimizer, model=self.model)
+        checkpoint.restore(checkpoint_filepath)
 
     def build_model(self):
 
@@ -210,6 +213,45 @@ class FCDensenet():
 
     def get_learning_rate(self):
         return self.optimizer.learning_rate
+
+    @staticmethod
+    def __round_radius(x):
+        f = np.ceil(float(x) / FCDensenet.SIZE_FACTOR)
+        return int(FCDensenet.SIZE_FACTOR * f)
+
+    def estimate_radius(self):
+        N = 2 * FCDensenet.RADIUS  # get the theoretical radius
+        # create random noise input image
+        img = tf.Variable(np.random.normal(size=(1, 1, N, N)), dtype=tf.float32)
+
+        mid_idx = int(N / 2)  # determine the midpoint of the image
+        # create loss function we can force to be 1 at mid_idx and zero everywhere else
+        loss_fn = tf.keras.losses.MeanAbsoluteError(reduction=tf.keras.losses.Reduction.NONE)
+
+        grad_img = np.zeros((N, N))
+        # compute the gradient for the noise input image
+        for i in range(10):
+            with tf.GradientTape() as tape:
+                softmax = self.model(img)
+                # modify the softmax output to create the desired loss pattern, a dirac function at the mid_idx
+                msk = softmax.numpy()
+                msk[0, mid_idx, mid_idx, :] = 1.0 - msk[0, mid_idx, mid_idx, :]
+                loss_value = loss_fn(msk, softmax)
+
+        # compute the gradient of the input image with respect to the loss value
+        grads = tape.gradient(loss_value, img)
+        # get image gradient as 2D numpy array
+        grad_img += np.abs(grads[0].numpy().squeeze())
+
+        print('Theoretical RF: {}'.format(FCDensenet.RADIUS))
+        eps = 1e-8
+        vec = np.maximum(np.max(grad_img, axis=0).squeeze(), np.max(grad_img, axis=1).squeeze())
+        idx = np.nonzero(vec > eps)
+        erf = int((np.max(idx) - np.min(idx)) / 2)
+        # print('computed radius : "{}"'.format(erf))
+        radius = FCDensenet.__round_radius(erf)
+        print('computed radius : "{}"'.format(radius))
+        return radius
 
     def train_step(self, inputs):
         (images, labels, loss_metric, accuracy_metric) = inputs

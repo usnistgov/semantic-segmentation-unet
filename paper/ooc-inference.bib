@@ -1,3 +1,75 @@
+@article{Luo2016,
+	abstract = {We study characteristics of receptive fields of units in deep convolutional networks. The receptive field size is a crucial issue in many visual tasks, as the output must respond to large enough areas in the image to capture information about large objects. We introduce the notion of an effective receptive field, and show that it both has a Gaussian distribution and only occupies a fraction of the full theoretical receptive field. We analyze the effective receptive field in several architecture designs, and the effect of nonlinear activations, dropout, sub-sampling and skip connections on it. This leads to suggestions for ways to address its tendency to be too small.},
+	archivePrefix = {arXiv},
+	arxivId = {1701.04128},
+	author = {Luo, Wenjie and Li, Yujia and Urtasun, Raquel and Zemel, Richard},
+	eprint = {1701.04128},
+	file = {:home/mmajursk/Documents/Mendeley/1701.04128.pdf:pdf},
+	issn = {10495258},
+	journal = {Advances in Neural Information Processing Systems},
+	mendeley-groups = {Out-of-Core-Inference},
+	number = {Nips},
+	pages = {4905--4913},
+	title = {{Understanding the effective receptive field in deep convolutional neural networks}},
+	year = {2016}
+}
+
+
+
+@article{Pleiss2017,
+	abstract = {The DenseNet architecture is highly computationally efficient as a result of feature reuse. However, a naive DenseNet implementation can require a significant amount of GPU memory: If not properly managed, pre-activation batch normalization and contiguous convolution operations can produce feature maps that grow quadratically with network depth. In this technical report, we introduce strategies to reduce the memory consumption of DenseNets during training. By strategically using shared memory allocations, we reduce the memory cost for storing feature maps from quadratic to linear. Without the GPU memory bottleneck, it is now possible to train extremely deep DenseNets. Networks with 14M parameters can be trained on a single GPU, up from 4M. A 264-layer DenseNet (73M parameters), which previously would have been infeasible to train, can now be trained on a single workstation with 8 NVIDIA Tesla M40 GPUs. On the ImageNet ILSVRC classification dataset, this large DenseNet obtains a state-of-the-art single-crop top-1 error of 20.26{\%}.},
+	archivePrefix = {arXiv},
+	arxivId = {1707.06990},
+	author = {Pleiss, Geoff and Chen, Danlu and Huang, Gao and Li, Tongcheng and van der Maaten, Laurens and Weinberger, Kilian Q.},
+	eprint = {1707.06990},
+	file = {:home/mmajursk/Documents/Mendeley/1707.06990.pdf:pdf},
+	mendeley-groups = {Deep-Learning},
+	title = {{Memory-Efficient Implementation of DenseNets}},
+	url = {http://arxiv.org/abs/1707.06990},
+	year = {2017}
+}
+
+
+
+@inproceedings{Huang2017,
+	abstract = {Recent work has shown that convolutional networks can be substantially deeper, more accurate, and efficient to train if they contain shorter connections between layers close to the input and those close to the output. In this paper, we embrace this observation and introduce the Dense Convolutional Network (DenseNet), which connects each layer to every other layer in a feed-forward fashion. Whereas traditional convolutional networks with L layers have L connections - one between each layer and its subsequent layer - our network has L(L+1)/2 direct connections. For each layer, the feature-maps of all preceding layers are used as inputs, and its own feature-maps are used as inputs into all subsequent layers. DenseNets have several compelling advantages: they alleviate the vanishing-gradient problem, strengthen feature propagation, encourage feature reuse, and substantially reduce the number of parameters. We evaluate our proposed architecture on four highly competitive object recognition benchmark tasks (CIFAR-10, CIFAR-100, SVHN, and ImageNet). DenseNets obtain significant improvements over the state-of-the-art on most of them, whilst requiring less computation to achieve high performance. Code and pre-trained models are available at https://github.com/liuzhuang13/DenseNet .},
+	archivePrefix = {arXiv},
+	arxivId = {1608.06993},
+	author = {Huang, Gao and Liu, Zhuang and {Van Der Maaten}, Laurens and Weinberger, Kilian Q.},
+	booktitle = {Proceedings - 30th IEEE Conference on Computer Vision and Pattern Recognition, CVPR 2017},
+	doi = {10.1109/CVPR.2017.243},
+	eprint = {1608.06993},
+	file = {:home/mmajursk/Documents/Mendeley/Huang et al. - 2016 - Densely Connected Convolutional Networks.pdf:pdf},
+	isbn = {9781538604571},
+	mendeley-groups = {Deep-Learning},
+	month = {aug},
+	pages = {2261--2269},
+	title = {{Densely connected convolutional networks}},
+	url = {http://arxiv.org/abs/1608.06993},
+	volume = {2017-Janua},
+	year = {2017}
+}
+
+
+@article{Jegou2017,
+	abstract = {State-of-the-art approaches for semantic image segmentation are built on Convolutional Neural Networks (CNNs). The typical segmentation architecture is composed of (a) a downsampling path responsible for extracting coarse semantic features, followed by (b) an upsampling path trained to recover the input image resolution at the output of the model and, optionally, (c) a post-processing module (e.g. Conditional Random Fields) to refine the model predictions. Recently, a new CNN architecture, Densely Connected Convolutional Networks (DenseNets), has shown excellent results on image classification tasks. The idea of DenseNets is based on the observation that if each layer is directly connected to every other layer in a feed-forward fashion then the network will be more accurate and easier to train. In this paper, we extend DenseNets to deal with the problem of semantic segmentation. We achieve state-of-the-art results on urban scene benchmark datasets such as CamVid and Gatech, without any further post-processing module nor pretraining. Moreover, due to smart construction of the model, our approach has much less parameters than currently published best entries for these datasets. Code to reproduce the experiments is available here : https://github.com/SimJeg/FC-DenseNet/blob/master/train.py},
+	archivePrefix = {arXiv},
+	arxivId = {1611.09326},
+	author = {Jegou, Simon and Drozdzal, Michal and Vazquez, David and Romero, Adriana and Bengio, Yoshua},
+	doi = {10.1109/CVPRW.2017.156},
+	eprint = {1611.09326},
+	file = {:home/mmajursk/Documents/Mendeley/1611.09326.pdf:pdf},
+	isbn = {9781538607336},
+	issn = {21607516},
+	journal = {IEEE Computer Society Conference on Computer Vision and Pattern Recognition Workshops},
+	mendeley-groups = {Deep-Learning},
+	pages = {1175--1183},
+	pmid = {19244017},
+	title = {{The One Hundred Layers Tiramisu: Fully Convolutional DenseNets for Semantic Segmentation}},
+	volume = {2017-July},
+	year = {2017}
+}
+
 @article{Russakovsky2015,
 	abstract = {The ImageNet Large Scale Visual Recognition Challenge is a benchmark in object category classification and detection on hundreds of object categories and millions of images. The challenge has been run annually from 2010 to present, attracting participation from more than fifty institutions. This paper describes the creation of this benchmark dataset and the advances in object recognition that have been possible as a result. We discuss the challenges of collecting large-scale ground truth annotation, highlight key breakthroughs in categorical object recognition, provide a detailed analysis of the current state of the field of large-scale image classification and object detection, and compare the state-of-the-art computer vision accuracy with human accuracy. We conclude with lessons learned in the five years of the challenge, and propose future directions and improvements.},
 	author = {Russakovsky, Olga and Deng, Jia and Su, Hao and Krause, Jonathan and Satheesh, Sanjeev and Ma, Sean and Huang, Zhiheng and Karpathy, Andrej and Khosla, Aditya and Bernstein, Michael and Berg, Alexander C. and Fei-Fei, Li},
@@ -50,7 +122,6 @@
 	arxivId = {1505.04597},
 	author = {Ronneberger, Olaf and Fischer, Philipp and Brox, Thomas},
 	booktitle = {International Conference on Medical image computing and computer-assisted intervention},
-	doi = {10.1007/978-3-319-24574-4_28},
 	eprint = {1505.04597},
 	isbn = {978-3-319-24573-7},
 	issn = {16113349},
@@ -59,7 +130,6 @@
 	pages = {234--241},
 	pmid = {23285570},
 	title = {{U-Net: Convolutional Networks for Biomedical Image Segmentation}},
-	url = {http://arxiv.org/abs/1505.04597},
 	year = {2015}
 }
 @misc{Bardakoff2019,
