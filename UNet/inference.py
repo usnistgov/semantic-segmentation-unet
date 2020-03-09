@@ -14,7 +14,7 @@ if int(tf_version[0]) != 2:
 
 import argparse
 import os
-import unet_model
+import model
 import numpy as np
 import imagereader
 import skimage.io
@@ -25,12 +25,12 @@ def _inference_tiling(img, model, tile_size):
     # Pad the input image in CPU memory to ensure its dimensions are multiples of the U-Net Size Factor
     pad_x = 0
     pad_y = 0
-    if img.shape[0] % unet_model.UNet.SIZE_FACTOR != 0:
-        pad_y = (unet_model.UNet.SIZE_FACTOR - img.shape[0] % unet_model.UNet.SIZE_FACTOR)
-        print('image height needs to be a multiple of {}, padding with reflect'.format(unet_model.UNet.SIZE_FACTOR))
-    if img.shape[1] % unet_model.UNet.SIZE_FACTOR != 0:
-        pad_x = (unet_model.UNet.SIZE_FACTOR - img.shape[1] % unet_model.UNet.SIZE_FACTOR)
-        print('image width needs to be a multiple of {}, padding with reflect'.format(unet_model.UNet.SIZE_FACTOR))
+    if img.shape[0] % model.UNet.SIZE_FACTOR != 0:
+        pad_y = (model.UNet.SIZE_FACTOR - img.shape[0] % model.UNet.SIZE_FACTOR)
+        print('image height needs to be a multiple of {}, padding with reflect'.format(model.UNet.SIZE_FACTOR))
+    if img.shape[1] % model.UNet.SIZE_FACTOR != 0:
+        pad_x = (model.UNet.SIZE_FACTOR - img.shape[1] % model.UNet.SIZE_FACTOR)
+        print('image width needs to be a multiple of {}, padding with reflect'.format(model.UNet.SIZE_FACTOR))
 
     if len(img.shape) != 2 and len(img.shape) != 3:
         raise IOError('Invalid number of dimensions for input image. Expecting HW or HWC dimension ordering.')
@@ -46,9 +46,9 @@ def _inference_tiling(img, model, tile_size):
     width = img.shape[1]
     mask = np.zeros((height, width), dtype=np.int32)
 
-    radius = unet_model.UNet.RADIUS
-    assert tile_size % unet_model.UNet.SIZE_FACTOR == 0
-    assert radius % unet_model.UNet.SIZE_FACTOR == 0
+    radius = model.UNet.RADIUS
+    assert tile_size % model.UNet.SIZE_FACTOR == 0
+    assert radius % model.UNet.SIZE_FACTOR == 0
     zone_of_responsibility_size = tile_size - 2 * radius
 
     for i in range(0, height, zone_of_responsibility_size):
@@ -133,12 +133,12 @@ def _inference(img, model):
     pad_x = 0
     pad_y = 0
 
-    if img.shape[0] % unet_model.UNet.SIZE_FACTOR != 0:
-        pad_y = (unet_model.UNet.SIZE_FACTOR - img.shape[0] % unet_model.UNet.SIZE_FACTOR)
-        print('image height needs to be a multiple of {}, padding with reflect'.format(unet_model.UNet.SIZE_FACTOR))
-    if img.shape[1] % unet_model.UNet.SIZE_FACTOR != 0:
-        pad_x = (unet_model.UNet.SIZE_FACTOR - img.shape[1] % unet_model.UNet.SIZE_FACTOR)
-        print('image width needs to be a multiple of {}, padding with reflect'.format(unet_model.UNet.SIZE_FACTOR))
+    if img.shape[0] % model.UNet.SIZE_FACTOR != 0:
+        pad_y = (model.UNet.SIZE_FACTOR - img.shape[0] % model.UNet.SIZE_FACTOR)
+        print('image height needs to be a multiple of {}, padding with reflect'.format(model.UNet.SIZE_FACTOR))
+    if img.shape[1] % model.UNet.SIZE_FACTOR != 0:
+        pad_x = (model.UNet.SIZE_FACTOR - img.shape[1] % model.UNet.SIZE_FACTOR)
+        print('image width needs to be a multiple of {}, padding with reflect'.format(model.UNet.SIZE_FACTOR))
 
     if len(img.shape) != 2 and len(img.shape) != 3:
         raise IOError('Invalid number of dimensions for input image. Expecting HW or HWC dimension ordering.')
