@@ -18,7 +18,7 @@ input_data_directory="/path/to/your/images"
 output_directory="/path/to/your/results"
 
 # which model checkpoint to use for inferencing
-saved_model_filepath="/path/to/your/model/checkpoint/ckpt"
+saved_model_filepath="/path/to/your/model/saved_model/"
 
 image_format='tif'
 
