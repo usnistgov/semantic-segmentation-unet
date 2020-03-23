@@ -211,6 +211,9 @@ def main(image_folder, mask_folder, output_folder, dataset_name, train_fraction,
     # find the image files for which annotations exist
     img_files = [f for f in os.listdir(mask_folder) if f.endswith('.{}'.format(image_format))]
 
+    if len(img_files) == 0:
+        raise RuntimeError('Found no images')
+
     # in place shuffle
     random.shuffle(img_files)
 

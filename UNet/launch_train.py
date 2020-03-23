@@ -24,7 +24,7 @@ output_folder="/path/to/output/directory/where/results/are/saved"
 number_classes=2
 
 # what learning rate should the network use
-learning_rate=3e-4 # Karpathy Constant
+learning_rate=3e-4
 
 use_augmentation=1 # {0, 1}
 balance_classes=1 # {0, 1}
@@ -33,5 +33,5 @@ reader_count = 1 # how many threads to use for disk I/O and augmentation per gpu
 
 
 # Launch Training
-train.main(output_folder, batch_size, reader_count, train_lmdb_filepath, test_lmdb_filepath, use_augmentation, number_classes, balance_classes, learning_rate, test_every_n_steps, early_stopping_count, gpu_ids)
+train.train_model(output_folder, batch_size, reader_count, train_lmdb_filepath, test_lmdb_filepath, use_augmentation, number_classes, balance_classes, learning_rate, test_every_n_steps, early_stopping_count, gpu_ids)
 

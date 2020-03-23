@@ -23,6 +23,8 @@ output_directory="/path/to/your/results"
 saved_model_filepath="/path/to/your/model/saved_model/"
 
 image_format='tif'
+number_classes=2
+number_channels=1 # 1 for grayscale, 3 for color, N for arbitrary
 
 # END MODIFY THESE OPTIONS
 # ************************************
@@ -35,4 +37,4 @@ export CUDA_DEVICE_ORDER="PCI_BUS_ID"
 export CUDA_VISIBLE_DEVICES=${GPU}
 
 
-python3 inference.py --saved_model_filepath=${saved_model_filepath} --image_folder=${input_data_directory} --output_folder=${output_directory} --image_format=${image_format}
+python3 inference.py --saved_model_filepath=${saved_model_filepath} --image_folder=${input_data_directory} --output_folder=${output_directory} --number_classes=${number_classes} --number_channels=${number_channels} --image_format=${image_format}

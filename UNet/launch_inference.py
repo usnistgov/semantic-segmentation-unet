@@ -16,16 +16,17 @@ input_data_directory="/mnt/isgnas/project/CS_BioMet/Car-T_Cell_Project/Car-T_ref
 ## where to save your results
 output_directory="/mnt/isgnas/project/CS_BioMet/Car-T_Cell_Project/Car-T_reference_data/model2_masks_AI_auto"
 ## which model checkpoint to use for inferencing
-saved_model_filepath="/mnt/isgnas/project/CS_BioMet/Car-T_Cell_Project/AI_Models/Auto_AI/saved_model"
+checkpoint_filepath="/mnt/isgnas/project/CS_BioMet/Car-T_Cell_Project/AI_Models/Auto_AI/checkpoint/ckpt"
 # Image format
-image_format='tif'
+image_format = 'tif'
+number_classes = 2
+number_channels = 1
 
 # limit the script to only the GPUs you selected above
 os.environ['CUDA_DEVICE_ORDER']="PCI_BUS_ID"
 os.environ['CUDA_VISIBLE_DEVICES']=GPU
 
-inference.main(saved_model_filepath, input_data_directory, output_directory, image_format)
-
+inference.inference(checkpoint_filepath, input_data_directory, output_directory, number_classes, number_channels, image_format)
 
 
 

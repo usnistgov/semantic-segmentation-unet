@@ -23,6 +23,7 @@ import tensorflow as tf
 tf_version = tf.__version__.split('.')
 if int(tf_version[0]) != 2:
     raise RuntimeError('Tensorflow 2.x.x required')
+from tensorflow.keras.mixed_precision import experimental as mixed_precision
 
 import model
 import imagereader
@@ -31,6 +32,21 @@ import time
 
 def train_model(output_folder, batch_size, reader_count, train_lmdb_filepath, test_lmdb_filepath, use_augmentation,
                 number_classes, balance_classes, learning_rate, test_every_n_steps, early_stopping_count, gpu_ids=""):
+    print('batch_size = {}'.format(batch_size))
+    print('number_classes = {}'.format(number_classes))
+    print('learning_rate = {}'.format(learning_rate))
+    print('test_every_n_steps = {}'.format(test_every_n_steps))
+    print('balance_classes = {}'.format(balance_classes))
+    print('use_augmentation = {}'.format(use_augmentation))
+
+    print('train_database = {}'.format(train_lmdb_filepath))
+    print('test_database = {}'.format(test_lmdb_filepath))
+    print('output folder = {}'.format(output_folder))
+
+    print('early_stopping count = {}'.format(early_stopping_count))
+    print('reader_count = {}'.format(reader_count))
+    print('gpu_ids = {}'.format(gpu_ids))
+
     if gpu_ids is not None and len(gpu_ids) > 0:
         # gpus_to_use must bs comma separated list of gpu ids, e.g. "1,3,4"
         os.environ["CUDA_VISIBLE_DEVICES"] = gpu_ids  # "0, 1" for multiple
@@ -38,8 +54,9 @@ def train_model(output_folder, batch_size, reader_count, train_lmdb_filepath, te
     if not os.path.exists(output_folder):
         os.makedirs(output_folder)
 
-    # TODO add ability to reload a checkpoint or saved model to resume training
-    training_checkpoint_filepath = None
+    # # setup mixed precision training to use FP16
+    # policy = mixed_precision.Policy('mixed_float16')
+    # mixed_precision.set_policy(policy)
 
     # uses all available devices
     mirrored_strategy = tf.distribute.MirroredStrategy()
@@ -78,7 +95,8 @@ def train_model(output_folder, batch_size, reader_count, train_lmdb_filepath, te
             test_dataset = mirrored_strategy.experimental_distribute_dataset(test_dataset)
 
             print('Creating model')
-            unet_model = model.UNet(number_classes, global_batch_size, train_reader.get_image_size(), learning_rate)
+            number_channels = train_reader.get_image_size()[2]
+            unet_model = model.UNet(number_classes, global_batch_size, number_channels, learning_rate)
 
             checkpoint = tf.train.Checkpoint(optimizer=unet_model.get_optimizer(), model=unet_model.get_keras_model())
 
@@ -168,8 +186,7 @@ def train_model(output_folder, batch_size, reader_count, train_lmdb_filepath, te
                 if (len(test_loss) - 1) == np.argmin(test_loss):
                     # save tf checkpoint
                     print('Test loss improved: {}, saving checkpoint'.format(np.min(test_loss)))
-                    # checkpoint.save(os.path.join(output_folder, 'checkpoint', "ckpt")) # does not overwrite
-                    training_checkpoint_filepath = checkpoint.write(os.path.join(output_folder, 'checkpoint', "ckpt"))
+                    checkpoint.write(os.path.join(output_folder, 'checkpoint', "ckpt"))
 
                 # determine early stopping
                 CONVERGENCE_TOLERANCE = 1e-4
@@ -192,35 +209,6 @@ def train_model(output_folder, batch_size, reader_count, train_lmdb_filepath, te
             train_reader.shutdown()
             print('Shutting down test_reader')
             test_reader.shutdown()
-
-    # convert training checkpoint to the saved model format
-    if training_checkpoint_filepath is not None:
-        # restore the checkpoint and generate a saved model
-        unet_model = model.UNet(number_classes, global_batch_size, train_reader.get_image_size(), learning_rate)
-        checkpoint = tf.train.Checkpoint(optimizer=unet_model.get_optimizer(), model=unet_model.get_keras_model())
-        checkpoint.restore(training_checkpoint_filepath)
-        tf.saved_model.save(unet_model.get_keras_model(), os.path.join(output_folder, 'saved_model'))
-
-
-def main(output_folder, batch_size, reader_count, train_lmdb_filepath, test_lmdb_filepath, use_augmentation,
-         number_classes, balance_classes, learning_rate, test_every_n_steps, early_stopping_count, gpu_ids):
-    print('batch_size = {}'.format(batch_size))
-    print('number_classes = {}'.format(number_classes))
-    print('learning_rate = {}'.format(learning_rate))
-    print('test_every_n_steps = {}'.format(test_every_n_steps))
-    print('balance_classes = {}'.format(balance_classes))
-    print('use_augmentation = {}'.format(use_augmentation))
-
-    print('train_database = {}'.format(train_lmdb_filepath))
-    print('test_database = {}'.format(test_lmdb_filepath))
-    print('output folder = {}'.format(output_folder))
-
-    print('early_stopping count = {}'.format(early_stopping_count))
-    print('reader_count = {}'.format(reader_count))
-    print('gpu_ids = {}'.format(gpu_ids))
-
-    train_model(output_folder, batch_size, reader_count, train_lmdb_filepath, test_lmdb_filepath, use_augmentation,
-                number_classes, balance_classes, learning_rate, test_every_n_steps, early_stopping_count, gpu_ids)
 
 
 if __name__ == "__main__":

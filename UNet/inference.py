@@ -16,10 +16,10 @@ if int(tf_version[0]) != 2:
 
 import argparse
 import os
-import model
 import numpy as np
 import imagereader
 import skimage.io
+import model
 
 
 def _inference_tiling(img, unet_model, tile_size):
@@ -100,7 +100,7 @@ def _inference_tiling(img, unet_model, tile_size):
             # convert CHW to NCHW
             batch_data = batch_data.reshape((1, batch_data.shape[0], batch_data.shape[1], batch_data.shape[2]))
 
-            sm = unet_model(batch_data)  # model output defined in unet_model is softmax
+            sm = unet_model.get_keras_model()(batch_data)  # model output defined in unet_model is softmax
             sm = np.squeeze(sm)
             pred = np.squeeze(np.argmax(sm, axis=-1).astype(np.int32))
 
@@ -159,7 +159,7 @@ def _inference(img, unet_model):
     batch_data = batch_data.reshape((1, batch_data.shape[0], batch_data.shape[1], batch_data.shape[2]))
     batch_data = tf.convert_to_tensor(batch_data)
 
-    softmax = unet_model(batch_data) # model output defined in unet_model is softmax
+    softmax = unet_model.get_keras_model()(batch_data) # model output defined in unet_model is softmax
     softmax = np.squeeze(softmax)
     pred = np.squeeze(np.argmax(softmax, axis=-1).astype(np.int32))
 
@@ -171,14 +171,23 @@ def _inference(img, unet_model):
     return pred
 
 
-def inference(saved_model_filepath, image_folder, output_folder, image_format):
+def inference(checkpoint_filepath, image_folder, output_folder, number_classes, number_channels, image_format):
+    print('Arguments:')
+    print('checkpoint_filepath = {}'.format(checkpoint_filepath))
+    print('image_folder = {}'.format(image_folder))
+    print('output_folder = {}'.format(output_folder))
+    print('image_format = {}'.format(image_format))
+    print('number_classes = {}'.format(number_classes))
+    print('number_channels = {}'.format(number_channels))
+
     # create output filepath
     if not os.path.exists(output_folder):
         os.mkdir(output_folder)
 
     img_filepath_list = [os.path.join(image_folder, fn) for fn in os.listdir(image_folder) if fn.endswith('.{}'.format(image_format))]
 
-    unet_model = tf.saved_model.load(saved_model_filepath)
+    unet_model = model.UNet(number_classes, 1, number_channels, 1e-4)
+    unet_model.load_checkpoint(checkpoint_filepath)
 
     print('Starting inference of file list')
     for i in range(len(img_filepath_list)):
@@ -216,34 +225,28 @@ def inference(saved_model_filepath, image_folder, output_folder, image_format):
                 skimage.io.imsave(os.path.join(output_folder, slide_name), segmented_mask)
 
 
-def main(saved_model_filepath, image_folder, output_folder, image_format):
-    print('Arguments:')
-    print('saved_model_filepath = {}'.format(saved_model_filepath))
-    print('image_folder = {}'.format(image_folder))
-    print('output_folder = {}'.format(output_folder))
-    print('image_format = {}'.format(image_format))
-
-    inference(saved_model_filepath, image_folder, output_folder, image_format)
-
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(prog='inference',
                                      description='Script to detect stars with the selected unet model')
 
-    parser.add_argument('--saved_model_filepath', dest='saved_model_filepath', type=str,
-                        help='SavedModel filepath to the  model to use', required=True)
+    parser.add_argument('--checkpoint_filepath', dest='checkpoint_filepath', type=str,
+                        help='Checkpoint filepath to the  model to use', required=True)
     parser.add_argument('--image_folder', dest='image_folder', type=str,
                         help='filepath to the folder containing tif images to inference (Required)', required=True)
     parser.add_argument('--output_folder', dest='output_folder', type=str, required=True)
+    parser.add_argument('--number_classes', dest='number_classes', type=int, required=True)
+    parser.add_argument('--number_channels', dest='number_channels', type=int, required=True)
     parser.add_argument('--image_format', dest='image_format', type=str, help='format (extension) of the input images. E.g {tif, jpg, png)', default='tif')
 
     args = parser.parse_args()
 
-    saved_model_filepath = args.saved_model_filepath
+    checkpoint_filepath = args.checkpoint_filepath
     image_folder = args.image_folder
     output_folder = args.output_folder
     image_format = args.image_format
+    number_classes = args.number_classes
+    number_channels = args.number_channels
 
-    main(saved_model_filepath, image_folder, output_folder, image_format)
+    main(checkpoint_filepath, image_folder, output_folder, number_classes, number_channels, image_format)
 
 

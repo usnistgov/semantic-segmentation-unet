@@ -62,15 +62,15 @@ class UNet():
         output = tf.keras.layers.Dropout(rate=0.5)(input)
         return output
 
-    def __init__(self, number_classes, global_batch_size, img_size, learning_rate=3e-4, label_smoothing=0):
+    def __init__(self, number_classes, global_batch_size, number_channels, learning_rate=3e-4, label_smoothing=0):
 
-        self.img_size = img_size
+        self.number_channels = number_channels
         self.learning_rate = learning_rate
         self.number_classes = number_classes
         self.global_batch_size = global_batch_size
 
         # image is HWC (normally e.g. RGB image) however data needs to be NCHW for network
-        self.inputs = tf.keras.Input(shape=(img_size[2], None, None))
+        self.inputs = tf.keras.Input(shape=(number_channels, None, None))
         # self.inputs = tf.keras.Input(shape=(img_size[2], img_size[0], img_size[1]))
         self.model = self._build_model()
 
@@ -165,17 +165,16 @@ class UNet():
     def estimate_radius(self):
         N = 2 * UNet.RADIUS  # get the theoretical radius
         # create random noise input image
-        img = tf.Variable(np.random.normal(size=(1, 1, N, N)), dtype=tf.float32)
+        img = tf.Variable(np.random.normal(size=(1, self.number_channels, N, N)), dtype=tf.float32)
 
         mid_idx = int(N / 2)  # determine the midpoint of the image
         # create loss function we can force to be 1 at mid_idx and zero everywhere else
         loss_fn = tf.keras.losses.MeanAbsoluteError(reduction=tf.keras.losses.Reduction.NONE)
 
-        grad_img = np.zeros((N, N))
         # compute the gradient for the noise input image
         for i in range(10):
             with tf.GradientTape() as tape:
-                softmax = self.model(img)
+                softmax = self.model(img, training=False)
                 # modify the softmax output to create the desired loss pattern, a dirac function at the mid_idx
                 msk = softmax.numpy()
                 msk[0, mid_idx, mid_idx, :] = 1.0 - msk[0, mid_idx, mid_idx, :]
@@ -184,16 +183,22 @@ class UNet():
         # compute the gradient of the input image with respect to the loss value
         grads = tape.gradient(loss_value, img)
         # get image gradient as 2D numpy array
-        grad_img += np.abs(grads[0].numpy().squeeze())
+        grad_img = np.abs(grads[0].numpy().squeeze())
+        # sum over channels
+        if self.number_channels > 1:
+            grad_img = np.average(grad_img, axis=0)
 
         print('Theoretical RF: {}'.format(UNet.RADIUS))
         eps = 1e-8
         vec = np.maximum(np.max(grad_img, axis=0).squeeze(), np.max(grad_img, axis=1).squeeze())
-        idx = np.nonzero(vec > eps)
-        erf = int((np.max(idx) - np.min(idx)) / 2)
-        # print('computed radius : "{}"'.format(erf))
-        radius = UNet.__round_radius(erf)
-        print('computed radius : "{}"'.format(radius))
+        idx = np.nonzero(vec > eps)[0]
+        if len(idx) < 2:
+            radius = UNet.RADIUS
+            print('ERF based radius detection failed, defaulting to theoretical radius: {}'.format(radius))
+        else:
+            erf = int((np.max(idx) - np.min(idx)) / 2)
+            radius = UNet.__round_radius(erf)
+            print('computed radius : "{}"'.format(radius))
         return radius
 
     def train_step(self, inputs):
