@@ -12,22 +12,22 @@ if int(tf_version[0]) != 2:
     raise RuntimeError('Tensorflow 2.x.x required')
 
 import os
-import unet_model
+import model
 import numpy as np
 import imagereader
 
 
-def _inference_tiling(img, unet, tile_size, radius, number_classes):
+def _inference_tiling(img, unet_model, tile_size, radius, number_classes):
 
     # Pad the input image in CPU memory to ensure its dimensions are multiples of the U-Net Size Factor
     pad_x = 0
     pad_y = 0
-    if img.shape[0] % unet_model.UNet.SIZE_FACTOR != 0:
-        pad_y = (unet_model.UNet.SIZE_FACTOR - img.shape[0] % unet_model.UNet.SIZE_FACTOR)
+    if img.shape[0] % model.UNet.SIZE_FACTOR != 0:
+        pad_y = (model.UNet.SIZE_FACTOR - img.shape[0] % model.UNet.SIZE_FACTOR)
         print('image height needs to be a multiple of {}, padding with reflect'.format(unet.SIZE_FACTOR))
-    if img.shape[1] % unet_model.UNet.SIZE_FACTOR != 0:
-        pad_x = (unet_model.UNet.SIZE_FACTOR - img.shape[1] % unet_model.UNet.SIZE_FACTOR)
-        print('image width needs to be a multiple of {}, padding with reflect'.format(unet_model.UNet.SIZE_FACTOR))
+    if img.shape[1] % model.UNet.SIZE_FACTOR != 0:
+        pad_x = (model.UNet.SIZE_FACTOR - img.shape[1] % model.UNet.SIZE_FACTOR)
+        print('image width needs to be a multiple of {}, padding with reflect'.format(model.UNet.SIZE_FACTOR))
 
     if len(img.shape) != 2 and len(img.shape) != 3:
         raise IOError('Invalid number of dimensions for input image. Expecting HW or HWC dimension ordering.')
@@ -44,8 +44,8 @@ def _inference_tiling(img, unet, tile_size, radius, number_classes):
     mask = np.zeros((height, width), dtype=np.int32)
     softmax = np.zeros((height, width, number_classes), dtype=np.float32)
 
-    assert tile_size % unet_model.UNet.SIZE_FACTOR == 0
-    assert radius % unet_model.UNet.SIZE_FACTOR == 0
+    assert tile_size % model.UNet.SIZE_FACTOR == 0
+    assert radius % model.UNet.SIZE_FACTOR == 0
     zone_of_responsibility_size = tile_size - 2 * radius
     assert zone_of_responsibility_size >= radius
 
@@ -94,7 +94,7 @@ def _inference_tiling(img, unet, tile_size, radius, number_classes):
             batch_data = batch_data.reshape((1, batch_data.shape[0], batch_data.shape[1], batch_data.shape[2]))
 
             batch_data = tf.convert_to_tensor(batch_data)
-            sm = unet(batch_data)  # model output defined in unet_model is softmax
+            sm = unet_model(batch_data)  # model output defined in unet_model is softmax
             sm = np.squeeze(sm)
             pred = np.squeeze(np.argmax(sm, axis=-1).astype(np.int32))
 
@@ -132,16 +132,16 @@ def _inference_tiling(img, unet, tile_size, radius, number_classes):
     return mask, softmax
 
 
-def _inference(img, unet):
+def _inference(img, unet_model):
     pad_x = 0
     pad_y = 0
 
-    if img.shape[0] % unet_model.UNet.SIZE_FACTOR != 0:
-        pad_y = (unet_model.UNet.SIZE_FACTOR - img.shape[0] % unet_model.UNet.SIZE_FACTOR)
-        print('image height needs to be a multiple of {}, padding with reflect'.format(unet.SIZE_FACTOR))
-    if img.shape[1] % unet_model.UNet.SIZE_FACTOR != 0:
-        pad_x = (unet_model.UNet.SIZE_FACTOR - img.shape[1] % unet_model.UNet.SIZE_FACTOR)
-        print('image width needs to be a multiple of {}, padding with reflect'.format(unet_model.UNet.SIZE_FACTOR))
+    if img.shape[0] % model.UNet.SIZE_FACTOR != 0:
+        pad_y = (model.UNet.SIZE_FACTOR - img.shape[0] % model.UNet.SIZE_FACTOR)
+        print('image height needs to be a multiple of {}, padding with reflect'.format(model.UNet.SIZE_FACTOR))
+    if img.shape[1] % model.UNet.SIZE_FACTOR != 0:
+        pad_x = (model.UNet.SIZE_FACTOR - img.shape[1] % model.UNet.SIZE_FACTOR)
+        print('image width needs to be a multiple of {}, padding with reflect'.format(model.UNet.SIZE_FACTOR))
 
     if len(img.shape) != 2 and len(img.shape) != 3:
         raise IOError('Invalid number of dimensions for input image. Expecting HW or HWC dimension ordering.')
@@ -159,7 +159,7 @@ def _inference(img, unet):
     batch_data = batch_data.reshape((1, batch_data.shape[0], batch_data.shape[1], batch_data.shape[2]))
 
     batch_data = tf.convert_to_tensor(batch_data)
-    softmax = unet(batch_data) # model output defined in unet_model is softmax
+    softmax = unet_model(batch_data) # model output defined in unet_model is softmax
     softmax = np.squeeze(softmax)
     pred = np.squeeze(np.argmax(softmax, axis=-1).astype(np.int32))
 
@@ -183,7 +183,7 @@ def inference(saved_model_filepath, image_folder, output_folder, output_folder_s
 
     img_filepath_list = [os.path.join(image_folder, fn) for fn in os.listdir(image_folder) if fn.endswith('.{}'.format(image_format))]
 
-    model = tf.saved_model.load(saved_model_filepath)
+    unet_model = tf.saved_model.load(saved_model_filepath)
 
     print('Starting inference of file list')
     for i in range(len(img_filepath_list)):
@@ -200,9 +200,9 @@ def inference(saved_model_filepath, image_folder, output_folder, output_folder_s
         print('  img.shape={}'.format(img.shape))
 
         if tile_size > 0:
-            segmented_mask, softmax = _inference_tiling(img, model, tile_size, radius, number_classes)
+            segmented_mask, softmax = _inference_tiling(img, unet_model, tile_size, radius, number_classes)
         else:
-            segmented_mask, softmax = _inference(img, model)
+            segmented_mask, softmax = _inference(img, unet_model)
 
         if output_folder is not None:
             if 0 <= np.max(segmented_mask) <= 255:

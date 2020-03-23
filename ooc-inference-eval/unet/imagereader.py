@@ -23,7 +23,7 @@ import os
 import skimage.io
 import skimage.transform
 from isg_ai_pb2 import ImageMaskPair
-import unet_model
+import model
 
 
 def zscore_normalize(image_data):
@@ -123,9 +123,9 @@ class ImageReader:
             # record the image size
             self.image_size = [datum.img_height, datum.img_width, datum.channels]
 
-            if self.image_size[0] % unet_model.UNet.SIZE_FACTOR != 0:
+            if self.image_size[0] % model.UNet.SIZE_FACTOR != 0:
                 raise IOError('Input Image tile height needs to be a multiple of 16 to allow integer sized downscaled feature maps. Input images should be either HW or HWC dimension ordering')
-            if self.image_size[1] % unet_model.UNet.SIZE_FACTOR != 0:
+            if self.image_size[1] % model.UNet.SIZE_FACTOR != 0:
                 raise IOError('Input Image tile height needs to be a multiple of 16 to allow integer sized downscaled feature maps. Input images should be either HW or HWC dimension ordering')
 
             cursor = lmdb_txn.cursor().iternext(keys=True, values=False)

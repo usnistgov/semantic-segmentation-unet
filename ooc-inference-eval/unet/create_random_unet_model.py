@@ -8,13 +8,13 @@ tf_version = tf.__version__.split('.')
 if int(tf_version[0]) != 2:
     raise RuntimeError('Tensorflow 2.x.x required')
 
-import unet_model
+import model
 
 number_classes = 4
 global_batch_size = 1
 img_size = [512, 512, 1]
 learning_rate = 1e-4
 
-model = unet_model.UNet(number_classes, global_batch_size, img_size, learning_rate)
-checkpoint = tf.train.Checkpoint(optimizer=model.get_optimizer(), model=model.get_keras_model())
-tf.saved_model.save(model.get_keras_model(), os.path.join('/home/mmajursk/Downloads/todo/ooc/unet-model-random', 'saved_model'))
+unet_model = model.UNet(number_classes, global_batch_size, img_size, learning_rate)
+checkpoint = tf.train.Checkpoint(optimizer=unet_model.get_optimizer(), model=unet_model.get_keras_model())
+tf.saved_model.save(unet_model.get_keras_model(), os.path.join('/home/mmajursk/Downloads/todo/ooc/unet-model-random', 'saved_model'))
