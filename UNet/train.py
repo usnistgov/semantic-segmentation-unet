@@ -31,7 +31,7 @@ import time
 
 
 def train_model(output_folder, batch_size, reader_count, train_lmdb_filepath, test_lmdb_filepath, use_augmentation,
-                number_classes, balance_classes, learning_rate, test_every_n_steps, early_stopping_count, gpu_ids=""):
+                number_classes, balance_classes, learning_rate, test_every_n_steps, early_stopping_count):
     print('batch_size = {}'.format(batch_size))
     print('number_classes = {}'.format(number_classes))
     print('learning_rate = {}'.format(learning_rate))
@@ -45,11 +45,6 @@ def train_model(output_folder, batch_size, reader_count, train_lmdb_filepath, te
 
     print('early_stopping count = {}'.format(early_stopping_count))
     print('reader_count = {}'.format(reader_count))
-    print('gpu_ids = {}'.format(gpu_ids))
-
-    if gpu_ids is not None and len(gpu_ids) > 0:
-        # gpus_to_use must bs comma separated list of gpu ids, e.g. "1,3,4"
-        os.environ["CUDA_VISIBLE_DEVICES"] = gpu_ids  # "0, 1" for multiple
 
     if not os.path.exists(output_folder):
         os.makedirs(output_folder)
@@ -236,8 +231,7 @@ if __name__ == "__main__":
                         help='Perform early stopping when the test loss does not improve for N epochs.', default=10)
     parser.add_argument('--reader_count', dest='reader_count', type=int,
                         help='how many threads to use for disk I/O and augmentation per gpu', default=1)
-    parser.add_argument('--gpu_ids', dest='gpu_ids', type=str, help='Which gpu ids (shown in nvidia-smi) to use',
-                        default=None)
+
 
     args = parser.parse_args()
     batch_size = args.batch_size
@@ -251,7 +245,6 @@ if __name__ == "__main__":
     balance_classes = args.balance_classes
     use_augmentation = args.use_augmentation
     reader_count = args.reader_count
-    gpu_ids = args.gpu_ids
 
-    main(output_folder, batch_size, reader_count, train_lmdb_filepath, test_lmdb_filepath, use_augmentation,
-         number_classes, balance_classes, learning_rate, test_every_n_steps, early_stopping_count, gpu_ids)
+    train_model(output_folder, batch_size, reader_count, train_lmdb_filepath, test_lmdb_filepath, use_augmentation,
+         number_classes, balance_classes, learning_rate, test_every_n_steps, early_stopping_count)

@@ -247,6 +247,6 @@ if __name__ == "__main__":
     number_classes = args.number_classes
     number_channels = args.number_channels
 
-    main(checkpoint_filepath, image_folder, output_folder, number_classes, number_channels, image_format)
+    inference(checkpoint_filepath, image_folder, output_folder, number_classes, number_channels, image_format)
 
 

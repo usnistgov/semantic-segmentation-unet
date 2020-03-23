@@ -206,13 +206,21 @@ class ImageReader:
                 # select a class to add at random from the set of classes
                 label_idx = random.randint(0, self.nb_classes - 1)  # randint has inclusive endpoints
                 # randomly select an example from the database of the required label
-                nb_examples = len(self.keys[label_idx])
+                try:
+                    nb_examples = len(self.keys[label_idx])
+                except IndexError as e:
+                    print('ImageReader Error: Number of classes specified differs from number of observed classes in data')
+                    raise e
 
                 while nb_examples == 0:
                     # select a class to add at random from the set of classes
                     label_idx = random.randint(0, self.nb_classes - 1)  # randint has inclusive endpoints
                     # randomly select an example from the database of the required label
-                    nb_examples = len(self.keys[label_idx])
+                    try:
+                        nb_examples = len(self.keys[label_idx])
+                    except IndexError as e:
+                        print('ImageReader Error: Number of classes specified differs from number of observed classes in data')
+                        raise e
 
                 img_idx = random.randint(0, nb_examples - 1)
                 # lookup the database key for loading the image data

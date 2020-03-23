@@ -4,7 +4,7 @@
 
 # You are solely responsible for determining the appropriateness of using and distributing the software and you assume all risks associated with its use, including but not limited to the risks and costs of program errors, compliance with applicable laws, damage to or loss of data, programs or equipment, and the unavailability or interruption of operation. This software is not intended to be used in any situation where a failure could cause risk of injury or damage to property. The software developed by NIST employees is not subject to copyright protection within the United States.
 
-import train
+import os
 
 # Which gpu do you want to use for training
 # this can be a single number, or a list. E.g "3" or "0,1" "0,2,3"
@@ -32,6 +32,12 @@ early_stopping_count=10 # Perform early stopping when the test loss does not imp
 reader_count = 1 # how many threads to use for disk I/O and augmentation per gpu
 
 
+os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
+# gpus_to_use must bs comma separated list of gpu ids, e.g. "1,3,4"
+os.environ["CUDA_VISIBLE_DEVICES"] = gpu_ids  # "0, 1" for multiple
+
+import train
+
 # Launch Training
-train.train_model(output_folder, batch_size, reader_count, train_lmdb_filepath, test_lmdb_filepath, use_augmentation, number_classes, balance_classes, learning_rate, test_every_n_steps, early_stopping_count, gpu_ids)
+train.train_model(output_folder, batch_size, reader_count, train_lmdb_filepath, test_lmdb_filepath, use_augmentation, number_classes, balance_classes, learning_rate, test_every_n_steps, early_stopping_count)
 

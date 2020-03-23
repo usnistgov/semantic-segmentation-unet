@@ -12,17 +12,21 @@
 
 image_folder="/path/to/your/image/folder"
 mask_folder="/path/to/your/mask/folder"
+image_folder="/home/mmajurski/Downloads/github/data/orig_img"
+mask_folder="/home/mmajurski/Downloads/github/data/masks"
+
 
 output_folder="/path/to/output/directory/where/results/are/saved"
+output_folder="/home/mmajurski/Downloads/github/data"
 
 # what common name to use in saving the lmdb dataset
-dataset_name="my_dataset"
+dataset_name="shoe"
 
 # what fraction of your data to use for training. Test is 1.0 - train_fraction of the data
 train_fraction=0.8 # (0.0, 1.0)
 
 # what format are the images in your image/mask folder
-image_format="tif"
+image_format="png"
 
 use_tiling=1 #{0, 1}
 tile_size=256
