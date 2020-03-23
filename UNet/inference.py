@@ -22,7 +22,7 @@ import imagereader
 import skimage.io
 
 
-def _inference_tiling(img, model, tile_size):
+def _inference_tiling(img, unet, tile_size):
 
     # Pad the input image in CPU memory to ensure its dimensions are multiples of the U-Net Size Factor
     pad_x = 0
@@ -97,7 +97,7 @@ def _inference_tiling(img, model, tile_size):
             # convert CHW to NCHW
             batch_data = batch_data.reshape((1, batch_data.shape[0], batch_data.shape[1], batch_data.shape[2]))
 
-            sm = model(batch_data)  # model output defined in unet_model is softmax
+            sm = unet(batch_data)  # model output defined in unet_model is softmax
             sm = np.squeeze(sm)
             pred = np.squeeze(np.argmax(sm, axis=-1).astype(np.int32))
 
@@ -131,7 +131,7 @@ def _inference_tiling(img, model, tile_size):
     return mask
 
 
-def _inference(img, model):
+def _inference(img, unet):
     pad_x = 0
     pad_y = 0
 
@@ -155,7 +155,7 @@ def _inference(img, model):
     # convert CHW to NCHW
     batch_data = batch_data.reshape((1, batch_data.shape[0], batch_data.shape[1], batch_data.shape[2]))
 
-    softmax = model(batch_data) # model output defined in unet_model is softmax
+    softmax = unet(batch_data) # model output defined in unet_model is softmax
     softmax = np.squeeze(softmax)
     pred = np.squeeze(np.argmax(softmax, axis=-1).astype(np.int32))
 
@@ -174,7 +174,7 @@ def inference(saved_model_filepath, image_folder, output_folder, image_format):
 
     img_filepath_list = [os.path.join(image_folder, fn) for fn in os.listdir(image_folder) if fn.endswith('.{}'.format(image_format))]
 
-    model = tf.saved_model.load(saved_model_filepath)
+    unet = tf.saved_model.load(saved_model_filepath)
 
     print('Starting inference of file list')
     for i in range(len(img_filepath_list)):
@@ -193,9 +193,9 @@ def inference(saved_model_filepath, image_folder, output_folder, image_format):
         if img.shape[0] > 1024 or img.shape[1] > 1024:
             tile_size = 1024  # in theory UNet takes about 420x the amount of memory of the input image
             # to a tile size of 1024 should require 1.7 GB of GPU memory
-            segmented_mask = _inference_tiling(img, model, tile_size)
+            segmented_mask = _inference_tiling(img, unet, tile_size)
         else:
-            segmented_mask = _inference(img, model)
+            segmented_mask = _inference(img, unet)
 
         if 0 <= np.max(segmented_mask) <= 255:
             segmented_mask = segmented_mask.astype(np.uint8)
