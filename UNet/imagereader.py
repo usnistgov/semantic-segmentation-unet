@@ -5,13 +5,15 @@
 # You are solely responsible for determining the appropriateness of using and distributing the software and you assume all risks associated with its use, including but not limited to the risks and costs of program errors, compliance with applicable laws, damage to or loss of data, programs or equipment, and the unavailability or interruption of operation. This software is not intended to be used in any situation where a failure could cause risk of injury or damage to property. The software developed by NIST employees is not subject to copyright protection within the United States.
 
 import sys
+
 if sys.version_info[0] < 3:
-    raise Exception('Python3 required')
+    raise RuntimeError('Python3 required')
 
 import tensorflow as tf
+
 tf_version = tf.__version__.split('.')
 if int(tf_version[0]) != 2:
-    raise Exception('Tensorflow 2.x.x required')
+    raise RuntimeError('Tensorflow 2.x.x required')
 
 import multiprocessing
 from multiprocessing import Process
@@ -74,7 +76,7 @@ class ImageReader:
     _noise_augmentation_severity = 0.02  # vary noise by x% of the dynamic range present in the image
     _scale_augmentation_severity = 0.1  # vary size by x%
     _blur_max_sigma = 2  # pixels
-    _intensity_augmentation_severity = None # vary intensity by x% of the dynamic range present in the image
+    _intensity_augmentation_severity = None  # vary intensity by x% of the dynamic range present in the image
 
     def __init__(self, img_db, use_augmentation=True, balance_classes=False, shuffle=True, num_workers=1, number_classes=2):
         random.seed()
@@ -89,7 +91,7 @@ class ImageReader:
 
         # init class state
         self.queue_starvation = False
-        self.maxOutQSize = num_workers * 100 # queue 100 images per reader
+        self.maxOutQSize = num_workers * 100  # queue 100 images per reader
         self.workers = None
         self.done = False
 
@@ -109,7 +111,7 @@ class ImageReader:
         self.keys = list()
         self.keys.append(list())  # there will always be at least one class
 
-        self.lmdb_env = lmdb.open(self.image_db, map_size=int(2e10), readonly=True) # 20 GB
+        self.lmdb_env = lmdb.open(self.image_db, map_size=int(2e10), readonly=True)  # 20 GB
         self.lmdb_txns = list()
 
         datum = ImageMaskPair()  # create a datum for decoding serialized protobuf objects
@@ -205,7 +207,7 @@ class ImageReader:
                 label_idx = random.randint(0, self.nb_classes - 1)  # randint has inclusive endpoints
                 # randomly select an example from the database of the required label
                 nb_examples = len(self.keys[label_idx])
-                
+
                 while nb_examples == 0:
                     # select a class to add at random from the set of classes
                     label_idx = random.randint(0, self.nb_classes - 1)  # randint has inclusive endpoints
@@ -310,11 +312,11 @@ class ImageReader:
 
     def get_example(self):
         # get a ready to train batch from the output queue and pass to to the caller
-        if self.outQ.qsize() < int(0.1*self.maxOutQSize):
+        if self.outQ.qsize() < int(0.1 * self.maxOutQSize):
             if not self.queue_starvation:
                 print('Input Queue Starvation !!!!')
             self.queue_starvation = True
-        if self.queue_starvation and self.outQ.qsize() > int(0.5*self.maxOutQSize):
+        if self.queue_starvation and self.outQ.qsize() > int(0.5 * self.maxOutQSize):
             print('Input Queue Starvation Over')
             self.queue_starvation = False
         return self.outQ.get()

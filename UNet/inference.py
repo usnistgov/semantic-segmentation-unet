@@ -7,12 +7,12 @@
 
 import sys
 if sys.version_info[0] < 3:
-    raise Exception('Python3 required')
+    raise RuntimeError('Python3 required')
 
 import tensorflow as tf
 tf_version = tf.__version__.split('.')
 if int(tf_version[0]) != 2:
-    raise Exception('Tensorflow 2.x.x required')
+    raise RuntimeError('Tensorflow 2.x.x required')
 
 import argparse
 import os
@@ -22,7 +22,7 @@ import imagereader
 import skimage.io
 
 
-def _inference_tiling(img, unet, tile_size):
+def _inference_tiling(img, unet_model, tile_size):
 
     # Pad the input image in CPU memory to ensure its dimensions are multiples of the U-Net Size Factor
     pad_x = 0
@@ -48,10 +48,13 @@ def _inference_tiling(img, unet, tile_size):
     width = img.shape[1]
     mask = np.zeros((height, width), dtype=np.int32)
 
-    radius = model.UNet.RADIUS
+    # radius = model.UNet.RADIUS  # theoretical radius
+    radius = unet_model.estimate_radius()
+    print('Estimated radius based on ERF : "{}"'.format(radius))
     assert tile_size % model.UNet.SIZE_FACTOR == 0
     assert radius % model.UNet.SIZE_FACTOR == 0
     zone_of_responsibility_size = tile_size - 2 * radius
+    assert zone_of_responsibility_size >= radius
 
     for i in range(0, height, zone_of_responsibility_size):
         for j in range(0, width, zone_of_responsibility_size):
@@ -97,7 +100,7 @@ def _inference_tiling(img, unet, tile_size):
             # convert CHW to NCHW
             batch_data = batch_data.reshape((1, batch_data.shape[0], batch_data.shape[1], batch_data.shape[2]))
 
-            sm = unet(batch_data)  # model output defined in unet_model is softmax
+            sm = unet_model(batch_data)  # model output defined in unet_model is softmax
             sm = np.squeeze(sm)
             pred = np.squeeze(np.argmax(sm, axis=-1).astype(np.int32))
 
@@ -131,7 +134,7 @@ def _inference_tiling(img, unet, tile_size):
     return mask
 
 
-def _inference(img, unet):
+def _inference(img, unet_model):
     pad_x = 0
     pad_y = 0
 
@@ -154,8 +157,9 @@ def _inference(img, unet):
     batch_data = img.transpose((2, 0, 1))
     # convert CHW to NCHW
     batch_data = batch_data.reshape((1, batch_data.shape[0], batch_data.shape[1], batch_data.shape[2]))
+    batch_data = tf.convert_to_tensor(batch_data)
 
-    softmax = unet(batch_data) # model output defined in unet_model is softmax
+    softmax = unet_model(batch_data) # model output defined in unet_model is softmax
     softmax = np.squeeze(softmax)
     pred = np.squeeze(np.argmax(softmax, axis=-1).astype(np.int32))
 
@@ -174,7 +178,7 @@ def inference(saved_model_filepath, image_folder, output_folder, image_format):
 
     img_filepath_list = [os.path.join(image_folder, fn) for fn in os.listdir(image_folder) if fn.endswith('.{}'.format(image_format))]
 
-    unet = tf.saved_model.load(saved_model_filepath)
+    unet_model = tf.saved_model.load(saved_model_filepath)
 
     print('Starting inference of file list')
     for i in range(len(img_filepath_list)):
@@ -193,9 +197,9 @@ def inference(saved_model_filepath, image_folder, output_folder, image_format):
         if img.shape[0] > 1024 or img.shape[1] > 1024:
             tile_size = 1024  # in theory UNet takes about 420x the amount of memory of the input image
             # to a tile size of 1024 should require 1.7 GB of GPU memory
-            segmented_mask = _inference_tiling(img, unet, tile_size)
+            segmented_mask = _inference_tiling(img, unet_model, tile_size)
         else:
-            segmented_mask = _inference(img, unet)
+            segmented_mask = _inference(img, unet_model)
 
         if 0 <= np.max(segmented_mask) <= 255:
             segmented_mask = segmented_mask.astype(np.uint8)
@@ -207,6 +211,8 @@ def inference(saved_model_filepath, image_folder, output_folder, image_format):
             skimage.io.imsave(os.path.join(output_folder, slide_name), segmented_mask, compress=6, bigtiff=True, tile=(1024,1024))
         else:
             skimage.io.imsave(os.path.join(output_folder, slide_name), segmented_mask, compress=6)
+
+            # imagereader.imwrite(softmax, os.path.join(output_folder_softmax, slide_name))
 
 
 def main(saved_model_filepath, image_folder, output_folder, image_format):
