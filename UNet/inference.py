@@ -210,9 +210,10 @@ def inference(saved_model_filepath, image_folder, output_folder, image_format):
         if 'tif' in image_format:
             skimage.io.imsave(os.path.join(output_folder, slide_name), segmented_mask, compress=6, bigtiff=True, tile=(1024,1024))
         else:
-            skimage.io.imsave(os.path.join(output_folder, slide_name), segmented_mask, compress=6)
-
-            # imagereader.imwrite(softmax, os.path.join(output_folder_softmax, slide_name))
+            try:
+                skimage.io.imsave(os.path.join(output_folder, slide_name), segmented_mask, compress=6)
+            except TypeError:  # compress option not valid
+                skimage.io.imsave(os.path.join(output_folder, slide_name), segmented_mask)
 
 
 def main(saved_model_filepath, image_folder, output_folder, image_format):

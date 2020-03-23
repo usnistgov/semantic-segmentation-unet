@@ -78,17 +78,9 @@ def train_model(output_folder, batch_size, reader_count, train_lmdb_filepath, te
             test_dataset = mirrored_strategy.experimental_distribute_dataset(test_dataset)
 
             print('Creating model')
-            unet = model.UNet(number_classes, global_batch_size, train_reader.get_image_size(), learning_rate)
+            unet_model = model.UNet(number_classes, global_batch_size, train_reader.get_image_size(), learning_rate)
 
-            checkpoint = tf.train.Checkpoint(optimizer=unet.get_optimizer(), model=unet.get_keras_model())
-
-            # This requires pydot and graphviz, so its commented out to obviate those
-            # # print the model summary to file
-            # with open(os.path.join(output_folder, 'model.txt'), 'w') as summary_fh:
-            #     print_fn = lambda x: print(x, file=summary_fh)
-            #     unet.get_keras_model().summary(print_fn=print_fn)
-            # tf.keras.utils.plot_model(unet.get_keras_model(), os.path.join(output_folder, 'model.png'), show_shapes=True)
-            # tf.keras.utils.plot_model(unet.get_keras_model(), os.path.join(output_folder, 'model.dot'), show_shapes=True)
+            checkpoint = tf.train.Checkpoint(optimizer=unet_model.get_optimizer(), model=unet_model.get_keras_model())
 
             # train_epoch_size = train_reader.get_image_count()/batch_size
             train_epoch_size = test_every_n_steps
@@ -121,10 +113,10 @@ def train_model(output_folder, batch_size, reader_count, train_lmdb_filepath, te
                 if epoch == 0:
                     cur_train_epoch_size = min(1000, train_epoch_size)
                     print('Performing Adam Optimizer learning rate warmup for {} steps'.format(cur_train_epoch_size))
-                    unet.set_learning_rate(learning_rate / 10)
+                    unet_model.set_learning_rate(learning_rate / 10)
                 else:
                     cur_train_epoch_size = train_epoch_size
-                    unet.set_learning_rate(learning_rate)
+                    unet_model.set_learning_rate(learning_rate)
 
                 # Iterate over the batches of the train dataset.
                 start_time = time.time()
@@ -133,15 +125,14 @@ def train_model(output_folder, batch_size, reader_count, train_lmdb_filepath, te
                         break
 
                     inputs = (batch_images, batch_labels, train_loss_metric, train_acc_metric)
-                    unet.dist_train_step(mirrored_strategy, inputs)
+                    unet_model.dist_train_step(mirrored_strategy, inputs)
 
                     print('Train Epoch {}: Batch {}/{}: Loss {} Accuracy = {}'.format(epoch, step, train_epoch_size,
                                                                                       train_loss_metric.result(),
                                                                                       train_acc_metric.result()))
                     with train_summary_writer.as_default():
                         tf.summary.scalar('loss', train_loss_metric.result(), step=int(epoch * train_epoch_size + step))
-                        tf.summary.scalar('accuracy', train_acc_metric.result(),
-                                          step=int(epoch * train_epoch_size + step))
+                        tf.summary.scalar('accuracy', train_acc_metric.result(), step=int(epoch * train_epoch_size + step))
                     train_loss_metric.reset_states()
                     train_acc_metric.reset_states()
 
@@ -152,7 +143,7 @@ def train_model(output_folder, batch_size, reader_count, train_lmdb_filepath, te
                         break
 
                     inputs = (batch_images, batch_labels, test_loss_metric, test_acc_metric)
-                    loss_value = unet.dist_test_step(mirrored_strategy, inputs)
+                    loss_value = unet_model.dist_test_step(mirrored_strategy, inputs)
 
                     epoch_test_loss.append(loss_value.numpy())
                     # print('Test Epoch {}: Batch {}/{}: Loss {}'.format(epoch, step, test_epoch_size, loss_value))
@@ -205,10 +196,10 @@ def train_model(output_folder, batch_size, reader_count, train_lmdb_filepath, te
     # convert training checkpoint to the saved model format
     if training_checkpoint_filepath is not None:
         # restore the checkpoint and generate a saved model
-        unet = model.UNet(number_classes, global_batch_size, train_reader.get_image_size(), learning_rate)
-        checkpoint = tf.train.Checkpoint(optimizer=unet.get_optimizer(), model=unet.get_keras_model())
+        unet_model = model.UNet(number_classes, global_batch_size, train_reader.get_image_size(), learning_rate)
+        checkpoint = tf.train.Checkpoint(optimizer=unet_model.get_optimizer(), model=unet_model.get_keras_model())
         checkpoint.restore(training_checkpoint_filepath)
-        tf.saved_model.save(unet.get_keras_model(), os.path.join(output_folder, 'saved_model'))
+        tf.saved_model.save(unet_model.get_keras_model(), os.path.join(output_folder, 'saved_model'))
 
 
 def main(output_folder, batch_size, reader_count, train_lmdb_filepath, test_lmdb_filepath, use_augmentation,
