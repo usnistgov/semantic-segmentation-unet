@@ -21,6 +21,8 @@ import imagereader
 import skimage.io
 import model
 
+TILE_SIZE = 1024
+
 
 def _inference_tiling(img, unet_model, tile_size):
 
@@ -203,10 +205,8 @@ def inference(checkpoint_filepath, image_folder, output_folder, number_classes, 
         img = imagereader.zscore_normalize(img)
         print('  img.shape={}'.format(img.shape))
 
-        if img.shape[0] > 1024 or img.shape[1] > 1024:
-            tile_size = 1024  # in theory UNet takes about 420x the amount of memory of the input image
-            # to a tile size of 1024 should require 1.7 GB of GPU memory
-            segmented_mask = _inference_tiling(img, unet_model, tile_size)
+        if img.shape[0] > TILE_SIZE or img.shape[1] > TILE_SIZE:
+            segmented_mask = _inference_tiling(img, unet_model, TILE_SIZE)
         else:
             segmented_mask = _inference(img, unet_model)
 
