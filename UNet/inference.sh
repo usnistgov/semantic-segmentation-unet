@@ -19,8 +19,8 @@ input_data_directory="/path/to/your/images"
 # where to save your results
 output_directory="/path/to/your/results"
 
-# which model checkpoint to use for inferencing
-checkpoint_filepath="/path/to/your/model/checkpoint/chpt"
+# which model checkpoint to use for inferencing, include the checkpoint filename without the extension
+checkpoint_filepath="/path/to/your/model/checkpoint/ckpt"
 
 image_format='tif'
 number_classes=2
