@@ -1,3 +1,108 @@
+@article{Mnih2013,
+	abstract = {Information extracted from aerial photographs has found applications in a wide range of areas including urban planning, crop and forest management, disaster relief, and climate modeling. At present, much of the extraction is still performed by human experts, making the process slow, costly, and error prone. The goal of this thesis is to develop methods for automatically extracting the locations of objects such as roads, buildings, and trees directly from aerial images. We investigate the use of machine learning methods trained on aligned aerial images and possibly outdated maps for labeling the pixels of an aerial image with se- mantic labels. We show how deep neural networks implemented on modern GPUs can be used to efficiently learn highly discriminative image features. We then introduce new loss functions for training neural networks that are partially robust to incom- plete and poorly registered target maps. Finally, we propose two ways of improving the predictions of our system by introducing structure into the outputs of the neural networks. We evaluate our system on the largest and most-challenging road and building detection datasets considered in the literature and show that it works reliably under a wide variety of conditions. Furthermore, we are releasing the first large-scale road and building detection datasets to the public in order to facilitate future comparisons with other methods.},
+	author = {Mnih, Volodymyr},
+	file = {:Users/mmajursk/Documents/Mendeley Desktop/Mnih{\_}Volodymyr{\_}PhD{\_}Thesis.pdf:pdf},
+	isbn = {9780494721308},
+	journal = {PhD Thesis},
+	mendeley-groups = {{\_}ToRead},
+	pages = {109},
+	title = {{Machine Learning for Aerial Image Labeling}},
+	year = {2013}
+}
+
+
+@article{araujo2019computing,
+	author = {Araujo, André and Norris, Wade and Sim, Jack},
+	title = {Computing Receptive Fields of Convolutional Neural Networks},
+	journal = {Distill},
+	year = {2019},
+	note = {https://distill.pub/2019/computing-receptive-fields},
+	doi = {10.23915/distill.00021}
+}
+
+@inproceedings{Wang2018c,
+	abstract = {Both convolutional and recurrent operations are building blocks that process one local neighborhood at a time. In this paper, we present non-local operations as a generic family of building blocks for capturing long-range dependencies. Inspired by the classical non-local means method [4] in computer vision, our non-local operation computes the response at a position as a weighted sum of the features at all positions. This building block can be plugged into many computer vision architectures. On the task of video classification, even without any bells and whistles, our nonlocal models can compete or outperform current competition winners on both Kinetics and Charades datasets. In static image recognition, our non-local models improve object detection/segmentation and pose estimation on the COCO suite of tasks. Code will be made available.},
+	archivePrefix = {arXiv},
+	arxivId = {1711.07971},
+	author = {Wang, Xiaolong and Girshick, Ross and Gupta, Abhinav and He, Kaiming},
+	booktitle = {Proceedings of the IEEE Computer Society Conference on Computer Vision and Pattern Recognition},
+	doi = {10.1109/CVPR.2018.00813},
+	eprint = {1711.07971},
+	file = {:Users/mmajursk/Documents/Mendeley Desktop/1711.07971.pdf:pdf},
+	isbn = {9781538664209},
+	issn = {10636919},
+	mendeley-groups = {{\_}ToRead,Deep-Learning},
+	title = {{Non-local Neural Networks}},
+	year = {2018}
+}
+
+@article{Dai2017,
+	abstract = {Convolutional neural networks (CNNs) are inherently limited to model geometric transformations due to the fixed geometric structures in their building modules. In this work, we introduce two new modules to enhance the transformation modeling capability of CNNs, namely, deformable convolution and deformable RoI pooling. Both are based on the idea of augmenting the spatial sampling locations in the modules with additional offsets and learning the offsets from the target tasks, without additional supervision. The new modules can readily replace their plain counterparts in existing CNNs and can be easily trained end-to-end by standard back-propagation, giving rise to deformable convolutional networks. Extensive experiments validate the performance of our approach. For the first time, we show that learning dense spatial transformation in deep CNNs is effective for sophisticated vision tasks such as object detection and semantic segmentation. The code is released at https://github.com/msracver/Deformable-ConvNets.},
+	archivePrefix = {arXiv},
+	arxivId = {1703.06211},
+	author = {Dai, Jifeng and Qi, Haozhi and Xiong, Yuwen and Li, Yi and Zhang, Guodong and Hu, Han and Wei, Yichen},
+	doi = {10.1109/ICCV.2017.89},
+	eprint = {1703.06211},
+	file = {:Users/mmajursk/Documents/Mendeley Desktop/1703.06211.pdf:pdf},
+	isbn = {9781538610329},
+	issn = {15505499},
+	journal = {Proceedings of the IEEE International Conference on Computer Vision},
+	mendeley-groups = {{\_}ToRead,Deep-Learning},
+	pages = {764--773},
+	title = {{Deformable Convolutional Networks}},
+	volume = {2017-Octob},
+	year = {2017}
+}
+
+@inproceedings{Ramachandran2019b,
+	abstract = {Convolutions are a fundamental building block of modern computer vision systems. Recent approaches have argued for going beyond convolutions in order to capture long-range dependencies. These efforts focus on augmenting convolutional models with content-based interactions, such as self-attention and non-local means, to achieve gains on a number of vision tasks. The natural question that arises is whether attention can be a stand-alone primitive for vision models instead of serving as just an augmentation on top of convolutions. In developing and testing a pure self-attention vision model, we verify that self-attention can indeed be an effective stand-alone layer. A simple procedure of replacing all instances of spatial convolutions with a form of self-attention applied to ResNet model produces a fully self-attentional model that outperforms the baseline on ImageNet classification with 12{\%} fewer FLOPS and 29{\%} fewer parameters. On COCO object detection, a pure self-attention model matches the mAP of a baseline RetinaNet while having 39{\%} fewer FLOPS and 34{\%} fewer parameters. Detailed ablation studies demonstrate that self-attention is especially impactful when used in later layers. These results establish that stand-alone self-attention is an important addition to the vision practitioner's toolbox.},
+	archivePrefix = {arXiv},
+	arxivId = {1906.05909},
+	author = {Ramachandran, Prajit and Parmar, Niki and Vaswani, Ashish and Bello, Irwan and Levskaya, Anselm and Shlens, Jonathon},
+	booktitle = {Neural Information Processing Systems},
+	eprint = {1906.05909},
+	file = {:Users/mmajursk/Documents/Mendeley Desktop/8302-stand-alone-self-attention-in-vision-models.pdf:pdf},
+	mendeley-groups = {{\_}ToRead},
+	title = {{Stand-Alone Self-Attention in Vision Models}},
+	url = {http://arxiv.org/abs/1906.05909},
+	year = {2019}
+}
+
+@article{Hu2018,
+	abstract = {Convolutional neural networks are built upon the convolution operation, which extracts informative features by fusing spatial and channel-wise information together within local receptive fields. In order to boost the representational power of a network, several recent approaches have shown the benefit of enhancing spatial encoding. In this work, we focus on the channel relationship and propose a novel architectural unit, which we term the 'Squeeze-and-Excitation' (SE) block, that adaptively recalibrates channel-wise feature responses by explicitly modelling interdependencies between channels. We demonstrate that by stacking these blocks together, we can construct SENet architectures that generalise extremely well across challenging datasets. Crucially, we find that SE blocks produce significant performance improvements for existing state-of-the-art deep architectures at minimal additional computational cost. SENets formed the foundation of our ILSVRC 2017 classification submission which won first place and significantly reduced the top-5 error to 2.251{\%}, achieving a {\~{}}25{\%} relative improvement over the winning entry of 2016. Code and models are available at https://github.com/hujie-frank/SENet.},
+	archivePrefix = {arXiv},
+	arxivId = {1709.01507},
+	author = {Hu, Jie and Shen, Li and Sun, Gang},
+	doi = {10.1109/CVPR.2018.00745},
+	eprint = {1709.01507},
+	file = {:Users/mmajursk/Documents/Mendeley Desktop/1709.01507.pdf:pdf},
+	isbn = {9781538664209},
+	issn = {10636919},
+	journal = {Proceedings of the IEEE Computer Society Conference on Computer Vision and Pattern Recognition},
+	mendeley-groups = {{\_}ToRead},
+	pages = {7132--7141},
+	title = {{Squeeze-and-Excitation Networks}},
+	year = {2018}
+}
+
+
+
+@article{Saito2016,
+	abstract = {An automatic system to extract terrestrial objects from aerial imagery has many applications in a wide range of areas. However, in general, this task has been performed by human experts manually, so that it is very costly and time consuming. There have been many attempts at automating this task, but many of the existing works are based on class-specific features and classifiers. In this article, the authors propose a convolutional neural network (CNN)-based building and road extraction system. This takes raw pixel values in aerial imagery as input and outputs predicted three-channel label images (building-road-background). Using CNNs, both feature extractors and classifiers are automatically constructed. The authors propose a new technique to train a single CNN efficiently for extracting multiple kinds of objects simultaneously. Finally, they show that the proposed technique improves the prediction performance and surpasses state-of-the-art results tested on a publicly available aerial imagery dataset.},
+	author = {Saito, Shunta and Yamashita, Takayoshi and Aoki, Yoshimitsu},
+	doi = {10.2352/ISSN.2470-1173.2016.10.ROBVIS-392},
+	file = {:Users/mmajursk/Documents/Mendeley Desktop/document(2).pdf:pdf},
+	issn = {24701173},
+	journal = {IS and T International Symposium on Electronic Imaging Science and Technology},
+	mendeley-groups = {{\_}ToRead},
+	number = {1},
+	pages = {1--9},
+	title = {{Multiple object extraction from aerial imagery with convolutional neural networks}},
+	volume = {60},
+	year = {2016}
+}
+
+
 @article{Luo2016,
 	abstract = {We study characteristics of receptive fields of units in deep convolutional networks. The receptive field size is a crucial issue in many visual tasks, as the output must respond to large enough areas in the image to capture information about large objects. We introduce the notion of an effective receptive field, and show that it both has a Gaussian distribution and only occupies a fraction of the full theoretical receptive field. We analyze the effective receptive field in several architecture designs, and the effect of nonlinear activations, dropout, sub-sampling and skip connections on it. This leads to suggestions for ways to address its tendency to be too small.},
 	archivePrefix = {arXiv},
@@ -12,6 +117,31 @@
 	pages = {4905--4913},
 	title = {{Understanding the effective receptive field in deep convolutional neural networks}},
 	year = {2016}
+}
+
+@inproceedings{Lin2017a,
+	author = {Lin, Tsung Yi and Doll{\'{a}}r, Piotr and Girshick, Ross and He, Kaiming and Hariharan, Bharath and Belongie, Serge},
+	booktitle = {Computer Vision and Pattern Recognition},
+	file = {:Users/mmajursk/Documents/Mendeley Desktop/Lin et al. - 2017 - Feature Pyramid Networks for Object Detection.pdf:pdf},
+	mendeley-groups = {Deep-Learning},
+	title = {{Feature Pyramid Networks for Object Detection}},
+	year = {2017}
+}
+
+@article{Jaderberg2015,
+	abstract = {Convolutional Neural Networks define an exceptionally powerful class of models, but are still limited by the lack of ability to be spatially invariant to the input data in a computationally and parameter efficient manner.In this work we introduce a new learnable module, the Spatial Transformer, which explicitly allows the spatial manipulation of data within the network. This differentiable module can be inserted into existing convolutional architectures, giving neural networks the ability to actively spatially transform feature maps, conditional on the feature map itself, without any extra training supervision or modification to the optimisation process. We show that the use of spatial transformers results in models which learn invariance to translation, scale, rotation and more generic warping, resulting in state-of-the-art performance on several benchmarks, and for a number of classes of transformations.},
+	archivePrefix = {arXiv},
+	arxivId = {1506.02025},
+	author = {Jaderberg, Max and Simonyan, Karen and Zisserman, Andrew and Kavukcuoglu, Koray},
+	eprint = {1506.02025},
+	file = {:Users/mmajursk/Documents/Mendeley Desktop/1506.02025.pdf:pdf},
+	issn = {10495258},
+	journal = {Advances in Neural Information Processing Systems},
+	mendeley-groups = {{\_}ToRead},
+	pages = {2017--2025},
+	title = {{Spatial transformer networks}},
+	volume = {2015-January},
+	year = {2015}
 }
 
 
@@ -29,7 +159,22 @@
 	year = {2017}
 }
 
-
+@article{Blattner2017,
+	abstract = {Designing applications for scalability is key to improving their performance in hybrid and cluster computing. Scheduling code to utilize parallelism is difficult, particularly when dealing with data dependencies, memory management, data motion, and processor occupancy. The Hybrid Task Graph Scheduler (HTGS) improves programmer productivity when implementing hybrid workflows for multi-core and multi-GPU systems. The Hybrid Task Graph Scheduler (HTGS) is an abstract execution model, framework, and API that increases programmer productivity when implementing hybrid workflows for such systems. HTGS manages dependencies between tasks, represents CPU and GPU memories independently, overlaps computations with disk I/O and memory transfers, keeps multiple GPUs occupied, and uses all available compute resources. Through these abstractions, data motion and memory are explicit; this makes data locality decisions more accessible. To demonstrate the HTGS application program interface (API), we present implementations of two example algorithms: (1) a matrix multiplication that shows how easily task graphs can be used; and (2) a hybrid implementation of microscopy image stitching that reduces code size by ≈ 43{\%} compared to a manually coded hybrid workflow implementation and showcases the minimal overhead of task graphs in HTGS. Both of the HTGS-based implementations show good performance. In image stitching the HTGS implementation achieves similar performance to the hybrid workflow implementation. Matrix multiplication with HTGS achieves 1.3x and 1.8x speedup over the multi-threaded OpenBLAS library for 16k × 16k and 32k × 32k size matrices, respectively.},
+	author = {Blattner, Timothy and Keyrouz, Walid and Bhattacharyya, Shuvra S. and Halem, Milton and Brady, Mary},
+	doi = {10.1007/s11265-017-1262-6},
+	file = {:Users/mmajursk/Documents/Mendeley Desktop/Blattner2017{\_}Article{\_}AHybridTaskGraphSchedulerForHi.pdf:pdf},
+	issn = {19398115},
+	journal = {Journal of Signal Processing Systems},
+	keywords = {Dataflow,Heterogeneous architectures,Hybrid workflows,Image processing,Matrix multiplication,Task graph},
+	mendeley-groups = {{\_}ToRead},
+	number = {3},
+	pages = {457--467},
+	publisher = {Journal of Signal Processing Systems},
+	title = {{A Hybrid Task Graph Scheduler for High Performance Image Processing Workflows}},
+	volume = {89},
+	year = {2017}
+}
 
 @inproceedings{Huang2017,
 	abstract = {Recent work has shown that convolutional networks can be substantially deeper, more accurate, and efficient to train if they contain shorter connections between layers close to the input and those close to the output. In this paper, we embrace this observation and introduce the Dense Convolutional Network (DenseNet), which connects each layer to every other layer in a feed-forward fashion. Whereas traditional convolutional networks with L layers have L connections - one between each layer and its subsequent layer - our network has L(L+1)/2 direct connections. For each layer, the feature-maps of all preceding layers are used as inputs, and its own feature-maps are used as inputs into all subsequent layers. DenseNets have several compelling advantages: they alleviate the vanishing-gradient problem, strengthen feature propagation, encourage feature reuse, and substantially reduce the number of parameters. We evaluate our proposed architecture on four highly competitive object recognition benchmark tasks (CIFAR-10, CIFAR-100, SVHN, and ImageNet). DenseNets obtain significant improvements over the state-of-the-art on most of them, whilst requiring less computation to achieve high performance. Code and pre-trained models are available at https://github.com/liuzhuang13/DenseNet .},

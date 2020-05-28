@@ -1,0 +1,141 @@
+Official Review of Paper5548 by AnonReviewer4
+
+Summary Of Contributions: This paper proposes an approach to do neural network inference on images that are significantly larger than the capacity of modern GPUs. To do this, one must carefully design the partition of images to minimize the errors between feeding multiple small sub-images versus the theoretical results. This paper proposes a formula for how to do such division and empirically show the effectiveness of such a method.
+
+Strengths: 
+1. The writing is good. It's easy to follow the main idea and the description of the algorithm. Figures are informative, too.
+2. It provides a simple and practical way to deal with very high-resolution images. The performance is decently well, achieving 10^(-10) l2 error w.r.t. the single forward pass result.
+Weaknesses: I'm mostly concerned about the novelty of this paper. From my perspective, I think most of this work is about engineering effort: how to do inference without losing (context from the receptive field) information, and how to properly do padding and division of images. This is definitely valuable and will be appreciated for practical applications, but I doubt it lacks enough novel algorithm/findings or insight for academic research purposes.
+
+Suggestion To Authors: N.A.
+Preliminary Rating: 3: Borderline reject
+Preliminary Rating Justification: My rating would is based on the strength and weaknesses discussed above. 
+Confidence: 3: Medium, published weakly related work
+
+****************************************************************
+
+
+Official Review of Paper5548 by AnonReviewer3
+
+Summary Of Contributions: Fully convolutional networks act as deep filters that map an input image to an output image without constraining its spatial dimensions. However, practical computation can restrict input size due to memory limits, so it can be necessary to divide an image into smaller tiles if it is too large for memory. This work is a reminder that there is a right way to tile, that is equivalent to inference on the whole image without memory limits, and there are wrong ways to tile that cause errors. It explains the constraints on tile sizes and strides, experimentally verifies them, and then explores the use of effective receptive fields vs. architectural receptive fields to improve efficiency at the risk of small losses of accuracy.
+
+Strengths: 
++ The tiling rules are general, and applicable not just to fully convolutional networks but any convolutional filters with large support.
++ The issue of memory limits is practical and common in certain fields such as medical imagery and remote sensing.
++ Measuring the effective receptive field, counter to the architectural receptive field, makes it possible to use smaller tiles than the architecture indicates.
++ While it is a low-level issue, this submission goes into more detail to address confusion about it than existing papers and tutorials in this area including the journal edition of the FCN paper in PAMI and the cited works like U-Net.
+
+Weaknesses: Clarity
+- The exposition is low-level, and would benefit from more coarse-to-fine structure. The method section begins with minor points about network architecture, and only then addresses conceptual level. For instance, the number of max pool layers (line 234) is an implementation detail, the fundamental property is the stride/downsampling rate. It is good to have concrete information in the explanation, but the order in the submission was jarring to follow.
+
+	*Rebuttal* We reordered the methods section to introduce the tiling scheme as a function of receptive field and stride across the input image before introducing the specific case study of U-Net where we delve into the calculation of the receptive field and the other details of actually applying the idea. Additionally, the U-Net case study was reworked to first present the ideas from the perspective of downsample factor instead of just jumping right into looking directly at the convolutional structure of the network. 
+	"The halo must be half the receptive field. The general principle is to sum along the longest path through the network, the product of half the receptive field for each convolutional kernel and the stride that kernel has across the input image. The stride a specific convolution kernel has across the input image is a combination of that kernels stride with respect to its feature map and the downsampling factor between the input image size and the spatial size of that feature map. The downsampling factor is determined by the number of spatial altering layers between the input image and a specific layer. "
+
+- The related work could explicitly group papers, and acknowledge that tiling is more general than deep learning, and applies to signal processing with any kind of local filter.
+
+	*Rebuttal* Added blurb about general signal processing to introduce the related work section.
+	"Out of core, tile based processing is a common approach in the high performance parallel computing field where any local signal processing filter can be applied to carefully decomposed subregions of a larger problem \cite{Blattner2017}. The goal is often computation acceleration via task parallelization, but a side effect of the processes is the potential for reducing the active working memory required at any given point in the computation, trading increased runtime for a reduced memory requirement \cite{Blattner2017}."
+
+- There are no visualizations of tiling errors in output images. It would be valuable to show them, so that practitioners could be informed of how to identify incorrectly-tiled outputs in the wild. This would then enable them to fix the issue with the rules given in this submission.
+
+	*Rebuttal* TODO 
+
+Correctness: The receptive field size of FCN-VGG16 is 404 (Long et al. CVPR'15), and so the radius should be larger than 96. I have verified this quantity, but not the other entries in Table 4, which should be double-checked and corrected.
+
+	*Rebuttal* Corrected the typo to RF of 202.  Somehow the value for UNet got copied to the FCN table entry.
+
+
+Completeness:
+- There is no discussion of dynamic inference in networks with variable receptive fields. A strong example is deformable convolution, which adjusts the coordinates of filter taps conditioned on the input. It is alright to focus on the most common case of standard convolution, but it would not hurt to note exceptions like this.
+
+	*Rebuttal* Added text indicating the limitations for dynamic inference layers.
+	"Our approach does not handle layers with dynamic inference or variable receptive fields like stand alone self-attention \cite{Ramachandran2019b}, squeeze and excitation layers \cite{Hu2018}, deformable convolutions \cite{Dai2017}, or non-local layers \cite{Wang2018c}. "
+
+
+- There is no discussion of normalization or attention/non-local operations. Batch normalization in particular complicates matters, because it makes all points interdependent through the batch mean and variance, and so equivalence is not necessarily preserved by tiling. (On the other hand batch normalization is less common on very large image-to-image problems, because batches might be single tiles.) In the same vein, non-local nets (Wang et al. CVPR'18) include pair-wise operations without a bounded receptive field, making equivalent tiling impossible.
+
+	*Rebuttal* Batch normalization should absolutely be a problem due to different summary statistics per tile vs the whole image, preventing true equivalence. However, in our experiments the error contribution from batch norm is zero or negligible (near the floating point error floor). We added a short discussion to that effect when introducing the batch norm addition to U-Net. 
+	"The use of batch normalization should prevent the out-of-core tiling scheme presented in this paper for achieving numerically identical results to performing inference of the whole image in a single pass because the batch statistics used for normalization will be different. However, as we will show later, this appears to contribute very little to the observed error coming from using the tiling scheme. "
+	Newer layer types like self-attention which have dynamic inference patterns are not handled. We added a sentence in the related works summarizing a few types of layers for which the proposed out-of-core inference scheme will not work. 
+	"Our approach does not handle layers with dynamic inference or variable receptive fields like stand alone self-attention \cite{Ramachandran2019b}, squeeze and excitation layers \cite{Hu2018}, deformable convolutions \cite{Dai2017}, or non-local layers \cite{Wang2018c}."
+
+
+
+Suggestion To Authors: 
+The method can be mostly summarized in a sentence, but the abstract and introduction do not give a brief explanation of how it is done, but only that it accomplishes error-free tiling. It would be nice to give a gloss early on, to orient the reader. A one sentence summary  could be: set the input tile size to include a border of half the network receptive field size, and stride the tiles by the output tile size. In this way, the input tiles will overlap with half receptive field size, while the output tiles do not overlap and meet exactly at the seams.
+
+	*Rebuttal* Included "One can select a tile size which will fit into GPU memory with a halo border of half the network receptive field size. Stride across the image by the tile size without the halo. The input tile halos will overlap while the output tiles join exactly at the seams." in the abstract and introduction.
+
+
+Some terminology could be adjusted for consistency with existing papers and code.
+- FCNN: consider "FCN" as that is the abbreviation from the original paper and the most common usage in the literature.
+	
+	*Rebuttal* Done
+
+- zone of responsibility: consider "output tile" instead, because tile is already used as a regular spatial partition
+- radius: while "radius" is fine, "border" might be more direct, and preferable because a radius measures from the interior and not just the perimeter. "half receptive field" is longer, but exactly the quantity. In parallel computing, there is the term "halo" for the boundary that needs to be communicated in order to locally compute a result correctly.
+	
+	*Rebuttal* Replaced radius with halo. Other work on tile based processing in C++ called FastImage used the term Radius, and we kept that terminology, though HPC ghost regions or halos are more descriptive for those who have come across those terms. 
+
+The introduction goes a bit far with respect to insensitivity to rescaling: lines 50-54 claim that rescaling should not change inference drastically, but this is not so. Convolutional networks are not scale equivariant, and resizing inputs to different sizes does affect accuracy. FCNs take inputs of arbitrarily different sizes but the *same* resolution (or at least comparable resolution). There is some ability to learn multiple sizes in one network, due to large receptive fields, many channels, and skip connections, but networks are still not capable of strong generalization across scales. See FixRes, feature pyramid networks, and spatial transformer networks for more detail.
+	
+	*Rebuttal* Agreed. Modified introduction in a few place to reflect this more careful wording. 
+	"FCNs enable training the network on images much smaller than those of interest at inference time as long as the resolution is comparable."
+	"For example, if one trained a CNN on ImageNet \cite{Russakovsky2015} to classify pictures into two classes: \{Cat, Dog\}, the content of the image does not change drastically if the cat photo is resized to $224 \times 224$ pixels before inference as long as the resolution is not altered considerably. Convolutional networks are not capable of strong generalization across scales yet \cite{Jaderberg2015,Lin2017a} so the inference time pixel resolution needs to approximately match the training time resolution or accuracy can suffer."
+
+
+Re: consistent size between encoder/decoder and input/output, this can be fixed by (1) resizing input to be divisible by stride, (2) padding the input, or (3) padding the convolution transpose to make output larger and then cropping. Caffe included a helper for coordinating these changes in coord_map.py to verify the input and output align. It might be worthwhile to explain all three methods, given that this submission is trying to clear up practical issues in the usage of FCNs.
+	
+	*Rebutal* Added a brief explanation of the up-conv (transposed convolution padding) approach. 
+	"Given the skip connections between the encoder and decoder elements for matching feature maps, we need to ensure that the tensors being concatenated together are the same size. This can be restated as requiring the input size be divisible by the largest kernel stride across the input image. Another approach to ensuring consistent size between the encoder and decoder is to pad each up-conv layer to make its output larger and then crop to the target feature map size. We feel that is a less elegant solution than enforcing a tile size constraint and potentially padding the input image. "
+
+Consider linking to the distill.pub article on receptive field calculation in a footnote, for the interested reader who wants to gain more insight into the calculation.
+
+	*Rebutal* Agreed, footnote has been added 'Article on "Computing Receptive Fields of Convolutional Neural Networks" \cite{araujo2019computing} \url{https://distill.pub/2019/computing-receptive-fields}' 
+
+Typos
+- line 15: inferencing/inference
+Preliminary Rating: 2: Weak reject
+Preliminary Rating Justification: I appreciate the goal of the paper, in giving a fuller explanation of a low-level usage detail, but the clarity at this point is insufficient for publication. While the issue is common, and the errors due to it unnecessary, the purpose of a paper like this is to be educational and exceedingly clear.
+
+I encourage the authors to revise their explanation, working from fundamental quantities like receptive field and stride, and then giving a walkthrough of particular cases like U-Net. Once this topic is more thoroughly explained, and correct in the details about common architectures, I would welcome it as a publication. A clear paper and reference code would be helpful to the community, as I have had to explain this very subject several times in class lectures and tutorials.
+
+For rebuttal
+
+- Please show visual examples of inference with correct and incorrect tiling.
+- Please double-check the quantities in Table 4, as the receptive field size for [12] disagrees with the chosen radius.
+Confidence: 4: High, published similar work
+
+
+****************************************************************
+
+
+Official Review of Paper5548 by AnonReviewer2
+
+Summary Of Contributions: This paper ensured a way to apply a segmentation network to a large image that cannot fit to GPU memory by dividing the input image into smaller subregions and tiling the outputs without making any difference from an output that is created by a single forward computation with the entire input image.
+
+Strengths: 
+The approach is enough simple because it only requires to calculate the size of an input image and the stride for performing inference in a sliding window manner.
+
+Weaknesses: 
+- By looking into how the output of a fully-convolutional network is calculated through the layers, it is not unexpected conclusion that we can find the way to calculate the consistent output by dividing input images into subregions, performing inference on each of them one by one, and tiling all the results, which is indistinguishable from a result without dividing and tiling. The way introduced in this paper is to choose the size of input subregions appropriately considering the size of receptive field of the network and kernel size, which is straight-forward and seems not to include any novel discovery.
+- Some past studies have tried and evaluated the way to see larger regions to create segmentation predictions for a smaller region. For example, [Mnih 2013] predicted a central 16x16 region from a 64x64 input patch. This paper should be included and discussed in the related work.
+[Mnih 2013] "Machine Learning for Aerial Image Labeling", https://www.cs.toronto.edu/~vmnih/docs/Mnih_Volodymyr_PhD_Thesis.pdf
+	
+	*Rebuttal* Added this paper to the related work section discussion patch based methods.
+
+- As for the way to achieve better results by dividing the input image into smaller patches to construct a large segmentation result, [Saito 2016] proposed the method called "model averaging with spatial displacement". This should be also related to this work and discussed in the related work section.
+[Saito 2016] "Multiple Object Extraction from Aerial Imagery with Convolutional Neural Networks", https://www.ingentaconnect.com/content/ist/jist/2016/00000060/00000001/art00003#
+
+	*Rebuttal* Added this paper to the related work section discussion patch based methods.
+
+Suggestion To Authors: "inference" is used as a verb throughout the entire part of this paper, but I believe it should be "infer" when the author says something like "A is inferred" etc. This is sometimes confusing to comprehend what the authors state in the paper.
+
+	*Rebutal* Corrected the common usage of 'inferenced' to 'inferred' which is the correct English verb to use.
+
+I recommend the authors to correct English errors in this paper. That helps readers to understand the intention of authors.
+
+Preliminary Rating: 2: Weak reject
+Preliminary Rating Justification: - As written in the Weaknesses part, the results shown in this paper and the approach taken for the purpose of this paper are not novel and important past studies are missing in the related work section. 
+- I recommend the authors to submit this work to a journal because this work is an investigation and verification of the effect of the difference of sizes between input and output in fully-convolutional segmentation networks rather than a proposal of a novel method for a problem.
+Confidence: 4: High, published similar work
