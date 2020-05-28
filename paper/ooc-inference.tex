@@ -107,7 +107,7 @@ The novelty of our work lies in presenting a methodology for error-free inferenc
 \section{Related Work}
 \label{related-work}
 
-Out of core, tile based processing is a common approach in the high performance parallel computing field where any local signal processing filter can be applied to carefully decomposed subregions of a larger problem \cite{Blattner2017}. The goal is often computation acceleration via task parallelization, but a side effect of the processes is the potential to reducing the active working memory required at any given point in the computation, trading increased runtime for a reduced memory requirement \cite{Blattner2017}. 
+Out of core, tile-based processing is a common approach in the high performance parallel computing field where any local signal processing filter can be applied to carefully decomposed subregions of a larger problem \cite{Blattner2017}. The goal is often computation acceleration via task parallelization. However, a side effect of the tile-based processes is the potential for reducing the active working memory required at any given point in the computation, trading increased runtime for a reduced memory requirement \cite{Blattner2017}.
 
 It has been known since the initial introduction of FCN models that they can be applied via shift-and-stitch methods as if the FCN were a single filter \cite{Long2015,Sherrah2016}.
 The original U-Net paper by Ronneberger et al. \cite{Ronneberger2015a} also hints at inference of arbitrary sized images in its Figure 2. However, none of the past papers mentioning shift-and-stitch discuss the methodology for performing out-of-core arbitrary sized image inference.
@@ -197,13 +197,13 @@ We have made two modifications to the published U-Net.
 \begin{enumerate}
 	\item Normalization: Batch normalization \cite{ioffe2015batch} was added after the activation function of each convolutional layer as it is current good practice in the CNN modeling community. 
 	\item Convolution Type: Convolutional type was changed to \texttt{SAME} from \texttt{VALID} as used in the original paper \cite{Ronneberger2015a}.
-\end{enumerate}
+\end{enumerate} 
 
-The use of batch normalization should prevent the out-of-core tiling scheme presented in this paper from achieving numerically identical results to performing inference of the whole image in a single pass because the batch statistics used for normalization will be different. However, as we will show later (Table \ref{tab:tile_size_512}), this appears to contribute very little error to the tiling scheme. 
+The use of batch normalization should prevent the out-of-core tiling scheme from achieving numerically identical results when performing inference of the whole image in a single pass because the batch statistics used for normalization will be different. However, as we will show later (Table \ref{tab:tile_size_512}), this appears to contribute very little to the observed error coming from using the tiling scheme.
 
 The original U-Net paper uses \texttt{VALID} type convolutions which shrink the spatial size of the feature maps by 2 pixels for each layer \cite{Dumoulin2018}\footnote{For an excellent review of convolutional arithmetic, including transposed convolutions (i.e., up-conv), see "A guide to convolutional arithmetic for deep learning by Dumoulin and Visin" \cite{Dumoulin2018}.}. Switching to \texttt{SAME} type convolutions preserves feature map size. See Appendix D for additional explanation. 
 
-There is one additional constraint on U-Net that needs to be mentioned. Given the skip connections between the encoder and decoder elements for matching feature maps, we need to ensure that the tensors being concatenated together are the same size. This can be restated as requiring the input size be divisible by the largest stride across the input image by any kernel. For U-Net this stride is $16$ (derivation in Appendix D). Another approach to ensuring consistent size between the encoder and decoder is to pad each up-conv layer to make its output larger and then crop to the target feature map size. We feel that is a less elegant solution than enforcing a tile size constraint and potentially padding the image. 
+There is one additional constraint on U-Net that needs to be mentioned. Given the skip connections between the encoder and decoder elements for matching feature maps, we need to ensure that the tensors being concatenated together are the same size. This can be restated as requiring the input size be divisible by the largest stride across the input image by any kernel. For U-Net this stride is $16$ (derivation in Appendix D). Another approach to ensuring consistent size between the encoder and decoder is to pad each up-conv layer to make its output larger and then crop to the target feature map size. That is a less elegant solution than enforcing a tile size constraint and potentially padding the input image.
 
 
 \subsubsection{Halo Calculation for U-Net}

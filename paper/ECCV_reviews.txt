@@ -55,7 +55,7 @@ Completeness:
 - There is no discussion of normalization or attention/non-local operations. Batch normalization in particular complicates matters, because it makes all points interdependent through the batch mean and variance, and so equivalence is not necessarily preserved by tiling. (On the other hand batch normalization is less common on very large image-to-image problems, because batches might be single tiles.) In the same vein, non-local nets (Wang et al. CVPR'18) include pair-wise operations without a bounded receptive field, making equivalent tiling impossible.
 
 	*Rebuttal* Batch normalization should absolutely be a problem due to different summary statistics per tile vs the whole image, preventing true equivalence. However, in our experiments the error contribution from batch normalization is zero or negligible (near the floating point error floor). We added a short discussion to that effect when introducing the batch normalization addition to U-Net. 
-	"The use of batch normalization should prevent the out-of-core tiling scheme from achieving numerically identical results when performing inference of the whole image in a single pass because the batch statistics used for normalization will be different. However, as we will show later, this appears to contribute very little to the observed error coming from using the tiling scheme. "
+	"The use of batch normalization should prevent the out-of-core tiling scheme from achieving numerically identical results when performing inference of the whole image in a single pass because the batch statistics used for normalization will be different. However, as we will show later (Table \ref{tab:tile_size_512}), this appears to contribute very little to the observed error coming from using the tiling scheme. "
 	Newer layer types like self-attention which have dynamic inference patterns are not handled. We added a sentence in the related works summarizing a few types of layers for which the proposed out-of-core inference scheme will not work. 
 	"Our approach does not handle layers with dynamic inference or variable receptive fields like stand alone self-attention \cite{Ramachandran2019b}, squeeze and excitation layers \cite{Hu2018}, deformable convolutions \cite{Dai2017}, or non-local layers \cite{Wang2018c}."
 
@@ -106,7 +106,7 @@ For rebuttal
 - Please double-check the quantities in Table 4, as the receptive field size for [12] disagrees with the chosen radius.
 Confidence: 4: High, published similar work
 
-TODO: Mike: are you responding to these two rebuttal requests?
+TODO: Mike: are you responding to these two rebuttal requests? Yes they are handled above by the more detailed comments about those same issues. I will need to reformat this document to enter it into the web system anyways. 
 
 ****************************************************************
 
