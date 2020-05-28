@@ -33,8 +33,8 @@ Weaknesses: Clarity
 
 - The related work could explicitly group papers, and acknowledge that tiling is more general than deep learning, and applies to signal processing with any kind of local filter.
 
-	*Rebuttal* Added blurb about general signal processing to introduce the related work section.
-	"Out of core, tile based processing is a common approach in the high performance parallel computing field where any local signal processing filter can be applied to carefully decomposed subregions of a larger problem \cite{Blattner2017}. The goal is often computation acceleration via task parallelization, but a side effect of the processes is the potential for reducing the active working memory required at any given point in the computation, trading increased runtime for a reduced memory requirement \cite{Blattner2017}."
+	*Rebuttal* Added a paragraph about general signal processing to introduce the related work section.
+	"Out of core, tile-based processing is a common approach in the high performance parallel computing field where any local signal processing filter can be applied to carefully decomposed subregions of a larger problem \cite{Blattner2017}. The goal is often computation acceleration via task parallelization. However, a side effect of the tile-based processes is the potential for reducing the active working memory required at any given point in the computation, trading increased runtime for a reduced memory requirement \cite{Blattner2017}."
 
 - There are no visualizations of tiling errors in output images. It would be valuable to show them, so that practitioners could be informed of how to identify incorrectly-tiled outputs in the wild. This would then enable them to fix the issue with the rules given in this submission.
 
@@ -54,8 +54,8 @@ Completeness:
 
 - There is no discussion of normalization or attention/non-local operations. Batch normalization in particular complicates matters, because it makes all points interdependent through the batch mean and variance, and so equivalence is not necessarily preserved by tiling. (On the other hand batch normalization is less common on very large image-to-image problems, because batches might be single tiles.) In the same vein, non-local nets (Wang et al. CVPR'18) include pair-wise operations without a bounded receptive field, making equivalent tiling impossible.
 
-	*Rebuttal* Batch normalization should absolutely be a problem due to different summary statistics per tile vs the whole image, preventing true equivalence. However, in our experiments the error contribution from batch norm is zero or negligible (near the floating point error floor). We added a short discussion to that effect when introducing the batch norm addition to U-Net. 
-	"The use of batch normalization should prevent the out-of-core tiling scheme presented in this paper for achieving numerically identical results to performing inference of the whole image in a single pass because the batch statistics used for normalization will be different. However, as we will show later, this appears to contribute very little to the observed error coming from using the tiling scheme. "
+	*Rebuttal* Batch normalization should absolutely be a problem due to different summary statistics per tile vs the whole image, preventing true equivalence. However, in our experiments the error contribution from batch normalization is zero or negligible (near the floating point error floor). We added a short discussion to that effect when introducing the batch normalization addition to U-Net. 
+	"The use of batch normalization should prevent the out-of-core tiling scheme from achieving numerically identical results when performing inference of the whole image in a single pass because the batch statistics used for normalization will be different. However, as we will show later, this appears to contribute very little to the observed error coming from using the tiling scheme. "
 	Newer layer types like self-attention which have dynamic inference patterns are not handled. We added a sentence in the related works summarizing a few types of layers for which the proposed out-of-core inference scheme will not work. 
 	"Our approach does not handle layers with dynamic inference or variable receptive fields like stand alone self-attention \cite{Ramachandran2019b}, squeeze and excitation layers \cite{Hu2018}, deformable convolutions \cite{Dai2017}, or non-local layers \cite{Wang2018c}."
 
@@ -87,7 +87,7 @@ The introduction goes a bit far with respect to insensitivity to rescaling: line
 Re: consistent size between encoder/decoder and input/output, this can be fixed by (1) resizing input to be divisible by stride, (2) padding the input, or (3) padding the convolution transpose to make output larger and then cropping. Caffe included a helper for coordinating these changes in coord_map.py to verify the input and output align. It might be worthwhile to explain all three methods, given that this submission is trying to clear up practical issues in the usage of FCNs.
 	
 	*Rebutal* Added a brief explanation of the up-conv (transposed convolution padding) approach. 
-	"Given the skip connections between the encoder and decoder elements for matching feature maps, we need to ensure that the tensors being concatenated together are the same size. This can be restated as requiring the input size be divisible by the largest kernel stride across the input image. Another approach to ensuring consistent size between the encoder and decoder is to pad each up-conv layer to make its output larger and then crop to the target feature map size. We feel that is a less elegant solution than enforcing a tile size constraint and potentially padding the input image. "
+	"Given the skip connections between the encoder and decoder elements for matching feature maps, we need to ensure that the tensors being concatenated together are the same size. This can be restated as requiring the input size be divisible by the largest kernel stride across the input image. Another approach to ensuring consistent size between the encoder and decoder is to pad each up-conv layer to make its output larger and then crop to the target feature map size. That is a less elegant solution than enforcing a tile size constraint and potentially padding the input image. "
 
 Consider linking to the distill.pub article on receptive field calculation in a footnote, for the interested reader who wants to gain more insight into the calculation.
 
@@ -106,6 +106,7 @@ For rebuttal
 - Please double-check the quantities in Table 4, as the receptive field size for [12] disagrees with the chosen radius.
 Confidence: 4: High, published similar work
 
+TODO: Mike: are you responding to these two rebuttal requests?
 
 ****************************************************************
 
