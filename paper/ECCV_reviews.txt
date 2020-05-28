@@ -38,7 +38,8 @@ Weaknesses: Clarity
 
 - There are no visualizations of tiling errors in output images. It would be valuable to show them, so that practitioners could be informed of how to identify incorrectly-tiled outputs in the wild. This would then enable them to fix the issue with the rules given in this submission.
 
-	*Rebuttal* TODO 
+	*Rebuttal* Included hand picked example image of the segmentation error at the tile edge without proper halo. 
+	"Figure \ref{fig:nohalo} shows an example stem cell colony cropped from a larger $\num{20000} \times \num{20000}$ pixel microscope image (left), with the segmentation result produced by the model with a correct halo (center), and the segmentation result from tiling without the halo (right)."
 
 Correctness: The receptive field size of FCN-VGG16 is 404 (Long et al. CVPR'15), and so the radius should be larger than 96. I have verified this quantity, but not the other entries in Table 4, which should be double-checked and corrected.
 
