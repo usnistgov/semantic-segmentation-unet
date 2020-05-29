@@ -34,44 +34,41 @@ Weaknesses: Clarity
 - The related work could explicitly group papers, and acknowledge that tiling is more general than deep learning, and applies to signal processing with any kind of local filter.
 
 	*Rebuttal* Added a paragraph about general signal processing to introduce the related work section.
-	"Out of core, tile-based processing is a common approach in the high performance parallel computing field where any local signal processing filter can be applied to carefully decomposed subregions of a larger problem \cite{Blattner2017}. The goal is often computation acceleration via task parallelization. However, a side effect of the tile-based processes is the potential for reducing the active working memory required at any given point in the computation, trading increased runtime for a reduced memory requirement \cite{Blattner2017}."
+	"Out of core, tile-based processing is a common approach in the high performance computing (HPC) field where any local signal processing filter can be applied to carefully decomposed subregions of a larger problem \cite{Blattner2017}. The goal is often computation acceleration via task parallelization. These tile-based processes for the purpose of task parallelization also reduce the active working memory required at any given point in the computation."
 
 - There are no visualizations of tiling errors in output images. It would be valuable to show them, so that practitioners could be informed of how to identify incorrectly-tiled outputs in the wild. This would then enable them to fix the issue with the rules given in this submission.
 
 	*Rebuttal* Included hand picked example image of the segmentation error at the tile edge without proper halo. 
-	"Figure \ref{fig:nohalo} shows an example stem cell colony cropped from a larger $\num{20000} \times \num{20000}$ pixel microscope image (left), with the segmentation result produced by the model with a correct halo (center), and the segmentation result from tiling without the halo (right)."
+	"Figure \ref{fig:nohalo} shows a cropped region from an example $\num{20000} \times \num{20000}$ pixel stem cell colony microscope image (left), with the segmentation result produced by the model applied to the full image with a correct halo (center), and the segmentation result from tiling without the halo (right)."
 
 Correctness: The receptive field size of FCN-VGG16 is 404 (Long et al. CVPR'15), and so the radius should be larger than 96. I have verified this quantity, but not the other entries in Table 4, which should be double-checked and corrected.
 
-	*Rebuttal* Corrected the typo to RF of 202.  Somehow the value for UNet got copied to the FCN table entry.
+	*Rebuttal* Corrected the typo to RF of 202.  Somehow the value for UNet got copied to the FCN table entry. The FCN receptive field of 404 results in a halo value of 202. 
 
 
 Completeness:
 - There is no discussion of dynamic inference in networks with variable receptive fields. A strong example is deformable convolution, which adjusts the coordinates of filter taps conditioned on the input. It is alright to focus on the most common case of standard convolution, but it would not hurt to note exceptions like this.
 
-	*Rebuttal* Added text indicating the limitations for dynamic inference layers.
-	"Our approach does not handle layers with dynamic inference or variable receptive fields like stand alone self-attention \cite{Ramachandran2019b}, squeeze and excitation layers \cite{Hu2018}, deformable convolutions \cite{Dai2017}, or non-local layers \cite{Wang2018c}. "
+	*Rebuttal* Newer layer types like self-attention which have dynamic inference patterns are not handled. We added a sentence in the related works summarizing a few types of layers for which the proposed out-of-core inference scheme will not work. 
+	"Our approach does not handle layers with dynamic inference or variable receptive fields like stand alone self-attention \cite{Ramachandran2019b}, squeeze and excitation layers \cite{Hu2018}, deformable convolutions \cite{Dai2017}, or non-local layers \cite{Wang2018c}."
 
 
 - There is no discussion of normalization or attention/non-local operations. Batch normalization in particular complicates matters, because it makes all points interdependent through the batch mean and variance, and so equivalence is not necessarily preserved by tiling. (On the other hand batch normalization is less common on very large image-to-image problems, because batches might be single tiles.) In the same vein, non-local nets (Wang et al. CVPR'18) include pair-wise operations without a bounded receptive field, making equivalent tiling impossible.
 
 	*Rebuttal* Batch normalization should absolutely be a problem due to different summary statistics per tile vs the whole image, preventing true equivalence. However, in our experiments the error contribution from batch normalization is zero or negligible (near the floating point error floor). We added a short discussion to that effect when introducing the batch normalization addition to U-Net. 
-	"The use of batch normalization should prevent the out-of-core tiling scheme from achieving numerically identical results when performing inference of the whole image in a single pass because the batch statistics used for normalization will be different. However, as we will show later (Table \ref{tab:tile_size_512}), this appears to contribute very little to the observed error coming from using the tiling scheme. "
-	Newer layer types like self-attention which have dynamic inference patterns are not handled. We added a sentence in the related works summarizing a few types of layers for which the proposed out-of-core inference scheme will not work. 
-	"Our approach does not handle layers with dynamic inference or variable receptive fields like stand alone self-attention \cite{Ramachandran2019b}, squeeze and excitation layers \cite{Hu2018}, deformable convolutions \cite{Dai2017}, or non-local layers \cite{Wang2018c}."
-
+	"Batch normalization has the potential to prevent the tiling scheme from achieving numerically identical results compared to inferring the whole image in a single pass because the batch statistics used for normalization can be different. However, as we will show later (Table \ref{tab:tile_size_512}), zero error from tiling is possible despite adding batch normalization to U-Net."
 
 
 Suggestion To Authors: 
 The method can be mostly summarized in a sentence, but the abstract and introduction do not give a brief explanation of how it is done, but only that it accomplishes error-free tiling. It would be nice to give a gloss early on, to orient the reader. A one sentence summary  could be: set the input tile size to include a border of half the network receptive field size, and stride the tiles by the output tile size. In this way, the input tiles will overlap with half receptive field size, while the output tiles do not overlap and meet exactly at the seams.
 
-	*Rebuttal* Included "One can select a tile size which will fit into GPU memory with a halo border of half the network receptive field size. Stride across the image by the tile size without the halo. The input tile halos will overlap while the output tiles join exactly at the seams." in the abstract and introduction.
+	*Rebuttal* Included "Our approach is to select a tile size which will fit into GPU memory with a halo border of half the network receptive field. Next, stride across the image by the tile size without the halo. The input tile halos will overlap while the output tiles join exactly at the seams." in the abstract and introduction.
 
 
 Some terminology could be adjusted for consistency with existing papers and code.
 - FCNN: consider "FCN" as that is the abbreviation from the original paper and the most common usage in the literature.
 	
-	*Rebuttal* Done
+	*Rebuttal* Replaced FCNN with FCN
 
 - zone of responsibility: consider "output tile" instead, because tile is already used as a regular spatial partition
 - radius: while "radius" is fine, "border" might be more direct, and preferable because a radius measures from the interior and not just the perimeter. "half receptive field" is longer, but exactly the quantity. In parallel computing, there is the term "halo" for the boundary that needs to be communicated in order to locally compute a result correctly.
@@ -81,14 +78,14 @@ Some terminology could be adjusted for consistency with existing papers and code
 The introduction goes a bit far with respect to insensitivity to rescaling: lines 50-54 claim that rescaling should not change inference drastically, but this is not so. Convolutional networks are not scale equivariant, and resizing inputs to different sizes does affect accuracy. FCNs take inputs of arbitrarily different sizes but the *same* resolution (or at least comparable resolution). There is some ability to learn multiple sizes in one network, due to large receptive fields, many channels, and skip connections, but networks are still not capable of strong generalization across scales. See FixRes, feature pyramid networks, and spatial transformer networks for more detail.
 	
 	*Rebuttal* Agreed. Modified introduction in a few place to reflect this more careful wording. 
-	"FCNs enable training the network on images much smaller than those of interest at inference time as long as the resolution is comparable."
-	"For example, if one trained a CNN on ImageNet \cite{Russakovsky2015} to classify pictures into two classes: \{Cat, Dog\}, the content of the image does not change drastically if the cat photo is resized to $224 \times 224$ pixels before inference as long as the resolution is not altered considerably. Convolutional networks are not capable of strong generalization across scales yet \cite{Jaderberg2015,Lin2017a} so the inference time pixel resolution needs to approximately match the training time resolution or accuracy can suffer."
+	"FCNs enable training the network on images much smaller than those of interest at inference time as long as the resolution is comparable. "
+	"For example, if one trained a CNN on ImageNet \cite{Russakovsky2015} to classify pictures into two classes: \{Cat, Dog\}, the content of the image does not change drastically if the cat photo is resized to $224 \times 224$ pixels before inference provided the resolution is not altered considerably. Convolutional networks are not yet capable of strong generalization across scales \cite{Jaderberg2015,Lin2017a} so the inference time pixel resolution needs to approximately match the training time resolution or accuracy can suffer."
 
 
 Re: consistent size between encoder/decoder and input/output, this can be fixed by (1) resizing input to be divisible by stride, (2) padding the input, or (3) padding the convolution transpose to make output larger and then cropping. Caffe included a helper for coordinating these changes in coord_map.py to verify the input and output align. It might be worthwhile to explain all three methods, given that this submission is trying to clear up practical issues in the usage of FCNs.
 	
 	*Rebutal* Added a brief explanation of the up-conv (transposed convolution padding) approach. 
-	"Given the skip connections between the encoder and decoder elements for matching feature maps, we need to ensure that the tensors being concatenated together are the same size. This can be restated as requiring the input size be divisible by the largest kernel stride across the input image. Another approach to ensuring consistent size between the encoder and decoder is to pad each up-conv layer to make its output larger and then crop to the target feature map size. That is a less elegant solution than enforcing a tile size constraint and potentially padding the input image. "
+	"Given the skip connections between the encoder and decoder elements for matching feature maps, we need to ensure that the tensors being concatenated together are the same size. This can be restated as requiring the input size be divisible by the largest stride across the input image by any kernel. For U-Net this stride is $16$ (derivation in Appendix D). Another approach to ensuring consistent size between the encoder and decoder is to pad each up-conv layer to make its output larger and then crop to the target feature map size. That is a less elegant solution than enforcing a tile size constraint and potentially padding the input image."
 
 Consider linking to the distill.pub article on receptive field calculation in a footnote, for the interested reader who wants to gain more insight into the calculation.
 
@@ -107,7 +104,6 @@ For rebuttal
 - Please double-check the quantities in Table 4, as the receptive field size for [12] disagrees with the chosen radius.
 Confidence: 4: High, published similar work
 
-TODO: Mike: are you responding to these two rebuttal requests? Yes they are handled above by the more detailed comments about those same issues. I will need to reformat this document to enter it into the web system anyways. 
 
 ****************************************************************
 
@@ -124,12 +120,12 @@ Weaknesses:
 - Some past studies have tried and evaluated the way to see larger regions to create segmentation predictions for a smaller region. For example, [Mnih 2013] predicted a central 16x16 region from a 64x64 input patch. This paper should be included and discussed in the related work.
 [Mnih 2013] "Machine Learning for Aerial Image Labeling", https://www.cs.toronto.edu/~vmnih/docs/Mnih_Volodymyr_PhD_Thesis.pdf
 	
-	*Rebuttal* Added this paper to the related work section discussion patch based methods.
+	*Rebuttal* Split related works section into two broad categories of sliding window approaches and patch based approaches. A summary of this papers contributions was include within the patch based methods paragraph.
 
 - As for the way to achieve better results by dividing the input image into smaller patches to construct a large segmentation result, [Saito 2016] proposed the method called "model averaging with spatial displacement". This should be also related to this work and discussed in the related work section.
 [Saito 2016] "Multiple Object Extraction from Aerial Imagery with Convolutional Neural Networks", https://www.ingentaconnect.com/content/ist/jist/2016/00000060/00000001/art00003#
 
-	*Rebuttal* Added this paper to the related work section discussion patch based methods.
+	*Rebuttal* Included a summary of this paper's method to the related work section discussion patch based methods.
 
 Suggestion To Authors: "inference" is used as a verb throughout the entire part of this paper, but I believe it should be "infer" when the author says something like "A is inferred" etc. This is sometimes confusing to comprehend what the authors state in the paper.
 
