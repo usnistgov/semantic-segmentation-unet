@@ -8,19 +8,19 @@
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %     Metadata -- to be completed by Publisher
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
- \newcommand{\volume}{XXX}
-  \newcommand{\volumeyear}{XXXX}
- \newcommand{\articlenum}{XXXXXX}
- \newcommand{\journaltitle}{Journal of Research of National Institute of Standards and Technology}
+\newcommand{\volume}{XXX}
+\newcommand{\volumeyear}{XXXX}
+\newcommand{\articlenum}{XXXXXX}
+\newcommand{\journaltitle}{Journal of Research of National Institute of Standards and Technology}
 \newcommand{\DOI}{\url{https://doi.org/10.6028/jres.XXX.XXX}}
 \newcommand{\accepted}{Month Date, Year}
 \newcommand{\published}{Month Date, Year}
 
-  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %     Manuscript information -- to be completed by Author
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
- \newcommand{\papertitle}{Exact Tile-Based Segmentation Inference of Images Larger than GPU Memory}
- \newcommand{\authorlist}{Michael Majurski & Peter Bajcsy}
+\newcommand{\papertitle}{Exact Tile-Based Segmentation Inference of Images Larger than GPU Memory}
+\newcommand{\authorlist}{Michael Majurski & Peter Bajcsy}
 %  \newcommand{\dataDOI}{\url{https://doi.org/...}}
 
 % Original ERB Reviewers:
@@ -28,9 +28,7 @@
 % In Division: Sarala Padi 
 % Outside Division: Petre Manescu P.Manescu@cs.ucl.ac.uk
 %
-% Potential Reviwers (none have been contacted):
-% Inside NIST: Tim Blattner, Adele Peskin, Derek Juba, Adam Pintar, Antoine Gerardin, Walid Keyrouz
-% Outside NIST: nick.schaub@nih.gov
+% NIST JR Reviewers Derek Juba, Adele Peskin
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %     Set page format
@@ -61,19 +59,19 @@
 \usepackage{fancyhdr}
 \fancypagestyle{title}{%
   
-  \fancyhf{}%
-  \renewcommand{\headrulewidth}{.5pt}
-  \renewcommand{\footrulewidth}{0pt}
-  \renewcommand{\baselinestretch}{1.1}
+\fancyhf{}%
+\renewcommand{\headrulewidth}{.5pt}
+\renewcommand{\footrulewidth}{0pt}
+\renewcommand{\baselinestretch}{1.1}
 
-  \fancyhead[c]{\small Volume \volume, Article No. \articlenum ~(\volumeyear) \DOI \\ 
-	\large \journaltitle  \\}
-  \fancyfoot[C]{\thepage}
-  \fancyfoot[R]
-  {\small \textbf
-  {How to cite this article:}
-  \\
-  Majurski M (\volumeyear) \papertitle.\\
+\fancyhead[c]{\small Volume \volume, Article No. \articlenum ~(\volumeyear) \DOI \\ 
+\large \journaltitle  \\}
+\fancyfoot[C]{\thepage}
+\fancyfoot[R]
+{\small \textbf
+{How to cite this article:}
+\\
+Majurski M (\volumeyear) \papertitle.\\
 \textit{J Res Natl Inst Stan} \volume:\articlenum. \DOI.}
 }%
 
@@ -198,23 +196,36 @@ In addition, we quantified the errors due to tiling configurations which do not 
 
 \normalsize
 
-The task of semantic segmentation, assigning a label to each image pixel, is often performed using deep learning based convolutional neural networks (CNNs) \citep{Badrinarayanan2015a,Ronneberger2015a}. A subtype type of CNN which only uses convolutional layers is called a "fully convolutional neural network" (FCN) and FCNs can be used with input of arbitrary size. Both U-Net \citep{Ronneberger2015a} and the original FCN network \citep{Long2015} are examples of FCN type CNNs. 
+The task of semantic segmentation, assigning a label to each image pixel, is often performed using deep learning based convolutional neural networks (CNNs) \citep{Badrinarayanan2015a,Ronneberger2015a}. A subtype type of CNN which only uses convolutional layers is called a "fully convolutional neural network" (FCN), which can be used with input of arbitrary size. Both U-Net \citep{Ronneberger2015a} and the original FCN network \citep{Long2015} are examples of FCN type CNNs. 
 FCNs enable training the network on images much smaller than those of interest at inference time as long as the resolution is comparable. 
 For example, one can train a U-Net model on $512 \times 512$ pixel tiles and then perform GPU-based inference on arbitrarily-sized images provided the GPU memory can accommodate the model coefficients, network activations, application code, and an input image tile. This decoupling of training and inference image sizes means the semantic segmentation models can be applied to images much larger than the memory available on current GPUs. 
+
+Images larger than GPU memory can also be used to train the model if you first break them into tiles. In fact, that is fairly common practice when working with large format images. Interestingly, the same edge effect which cause tiling errors during inference also affects the training process. Therefore the tiling methodology presented here could also be used to generate tiles for network training.
+
+% Derek Comment: "Although the decoupling of training and inference size could allow models to be trained more quickly, it seems neither necessary nor sufficient for applying the models to images larger than GPU memory.  It is not necessary because, as long as an out-of-core technique were developed, images of the full inference size could be used for training.  It is not sufficient because, if an out-of-core technique has not been developed, images larger than GPU memory could still not be inferenced.  The ability to apply the model to images greater than GPU memory depends only on an out-of-core technique, not on decoupling training and inference size."
 
 The ability of FCN networks to perform inference on arbitrarily large images differs from other types of CNNs where the training and inference image sizes must be identical. Usually this static image size requirement is not a problem since the input image size is expected to be static, or images can be resized within reason to fit the network. For example, if one trained a CNN on ImageNet \citep{Russakovsky2015} to classify pictures into two classes: \{Cat, Dog\}, the content of the image does not change drastically if the cat photo is resized to $224 \times 224$ pixels before inference provided the resolution is not altered considerably. Convolutional networks are not yet capable of strong generalization across scales \citep{Jaderberg2015,Lin2017a} so the inference time pixel resolution needs to approximately match the training time resolution or accuracy can suffer.
 
 In contrast, there are applications where resizing the image is not acceptable due to loss of information. For example, in digital pathology, one cannot take a whole slide microscopy image generated by a slide scanner (upwards of $\num{10}$ Gigapixels) and fit it into GPU memory; nor can one reasonably resize the image as too much image detail would be lost. 
 
 Our work is motivated by the need to design a methodology for performing inference on arbitrarily large images on GPU memory constrained hardware in those applications where the loss of information due to image resizing is not acceptable. This method can be summarized as follows. 
-The image is broken down into non-overlapping tiles. Each tile has its local context defined by the halo border (ghost region) included only when performing inference. The tile size should be selected so that when the halo border is included the whole image will fit into GPU memory. The halo border is defined as half the network receptive field to ensure that pixels on the edge of the non-overlapping tiles have all of the required local context as if computed in a single forward pass.
+The image is broken down into non-overlapping tiles. Each tile has its local context defined by the halo border (ghost region) included only when performing inference. The tile size should be selected so that when the halo border is included the whole image will fit into GPU memory. 
+The network receptive field \citep{araujo2019computing} is the set of all input pixels which can influence a given output pixel. We use the receptive field to define the halo border as half the network receptive field to ensure that pixels on the edge of the non-overlapping tiles have all of the required local context as if computed in a single forward pass.
+
+There are three important concepts required for this tile-based (out-of-core) processing scheme. 
+\begin{enumerate}
+	\item Zone of Responsibility (ZoR): a rectangular region of the output image currently being computed, a.k.a. the output tile size.
+	\item Halo: minimum horizontal and vertical border around the ZoR indicating the local context that the FCN requires to accurately compute all pixels within the ZoR. This value is equal to half of the receptive field size of the model architecture being used. This is derived from the definition of the convolution network: each output pixel in the ZoR is dependent upon other pixels in either the ZoR or in the halo.
+	\item Stride: the stride across the source image used to create tiles. The stride is fixed at the ZoR size.
+\end{enumerate}
+
 The original U-Net paper \citep{Ronneberger2015a} briefly hinted at the feasibility of an inference scheme similar to the one we present in this paper but did not fully quantify and explain the inference mechanism. 
-The novelty of our work lies in presenting a methodology for tiling-error-free inference over images that are larger than available GPU memory for processed data. This work leverages FastImage \citep{Bardakoff2019}, a high-performance accessor library for processing gigapixel images in a tile-based manner.
+The novelty of our work lies in presenting a methodology for tiling-error-free inference over images that are larger than available GPU memory for processed data. 
 
 \section{Related Work}
 \label{related-work}
 
-Out of core, tile-based processing is a common approach in the high performance computing (HPC) field where any local signal processing filter can be applied to carefully decomposed subregions of a larger problem \citep{Blattner2017}. The goal is often computation acceleration via task parallelization. These tile-based processes for the purpose of task parallelization also reduce the active working memory required at any given point in the computation.
+Out-of-core, tile-based processing is a common approach in the high performance computing (HPC) field where any local signal processing filter can be applied to carefully decomposed subregions of a larger problem \citep{Blattner2017}. The goal is often computation acceleration via task or data parallelization. These tile-based processes for the purpose of task parallelization also reduce the active working memory required at any given point in the computation.
 
 It has been known since the initial introduction of FCN models that they can be applied via shift-and-stitch methods as if the FCN were a single filter \citep{Long2015,Sherrah2016}.
 The original U-Net paper \citep{Ronneberger2015a} also hints at inference of arbitrary sized images in its Figure 2. However, none of the past papers mentioning shift-and-stitch discuss the methodology for performing out-of-core arbitrary sized image inference.
@@ -223,9 +234,9 @@ There are two common approaches for applying CNN models to large images: sliding
 
 Huang et al. and Iglovikov et al. \citep{Huang2019a,Iglovikov2017} both propose sliding window approaches. Huang et al. \citep{Huang2019a} directly examines the problem of operating on images for which inference cannot be performed in a single forward pass. The authors focus on different methods for reducing but not eliminating the error in labeling that arises from different overlapping tile-based processing schemes. They examine label averaging and the impacts of different tile sizes on the resulting output error and conclude that using as large a tile as possible will minimize the error. Huang et al. \citep{Huang2019a} also examine the effects of zero-padding, documenting how much error it introduces. At no point do they produce tiling-error free inference. Iglovikov et al. \citep{Iglovikov2017} remark upon error in the output logits at the tile edges during inference and suggest overlapping predictions or cropping the output to reduce that error. 
 
-Patch based methods for dealing with large images predict a central patch given a larger local context. Volodymyr Mnih \citep{Mnih2013} predicts a $16 \times 16$ pixel patch from a $64 \times 64$ pixel area for road segmentation from aerial images. This approach will scale to arbitrarily large images and if a model architecture with a receptive field of less than $48$ pixels is used, it will have zero error from the tiling process. Saito et al. \citep{Saito2016} use a similar patch based formulation to Mnih, predicting a center patch given a large local context, however they add a model averaging component by predicting eight slightly offset versions of the same patch and then combining the predictions.
+Patch based methods for dealing with large images predict a central patch given a larger local context. Mnih \citep{Mnih2013} predicts a $16 \times 16$ pixel patch from a $64 \times 64$ pixel area for road segmentation from aerial images. This approach will scale to arbitrarily large images and if a model architecture with a receptive field of less than $48$ pixels is used, it will have zero error from the tiling process. Saito et al. \citep{Saito2016} use a similar patch based formulation to Mnih, predicting a center patch given a large local context, however they add a model averaging component by predicting eight slightly offset versions of the same patch and then combining the predictions.
 
-Our ability to perform error-free tile-based inference relies on the limited receptive field of convolutional layers. Luo et al. \citep{Luo2016} discuss the receptive fields of convolutional architectures, highlighting that for a given output pixel, there is limited context/information from the input that can influence that output\footnote{Article on "Computing Receptive Fields of Convolutional Neural Networks" \citep{araujo2019computing} \url{https://distill.pub/2019/computing-receptive-fields}}. Input data outside the receptive field cannot influence that output pixel \citep{Luo2016}. The receptive field of a model is highly dependent upon architecture and layer connectivity. We use the theoretical underpinning of receptive fields to identify a sufficient size of an image tile for performing inference without tiling-based errors.  
+Our ability to perform error-free tile-based inference relies on the limited receptive field of convolutional layers. Luo et al. \citep{Luo2016} discuss the receptive fields of convolutional architectures, highlighting that for a given output pixel, there is limited context/information from the input that can influence that output \citep{araujo2019computing}. Input data outside the receptive field cannot influence that output pixel \citep{Luo2016}. The receptive field of a model is highly dependent upon architecture and layer connectivity. We use the theoretical underpinning of receptive fields to identify a sufficient size of an image tile for performing inference without tiling-based errors.  
 
 To the best of our knowledge, no published method fully explores a methodology for performing error-free tile-based (out-of-core) inference of arbitrarily large images. While tile-based processing schemes have been outlined, the past publications do not provide a framework for achieving error-free tile-based inference results. Our approach does not handle layers with dynamic inference or variable receptive fields like stand alone self-attention \citep{Ramachandran2019b}, squeeze and excitation layers \citep{Hu2018}, deformable convolutions \citep{Dai2017}, or non-local layers \citep{Wang2018c}. 
 
@@ -233,7 +244,9 @@ To the best of our knowledge, no published method fully explores a methodology f
 \section{Methods}
 \label{methods}
 
-Performing inference on arbitrarily large input images requires that we operate based on image tiles and only on a small enough tile to fit in GPU memory for any single forward pass. To form a tile, the whole image is broken down into non-overlapping regions. This is equivalent to striding across the image with a fixed stride. Then if we include enough local context around each tile to cover the theoretical receptive field of the network, each pixel will have all of the local context it requires. Therefore, while the full image is broken into tiles to performing inference, each pixel individually has all of the information required to be predicted as if the whole image were passed through the network as one block of memory. Figure \ref{fig:nohalo} shows a cropped region from an example $\num{20000} \times \num{20000}$ pixel stem cell microscope image (left), with the segmentation result produced by the model applied to the full image with a correct halo (center), and the segmentation result from tiling without the halo (right). 
+Performing inference on arbitrarily large input images requires that we operate based on image tiles and only on a small enough tile to fit in GPU memory for any single forward pass. To form a tile, the whole image is broken down into non-overlapping regions. This is equivalent to striding across the image with a fixed stride. Then if we include enough local context around each tile to cover the theoretical receptive field of the network, each pixel will have all of the local context it requires. Therefore, while the full image is broken into tiles to performing inference, each pixel individually has all of the information required to be predicted as if the whole image were passed through the network as one block of memory. 
+This work leverages FastImage \citep{Bardakoff2019}, a high-performance accessor library for processing gigapixel images in a tile-based manner.
+Figure \ref{fig:nohalo} shows a cropped region from an example $\num{20000} \times \num{20000}$ pixel stem cell microscope image (left), with the segmentation result produced by the model applied to the full image with a correct halo (center), and the segmentation result from tiling without the halo (right). 
 
 \begin{figure}
 	\centering
@@ -251,12 +264,12 @@ Performing inference on arbitrarily large input images requires that we operate 
 \end{figure}
 
 %Given an FCN model architecture and a GPU with enough memory to inference at least a small (i.e. $512 \times 512$ pixel) image, we can construct a scheme for inferencing arbitrarily sized images. 
-There are three important concepts required for this tile-based (out-of-core) processing scheme. 
-\begin{enumerate}
-	\item Zone of Responsibility (ZoR): a rectangular region (block, partition, zone, or area) of the output image currently being computed, a.k.a. the output tile size.
-	\item Halo: minimum horizontal and vertical border around the ZoR indicating the local context that the FCN requires to accurately compute all pixels within the ZoR. This value is equal to half of the receptive field size of the model architecture being used. 
-	\item Stride: the stride across the source image used to create tiles. The stride is fixed at the ZoR size.
-\end{enumerate}
+%There are three important concepts required for this tile-based (out-of-core) processing scheme. 
+%\begin{enumerate}
+%	\item Zone of Responsibility (ZoR): a rectangular region (block, partition, zone, or area) of the output image currently being computed, a.k.a. the output tile size.
+%	\item Halo: minimum horizontal and vertical border around the ZoR indicating the local context that the FCN requires to accurately compute all pixels within the ZoR. This value is equal to half of the receptive field size of the model architecture being used. 
+%	\item Stride: the stride across the source image used to create tiles. The stride is fixed at the ZoR size.
+%\end{enumerate}
 
 Each dimension of the square input tile is then defined as $inputTileSize = ZoR + 2 \times Halo$. 
 Figure \ref{fig:zor} shows an example where a $832 \times 832$ pixel zone of responsibility is shown as a square with a $96$ pixel halo surrounding it. 
@@ -269,10 +282,9 @@ Since the local context provided by the pixels in the halo is required to correc
 	\label{fig:zor}
 \end{figure}
 
-In other words, the image is broken down into the non-overlapping ZoR (i.e. output tiles). For each ZoR, the local context defined by the halo (where that context is available) is included in the input tile to be passed through the network. For a specific output pixel, if an input pixel is more than half the receptive field away, it cannot influence that output pixel. Therefore including a halo of half the receptive field ensures that pixels on the edge of the ZoR (output tile) have all the required context.
+In other words, the image is broken down into the non-overlapping ZoR (i.e. output tiles). For each ZoR, the local context defined by the halo (where that context is available) is included in the input tile to be passed through the network. For a specific output pixel, if an input pixel is more than half the receptive field away, it cannot influence that output pixel. Therefore including a halo of half the receptive field ensures that pixels on the edge of the ZoR have all the required context.
 
-After passing the input tile through the model, the ZoR within the prediction (without the halo) is copied to the output image being constructed in CPU memory. 
-The halo provides the network with all the information it needs to make correct, deterministic predictions for the entirety of the output zone of responsibility. Hence the name, since each ZoR is responsible for a specific zone of the output image. 
+After passing the input tile through the model, the ZoR within the prediction (without the halo) is copied to the output image being constructed in CPU memory. Note, the network output is the same size as its input, $ZoR + 2 \times Halo$. The ZoR needs to be cropped out from the prediction so only those pixels with full context are used to build the final result. The halo provides the network with all the information it needs to make correct, exact predictions for the entirety of the output zone of responsibility. Hence the name, since each ZoR is responsible for a specific zone of the output image. 
 
 This tile-based inference can be thought of as a series of forward passes, each computing a subregion (ZoR) of the feature maps that would be created while performing inference on the whole image in one pass. 
 In summary, each tile's feature maps are created (forward pass), its ZoR output extracted, and then the GPU memory is recycled for the next tile. By building each ZoR result in a separate forward pass we can construct the network output within a fixed GPU memory footprint for arbitrarily large images. 
@@ -281,11 +293,11 @@ In summary, each tile's feature maps are created (forward pass), its ZoR output 
 
 We use U-Net \citep{Ronneberger2015a} as a case study example of FCNs. Nonetheless, the presented tiling concept applies to any FCN (without dynamic or variable receptive fields), just the specific numerical values will be different. 
 
-Note: for the purpose of brevity, we will use 'up-conv' (as the U-Net paper does) to refer to fractionally strided convolutions with a stride of $\frac{1}{2}$ which doubles the feature map spatial resolution \citep{Dumoulin2018}.
+Note: for the purpose of brevity, we will use `up-conv' (as the U-Net paper does) to refer to fractionally strided convolutions with a stride of $1/2$ which doubles the feature map spatial resolution \citep{Dumoulin2018}.
 
 \subsubsection{Determining The Halo}
 
-The halo must be half the receptive field (rounded up if odd). 
+The halo must be half the receptive field ($halo = \lceil receptive field / 2 \rceil$). 
 The general principle is to sum along the longest path through the network, the product of half the receptive field for each convolutional kernel and the stride that kernel has across the input image. The stride a specific convolution kernel has across the input image is a combination of that kernel's stride with respect to its feature map and the downsampling factor between the input image size and the spatial size of that feature map. The downsampling factor is determined by the number of spatial altering layers between the input image and a specific layer. 
 
 Let U-Net be described by an ordered sequence of convolutional layers $c={0, ..., N-1}$ with each layer being associated with a level $l_{c}$ and a square kernel $k_{c} \times k_{c}$. 
@@ -319,7 +331,7 @@ We have made two modifications to the published U-Net.
 
 Batch normalization will not prevent numerically identical results compared to inferring the whole image in a single pass if correct inference procedures are followed, where the normalization statistics are frozen having been estimated during the training process.
 
-The original U-Net paper uses \texttt{VALID} type convolutions\footnote{For an excellent review of convolutional arithmetic, including transposed convolutions (i.e., up-conv), see "A guide to convolutional arithmetic for deep learning by Dumoulin and Visin" \citep{Dumoulin2018}.} which shrink the spatial size of the feature maps by 2 pixels for each layer \citep{Dumoulin2018}. Switching to \texttt{SAME} type convolutions preserves feature map size. See Appendix D for additional explanation. 
+The original U-Net paper uses \texttt{VALID} type convolutions\footnote{For an excellent review of convolutional arithmetic, including transposed convolutions (i.e., up-conv), see ``A guide to convolutional arithmetic for deep learning by Dumoulin and Visin" \citep{Dumoulin2018}.} which shrink the spatial size of the feature maps by 2 pixels for each layer \citep{Dumoulin2018}. Switching to \texttt{SAME} type convolutions preserves feature map size. See Appendix D for additional explanation. 
 
 There is one additional constraint on U-Net that needs to be mentioned. Given the skip connections between the encoder and decoder elements for matching feature maps, we need to ensure that the tensors being concatenated together are the same size. This can be restated as requiring the input size be divisible by the largest stride across the input image by any kernel. For U-Net this stride is $16$ (derivation in Appendix D). Another approach to ensuring consistent size between the encoder and decoder is to pad each up-conv layer to make its output larger and then crop to the target feature map size. That is a less elegant solution than enforcing a tile size constraint and potentially padding the input image.
 
@@ -375,7 +387,7 @@ where $H_{I}$ and $W_{I}$ are the input image height and width dimensions, $Halo
 \label{dataset}
 
 We used a publicly accessible data set acquired in phase contrast imaging modality and published in \citep{Bhadriraju2016}. 
-The data set consists of three collections, each with around 161 time-lapse images at roughly $\num{20000} \times \num{20000}$  pixels per stitched image frame with 2 bytes per pixels. 
+The data set consists of three collections, each with around 161 time-lapse images at roughly $\num{20000} \times \num{20000}$  pixels per stitched image frame with 2 bytes per pixel. 
 
 
 \subsection{Exact Tile-Based Inference Scheme}
@@ -397,11 +409,11 @@ In the last row and column of tiles, there might not be enough pixels to fill ou
 
 To experimentally confirm that our out-of-core image inference methodology does not impact the results we determined the largest image we could process on our GPU, performed the forward pass, and saved the resulting softmax output values as ground truth data. We then process the same image using our tiling scheme with varying halo values. We show that there are numerical differences (greater than floating point error) when using halo values less than 96. 
 
-Our U-Net model was trained to perform binary (foreground/background) segmentation of the phase contrast microscopy images. The largest image we could perform inference on our GPU with $\SI{24}{\giga\byte}$ of memory is $3584 \times 3584$ pixels. Therefore, we created 20 reference inference results by cropping out $K = 20$ random $3584 \times 3584$ subregions of the data set. 
+Our U-Net model was trained to perform binary (foreground/background) segmentation of the phase contrast microscopy images. The largest image on which we could perform inference given our GPU with $\SI{24}{\giga\byte}$ of memory is $3584 \times 3584$ pixels. Therefore, we created 20 reference inference results by cropping out $K = 20$ random $3584 \times 3584$ subregions of the data set. 
 Tile-based out-of-core inference was performed for each of the 20 reference images using a tile size of 512 pixels (thereby meeting the multiple of 16 constraint) with halo values from 0 to 96 pixels in 16 pixel increments. 
 
 The tiling codebase seamlessly constructs the softmax output in CPU memory as if the whole image had been inferred in a single forward pass. So our evaluation methodology consists of looking for differences in the output softmax produced by the reference forward pass ($R$) as well as the tile-based forward pass ($T$). We used the following two metrics for evaluation: Root Mean Squared Error (RMSE, Equation \ref{eq:rmse}) of the softmax and Misclassification Error (ME, Equation \ref{eq:me}) of the resulting binary segmentation masks. %ME is the number of misclassified pixels, which provides a very intuitive understanding of the error since it directly measures how many output pixels were incorrect. 
-We also include Normalized Misclassification Error (NME, Equation \ref{eq:nme}), the ME normalized by the number of pixels; and Relative Runtime, where compute time to perform inference is shown relative to the runtime without the tiling scheme. This runtime highlights that there is a tradeoff to be made between the error introduced due to the out-of-core GPU inference and the compute overhead required to do so. The NME metric can be multiplied by $100$ to compute the percent of pixels with errors due to the tiling scheme.
+We also include Misclassification Error Rate (MER, Equation \ref{eq:mer}), the ME normalized by the number of pixels; and Relative Runtime, where compute time to perform inference is shown relative to the runtime without the tiling scheme. This runtime highlights that there is a tradeoff to be made between the error introduced due to the out-of-core GPU inference and the compute overhead required to do so. The MER metric can be multiplied by $100$ to compute the percent of pixels with errors due to the tiling scheme.
 All metrics are averaged across the $K = 20$ reference images.
 
 \begin{equation}
@@ -416,31 +428,33 @@ ME = \frac{1}{K} \sum_{i=1}^{K} \left( \sum_{i = 1}^{m} \sum_{j = 1}^{n} [ R_{ij
 \end{equation}
 
 \begin{equation}
-NME = \frac{1}{K} \sum_{i=1}^{K} \left( \frac{\sum_{i = 1}^{m} \sum_{j = 1}^{n} [ R_{ij} \neq T_{ij} ]}{nm} \right) 
+MER = \frac{1}{K} \sum_{i=1}^{K} \left( \frac{\sum_{i = 1}^{m} \sum_{j = 1}^{n} [ R_{ij} \neq T_{ij} ]}{nm} \right) 
 % https://en.wikipedia.org/wiki/Iverson_bracket
-\label{eq:nme}
+\label{eq:mer}
 \end{equation}
 
 The total inference error is a composite of model error (what is directly minimized by gradient descent during training) and tiling error. We demonstrate a zero error contribution from tiling in the case of trained and untrained U-Net models (or minimum and maximum inference errors due to a model).
 
-For the trained model, the error metrics are shown in Table \ref{tab:tile_size_512} with 512 pixel tiles. Once the required 96 pixel halo is met the RMSE falls into the range of floating point error and ME goes to zero. Beyond the minimum required halo, all error metrics remain equivalent to the minimum halo. The first row shows the data for the whole image being inferred without the tiling scheme. 
-The ME metric is especially informative, because when it is zero, the output segmentation results are identical regardless of whether the whole image was inferred in a single pass or it was decomposed into tiles. Table \ref{tab:tile_size_512} highlights the engineering tradeoff that must be made, obtaining zero inference error requires $2.69 \times$ the wall clock runtime. The normalized error (NME) with naive tailing is $\num{6.1e-4}$ or $\num{0.06} \%$. Depending on your application, this level of error might be acceptable despite the potential for edge effects between the non-overlapping tiles. One consideration, larger tile sizes are more compute efficient because the ratio of the ZoR area to the tile area increases. 
+For the trained model, the error metrics are shown in Table \ref{tab:tile_size_512} with 512 pixel tiles \footnote{All results were generated on an Intel Xeon 4114 CPU with an NVIDIA Titan RTX GPU using Python 3.6 and TensorFlow 2.1.0 running on Ubuntu 18.04.}.
+Once the required 96 pixel halo is met the RMSE falls into the range of floating point error and ME goes to zero. Beyond the minimum required halo, all error metrics remain equivalent to the minimum halo. The first row shows the data for the whole image being inferred without the tiling scheme. 
+The ME metric is especially informative, because when it is zero, the output segmentation results are identical regardless of whether the whole image was inferred in a single pass or it was decomposed into tiles. Table \ref{tab:tile_size_512} highlights the engineering tradeoff that must be made, obtaining zero inference error requires $2.69 \times$ the wall clock runtime. 
+The MER with naive tailing is $\num{6.1e-4}$ or $\num{0.06} \%$. Depending on your application, this level of error might be acceptable despite the potential for edge effects between the non-overlapping tiles. One consideration: larger tile sizes are more compute efficient because the ratio of the ZoR area to the tile area increases. 
 
 \begin{table}
 	\centering
 	\caption{Error Metrics for Tile Size 512}
 	\label{tab:tile_size_512}
-	\begin{tabular}{r|r|r|r|r|r|r}
-		TileSize & ZoR & Halo & RMSE    & ME & NME & RelativeRuntime \\ 
+	\begin{tabular}{r|r|r|r|r|r|r|r}
+		TileSize & ZoR & Halo & RMSE    & ME & $\sigma$(ME) & MER & RelativeRuntime \\ 
 		\hline
-		3584 & n/a & n/a & 0.0 & 0.0 & 0.0 & 1.0 \\
-		512 & 512 & 0 & $\num{1.11e-02}$ & 7773.4 & $\num{6.1e-04}$ & 1.08 \\
-		512 & 480 & 16 & $\num{6.35e-03}$ & 5455.4 & $\num{4.2e-04}$ & 1.31 \\
-		512 & 448 & 32 & $\num{3.29e-03}$ & 2372.2 & $\num{1.8e-04}$ & 1.36 \\
-		512 & 416 & 48 & $\num{1.95e-03}$ & 1193.7 & $\num{9.3e-05}$ & 1.61 \\
-		512 & 384 & 64 & $\num{7.79e-04}$ & 434.1 & $\num{3.4e-05}$ & 1.85 \\
-		512 & 352 & 80 & $\num{1.50e-04}$ & 71.6 & $\num{5.6e-06}$ & 2.21 \\
-		512 & 320 & 96 & $\num{4.17e-10}$ & 0.0 & 0.0 & 2.58 \\
+		3584 & n/a & n/a & 0.0 & 0.0 & 0.0 & 0.0 & 1.0 \\
+		512 & 512 & 0 & $\num{1.11e-02}$ & 7773.4 & 1350 & $\num{6.1e-04}$ & 1.08 \\
+		512 & 480 & 16 & $\num{6.35e-03}$ & 5455.4 & 1420 & $\num{4.2e-04}$ & 1.31 \\
+		512 & 448 & 32 & $\num{3.29e-03}$ & 2372.2 & 670 & $\num{1.8e-04}$ & 1.36 \\
+		512 & 416 & 48 & $\num{1.95e-03}$ & 1193.7 & 350 & $\num{9.3e-05}$ & 1.61 \\
+		512 & 384 & 64 & $\num{7.79e-04}$ & 434.1 & 141 &$\num{3.4e-05}$ & 1.85 \\
+		512 & 352 & 80 & $\num{1.50e-04}$ & 71.6 & 27 & $\num{5.6e-06}$ & 2.21 \\
+		512 & 320 & 96 & $\num{4.17e-10}$ & 0.0 & 0.0 & 0.0 & 2.58 \\
 	\end{tabular}
 \end{table}
 
@@ -589,7 +603,7 @@ n_l = n = 2 \\
 	\caption{UnTrained U-Net Error Metrics for Tile Size 1024}
 	\label{tab:tile_size_1024}
 	\begin{tabular}{r|r|r|r|r|r|r}
-		TileSize & ZoR & Halo & RMSE    & ME & NME & RelativeRuntime \\ 
+		TileSize & ZoR & Halo & RMSE    & ME & MER & RelativeRuntime \\ 
 		\hline
 		3584 & n/a & n/a & 0.0 & 0.0 & 0.0 & 1.0 \\
 		1024 & 1024 & 0 & $\num{2.36e-04}$ & 21856.9 & $\num{1.7e-03}$ & 1.08 \\
@@ -608,7 +622,7 @@ n_l = n = 2 \\
 	\caption{Error Metrics for FC-DenseNet Tile Size 1152}
 	\label{tab:tile_size_1152}
 	\begin{tabular}{r|r|r|r|r|r|r}
-		TileSize & ZoR & Halo & RMSE    & ME & NME & RelativeRuntime \\ 
+		TileSize & ZoR & Halo & RMSE    & ME & MER & RelativeRuntime \\ 
 		\hline
 		2304 & n/a & n/a & 0.0 & 0.0 & 0.0 & 1.0 \\
 		1152 & 1152 & 0 & $\num{5.40e-03}$ & 821.5 & $\num{1.5e-04}$ & 1.15 \\
@@ -632,7 +646,7 @@ n_l = n = 2 \\
 The original U-Net paper uses \texttt{VALID} type convolutions which shrink the spatial size of the feature maps by 2 pixels for each layer \cite{Dumoulin2018}\footnote{For an excellent review of convolutional arithmetic, including transposed convolutions (i.e., up-conv), see "A guide to convolutional arithmetic for deep learning by Dumoulin and Visin" \cite{Dumoulin2018}.}. 
 Figure 2.1 from Dumoulin and Visin "A guide to convolutional arithmetic for deep learning" \cite{Dumoulin2018} shows an illustration showing why \texttt{VALID} causes the feature maps to shrink. The effect of \texttt{VALID} convolutions can also be seen in the first layer of the original U-Net where the input image size of $572 \times 572$ pixels shrinks to $570 \times 570$ \cite{Ronneberger2015a}. 
 Switching to \texttt{SAME} type convolutions requires that within each convolutional layer zero padding is applied to each feature map to ensure the output has the same spatial size as the input. 
-Figure 2.3 from Dumoulin and Visin \cite{Dumoulin2018} shows an illustration where a input $5 \times 5$ remains $5 \times 5$ after the convolution is applied. 
+Figure 2.3 from Dumoulin and Visin \cite{Dumoulin2018} shows an illustration where a $ 5 \times 5$ input remains $5 \times 5$ after the convolution is applied. 
 While \texttt{VALID} type convolutions avoid the negative effects of the zero padding within \texttt{SAME} type convolutions, which can affect the results as outlined by Huang et al. \cite{Huang2019a}, it is conceptually simpler to have input and output images of the same size. Additionally, our tiling scheme overcomes all negative effects that zero padding can introduce, justifying the choice of \texttt{SAME} type convolutions. 
 
 The change to \texttt{SAME} type convolutions introduces an additional constraint on U-Net that needs to be mentioned. Given the skip connections between the encoder and decoder elements for matching feature maps, we need to ensure that the tensors being concatenated together are the same size. This can be restated as requiring the input size be divisible by the largest stride across the input image by any kernel. Another approach to ensuring consistent size between the encoder and decoder is to pad each up-conv layer to make its output larger and then crop to the target feature map size. We feel that is a less elegant solution than enforcing a tile size constraint and potentially padding the input image. 
