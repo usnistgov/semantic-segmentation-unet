@@ -525,7 +525,7 @@ Once the required 96 pixel halo is met the RMSE falls into the range of floating
 Beyond the minimum required halo, all error metrics remain equivalent to the minimum halo.
 The first row shows the data for the whole image being inferred without the tiling scheme.
 The ME metric is especially informative, because when it is zero, the output segmentation results are identical regardless of whether the whole image was inferred in a single pass or it was decomposed into tiles.
-Table \ref{tab:tile_size_512} highlights the engineering tradeoff that must be made, obtaining zero inference error requires $2.69 \times$ the wall clock runtime.
+Table \ref{tab:tile_size_512} highlights the engineering tradeoff that must be made, obtaining zero inference error requires $2.58 \times$ the wall clock runtime.
 The MER with naive tailing is $\num{6.1e-4}$ or $\num{0.06} \%$.
 Depending on your application, this level of error might be acceptable despite the potential for edge effects between the non-overlapping tiles.
 One consideration: larger tile sizes are more compute efficient because the ratio of the ZoR area to the tile area increases.
