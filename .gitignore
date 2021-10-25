@@ -1,13 +1,10 @@
 # use glob syntax.
 syntax: glob
 
-SegNet/__pycache__
-SegNet/model
-UNet/__pycache__
-UNet/model
+data
+test-model
 
 .idea
-*.lmdb
 
 
 # Ignore Extensions
@@ -25,7 +22,7 @@ Thumbs.db
 *.tar
 *.index
 *.png
-# *.tif
+*.tif
 
 # Microsoft Extensions
 *.exe

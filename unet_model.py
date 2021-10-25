@@ -1,8 +1,6 @@
-""" Full assembly of the parts to form the complete network """
-
-import torch.nn.functional as F
 import torch
-import torch.nn as nn
+import torch.nn
+
 
 def double_conv(fc_in,fc_out,kernel,stride=1):
     stage = torch.nn.Sequential()
@@ -20,6 +18,7 @@ def double_conv(fc_in,fc_out,kernel,stride=1):
     stage.add_module('pool',torch.nn.MaxPool2d(2))
     return stage
 
+
 def double_deconv(fc_in,fc_out,kernel,stride=1):
     stage = torch.nn.Sequential()
     pad = (kernel - 1) // 2
@@ -35,6 +34,7 @@ def double_deconv(fc_in,fc_out,kernel,stride=1):
     stage.add_module('batch_norm', torch.nn.BatchNorm2d(fc_out))
     stage.add_module('relu', torch.nn.ReLU(inplace=True))
     return stage
+
 
 def bottleneck(fc_in,fc_out,kernel,stride=1):
     stage = torch.nn.Sequential()
@@ -52,12 +52,12 @@ def bottleneck(fc_in,fc_out,kernel,stride=1):
     stage.add_module('dropout',torch.nn.Dropout(0.5))
     return stage
 
-class UNet(nn.Module):
-    def __init__(self, n_channels, n_classes, bilinear=True):
+
+class UNet(torch.nn.Module):
+    def __init__(self, n_channels, n_classes):
         super(UNet, self).__init__()
         self.n_channels = n_channels
         self.n_classes = n_classes
-        self.bilinear = bilinear
         self.mdict = self.build_net_dict(self.n_channels)
 
     def build_net_dict(self,n_channels):
