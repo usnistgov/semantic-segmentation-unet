@@ -27,6 +27,8 @@ def compute_metrics(x, y, stats, name, epoch):
     # convert x from one hot to class label
     x = np.argmax(x, axis=1)  # assumes NCHW tensor order
 
+    assert x.shape == y.shape
+
     # flatten into a 1d vector
     x = x.flatten()
     y = y.flatten()

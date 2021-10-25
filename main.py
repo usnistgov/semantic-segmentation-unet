@@ -1,15 +1,9 @@
-import os
-import numpy as np
-import time
-import torch
-import copy
-
-import albumentations
 import albumentations.pytorch
 
 import dataset
 import train_model
 import unet_model
+
 
 if __name__ == "__main__":
     import argparse
@@ -70,15 +64,12 @@ if __name__ == "__main__":
         [
 
             albumentations.ShiftScaleRotate(shift_limit=0.2, scale_limit=0.2, rotate_limit=360, p=0.5),
-            albumentations.RandomSizedCrop(min_max_height=(400, 500), height=256, width=256, p=1.0),
-            # albumentations.Resize(256, 256),
             albumentations.pytorch.ToTensorV2()  # This transform needs to be present, and last in the composed list
         ]
     )
 
     val_test_transform = albumentations.Compose(
         [
-            albumentations.Resize(256, 256),
             albumentations.pytorch.ToTensorV2()  # This transform needs to be present, and last in the composed list
         ]
     )

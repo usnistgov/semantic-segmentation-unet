@@ -6,6 +6,7 @@
 
 import os
 import json
+import numpy as np
 import pandas as pd
 import sklearn.metrics
 import logging
@@ -100,6 +101,11 @@ class TrainingStats():
                 except Exception as e:
                     pass
             plt.close(fig)
+
+        for key in self.global_data.keys():
+            val = self.global_data[key]
+            if isinstance(val, np.ndarray):
+                self.global_data[key] = val.tolist()
 
         with open(os.path.join(output_folder, 'stats.json'), 'w') as fh:
             json.dump(self.global_data, fh, ensure_ascii=True, indent=2)
