@@ -155,17 +155,17 @@ def train_epoch(model, dataloader, optimizer, criterion, lr_scheduler, device, e
     return model
 
 
-def train(train_dataset, val_dataset, test_dataset, model, output_filepath, learning_rate, num_io_workers, early_stopping_epoch_count=5, loss_eps=1e-3, adv_prob=0.0, adv_eps=4.0/255.0, use_CycleLR=True):
+def train(train_dataset, val_dataset, test_dataset, model, output_filepath, learning_rate, batch_size, weight_decay, num_io_workers, early_stopping_epoch_count=5, loss_eps=1e-3, adv_prob=0.0, adv_eps=4.0/255.0, use_CycleLR=True):
     if not os.path.exists(output_filepath):
         os.makedirs(output_filepath)
 
 
-    train_dl = torch.utils.data.DataLoader(train_dataset, batch_size=4, sampler=torch.utils.data.RandomSampler(train_dataset), num_workers=num_io_workers)
-    val_dl = torch.utils.data.DataLoader(val_dataset, batch_size=4, sampler=torch.utils.data.RandomSampler(val_dataset), num_workers=num_io_workers)
+    train_dl = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, sampler=torch.utils.data.RandomSampler(train_dataset), num_workers=num_io_workers)
+    val_dl = torch.utils.data.DataLoader(val_dataset, batch_size=batch_size, sampler=torch.utils.data.RandomSampler(val_dataset), num_workers=num_io_workers)
     if test_dataset is not None:
-        test_dl = torch.utils.data.DataLoader(test_dataset, batch_size=4, sampler=torch.utils.data.RandomSampler(test_dataset), num_workers=num_io_workers)
+        test_dl = torch.utils.data.DataLoader(test_dataset, batch_size=batch_size, sampler=torch.utils.data.RandomSampler(test_dataset), num_workers=num_io_workers)
 
-    optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate, weight_decay=5e-4)
+    optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate, weight_decay=weight_decay)
 
     lr_scheduler = None
     if use_CycleLR:
