@@ -30,10 +30,13 @@ from isg_ai_pb2 import ImageMaskPair
 import model
 
 
-def zscore_normalize(image_data):
+def zscore_normalize(image_data, channels_first=True):
     image_data = image_data.astype(np.float32)
 
     if len(image_data.shape) == 3:
+        if not channels_first:
+            # channels last, so move channels first
+            image_data = image_data.transpose((2, 0, 1))
         # input is CHW
         for c in range(image_data.shape[0]):
             std = np.std(image_data[c, :, :])
@@ -44,6 +47,9 @@ def zscore_normalize(image_data):
             else:
                 # z-score normalize
                 image_data[c, :, :] = (image_data[c, :, :] - mv) / std
+        if not channels_first:
+            # put channels back to first
+            image_data = image_data.transpose((1, 2, 0))
     elif len(image_data.shape) == 2:
         # input is HW
         std = np.std(image_data)

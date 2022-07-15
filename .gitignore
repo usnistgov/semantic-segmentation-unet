@@ -5,6 +5,8 @@ SegNet/__pycache__
 SegNet/model
 UNet/__pycache__
 UNet/model
+UNet/data
+data/
 
 .idea
 *.lmdb

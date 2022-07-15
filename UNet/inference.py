@@ -202,9 +202,11 @@ def inference(checkpoint_filepath, image_folder, output_folder, number_classes, 
         img = img.astype(np.float32)
 
         # normalize with whole image stats
-        img = imagereader.zscore_normalize(img)
+        # image from imagereader.imread(img_filepath) is in channels last format since the reader uses skimage.io
+        img = imagereader.zscore_normalize(img, channels_first=False)
         print('  img.shape={}'.format(img.shape))
 
+        # inference function expects channels last (i.e. an image just read from disk)
         if img.shape[0] > TILE_SIZE or img.shape[1] > TILE_SIZE:
             segmented_mask = _inference_tiling(img, unet_model, TILE_SIZE)
         else:
