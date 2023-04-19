@@ -1,90 +1,71 @@
+# NIST-developed software is provided by NIST as a public service. You may use, copy and distribute copies of the software in any medium, provided that you keep intact this entire notice. You may improve, modify and create derivative works of the software or any portion of the software, and you may copy and distribute such modifications or works. Modified works should carry a notice stating that you changed the software and should note the date and nature of any such change. Please explicitly acknowledge the National Institute of Standards and Technology as the source of the software.
+
+# NIST-developed software is expressly provided "AS IS." NIST MAKES NO WARRANTY OF ANY KIND, EXPRESS, IMPLIED, IN FACT OR ARISING BY OPERATION OF LAW, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTY OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, NON-INFRINGEMENT AND DATA ACCURACY. NIST NEITHER REPRESENTS NOR WARRANTS THAT THE OPERATION OF THE SOFTWARE WILL BE UNINTERRUPTED OR ERROR-FREE, OR THAT ANY DEFECTS WILL BE CORRECTED. NIST DOES NOT WARRANT OR MAKE ANY REPRESENTATIONS REGARDING THE USE OF THE SOFTWARE OR THE RESULTS THEREOF, INCLUDING BUT NOT LIMITED TO THE CORRECTNESS, ACCURACY, RELIABILITY, OR USEFULNESS OF THE SOFTWARE.
+
+# You are solely responsible for determining the appropriateness of using and distributing the software and you assume all risks associated with its use, including but not limited to the risks and costs of program errors, compliance with applicable laws, damage to or loss of data, programs or equipment, and the unavailability or interruption of operation. This software is not intended to be used in any situation where a failure could cause risk of injury or damage to property. The software developed by NIST employees is not subject to copyright protection within the United States.
+
 import os
 import numpy as np
 import time
 import torch
 import copy
-import sklearn.metrics
+import shutil
+import json
+import psutil
+import logging
 
-import fbf_utils
+# local imports
+import dataset
+import utils
 import metadata
+import unet_model
+import lr_scheduler
 
 
-def translate_outputs(x):
-    # translate between different model output formats
-    if isinstance(x, dict):
-        try:
-            x = x['out']
-        except:
-            raise RuntimeError('Unexpected model output, please check what values your model returns on a forward pass')
-    return x
-
-
-def compute_metrics(x, y, stats, name, epoch):
-    # convert x to numpy
-    x = x.detach().cpu().numpy()
-    y = y.detach().cpu().numpy()
-
-    # convert x from one hot to class label
-    x = np.argmax(x, axis=1)  # assumes NCHW tensor order
-
-    assert x.shape == y.shape
-
-    # flatten into a 1d vector
-    x = x.flatten()
-    y = y.flatten()
-
-    val = sklearn.metrics.accuracy_score(y, x)
-    stats.add(epoch, '{}_accuracy'.format(name), val)
-
-    val = sklearn.metrics.f1_score(y, x)
-    stats.add(epoch, '{}_f1'.format(name), val)
-
-    val = sklearn.metrics.jaccard_score(y, x)
-    stats.add(epoch, '{}_jaccard'.format(name), val)
-
-    val = sklearn.metrics.confusion_matrix(y, x)
-    stats.add(epoch, '{}_confusion'.format(name), val)
-
-    return stats
-
-
-def eval_model(model, dataloader, criterion, device, epoch, stats, name):
+def eval_model(model, pt_dataset, criterion, device, epoch, train_stats, split_name, args):
+    logging.info('Evaluating model against {} dataset'.format(split_name))
     start_time = time.time()
 
-    avg_loss = 0
-    batch_count = len(dataloader)
+    dataloader = torch.utils.data.DataLoader(pt_dataset, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers, worker_init_fn=utils.worker_init_fn)
     model.eval()
 
     with torch.no_grad():
         for batch_idx, tensor_dict in enumerate(dataloader):
             images, masks = tensor_dict
 
-            masks = masks.long()  # CrossEntropy expects longs
             # move data to the device
             images = images.to(device)
             masks = masks.to(device)
 
-            with torch.cuda.amp.autocast():
-                pred = model(images)
-                pred = translate_outputs(pred)
-                batch_train_loss = criterion(pred, masks)
-                avg_loss += batch_train_loss.item()
+            with torch.cuda.amp.autocast(enabled=args.amp):
+                logits = model(images)
+                batch_loss = criterion(logits, masks)
+                train_stats.append_accumulate('{}_loss'.format(split_name), batch_loss.item())
+                pred = torch.argmax(logits, dim=1)  # NCHW
+                accuracy = torch.mean((pred == masks).type(torch.FloatTensor))
+                train_stats.append_accumulate('{}_accuracy'.format(split_name), accuracy.item())
 
-    avg_loss /= batch_count
-    wall_time = time.time() - start_time
+    # close out the accumulating stats with the specified method
+    train_stats.close_accumulate(epoch, '{}_loss'.format(split_name), method='avg')
+    # this adds the avg loss to the train stats
+    train_stats.close_accumulate(epoch, '{}_accuracy'.format(split_name), method='avg')
+    train_stats.add(epoch, '{}_wall_time'.format(split_name), time.time() - start_time)
 
-    stats.add(epoch, '{}_wall_time'.format(name), wall_time)
-    stats.add(epoch, '{}_loss'.format(name), avg_loss)
 
+def train_epoch(model, pt_dataset, optimizer, criterion, device, epoch, train_stats, args):
 
-def train_epoch(model, dataloader, optimizer, criterion, lr_scheduler, device, epoch, stats, attack_prob, attack_eps):
-    avg_train_loss = 0
+    dataloader = torch.utils.data.DataLoader(pt_dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers, worker_init_fn=utils.worker_init_fn)
 
     model.train()
-    scaler = torch.cuda.amp.GradScaler()
     batch_count = len(dataloader)
 
-    alpha = 1.2 * attack_eps
+    if args.cycle_factor is None or args.cycle_factor == 0:
+        cyclic_lr_scheduler = None
+    else:
+        cyclic_lr_scheduler = torch.optim.lr_scheduler.CyclicLR(optimizer, base_lr=(args.learning_rate / args.cycle_factor), max_lr=(args.learning_rate * args.cycle_factor), step_size_up=int(batch_count / 2), cycle_momentum=False)
+
+    alpha = 1.2 * args.adv_eps
+    scaler = torch.cuda.amp.GradScaler(enabled=args.amp)
 
     start_time = time.time()
     for batch_idx, tensor_dict in enumerate(dataloader):
@@ -92,150 +73,205 @@ def train_epoch(model, dataloader, optimizer, criterion, lr_scheduler, device, e
 
         images, masks = tensor_dict
 
-        masks = masks.long()  # CrossEntropy expects longs
         # move data to the device
         images = images.to(device)
         masks = masks.to(device)
 
-        with torch.cuda.amp.autocast():
+        with torch.cuda.amp.autocast(enabled=args.amp):
             # only apply attack to attack_prob of the batches
-            if attack_prob and np.random.rand() <= attack_prob:
+            if args.adv_prob and np.random.rand() <= args.adv_prob:
                 # initialize perturbation randomly
-                delta = fbf_utils.get_uniform_delta(images.shape, attack_eps, requires_grad=True)
+                delta = utils.get_uniform_delta(images.shape, args.adv_eps, requires_grad=True)
 
-                pred = model(images + delta)
-                pred = translate_outputs(pred)
+                logits = model(images + delta)
 
                 # compute metrics
-                batch_train_loss = criterion(pred, masks)
+                batch_train_loss = criterion(logits, masks)
                 scaler.scale(batch_train_loss).backward()
 
                 # get gradient for adversarial update
                 grad = delta.grad.detach()
 
                 # update delta with adversarial gradient then clip based on epsilon
-                delta.data = fbf_utils.clamp(delta + alpha * torch.sign(grad), -attack_eps, attack_eps)
+                delta.data = utils.clamp(delta + alpha * torch.sign(grad), -args.adv_eps, args.adv_eps)
 
                 # add updated delta and get model predictions
                 delta = delta.detach()
-                pred = model(images + delta)
-                pred = translate_outputs(pred)
+                logits = model(images + delta)
             else:
-                pred = model(images)
-                pred = translate_outputs(pred)
-
-            stats = compute_metrics(pred, masks, stats, name='train', epoch=epoch)
+                logits = model(images)
 
             # compute metrics
-            batch_train_loss = criterion(pred, masks)
+            batch_loss = criterion(logits, masks)
+            # perform the backward pass of the network to compute gradients
+            batch_loss.backward()
+            # scaler.step() first unscales the gradients of the optimizer's assigned params.
+            # If these gradients do not contain infs or NaNs, optimizer.step() is then called,
+            # otherwise, optimizer.step() is skipped.
+            scaler.step(optimizer)
+            # Updates the scale for next iteration.
+            scaler.update()
+
+            train_stats.append_accumulate('train_loss', batch_loss.item())
+            pred = torch.argmax(logits, dim=1)  # NCHW
+            accuracy = torch.mean((pred == masks).type(torch.FloatTensor))
+            train_stats.append_accumulate('train_accuracy', accuracy.item())
+
+            if cyclic_lr_scheduler is not None:
+                cyclic_lr_scheduler.step()
+
             if batch_idx % 100 == 0:
-                print('  batch {}/{}  loss: {:8.8g}  lr: {:4.4g}'.format(batch_idx, batch_count, batch_train_loss.item(), lr_scheduler.get_lr()[0]))
+                # log loss and current GPU utilization
+                cpu_mem_percent_used = psutil.virtual_memory().percent
+                gpu_mem_percent_used, memory_total_info = utils.get_gpu_memory()
+                gpu_mem_percent_used = [np.round(100 * x, 1) for x in gpu_mem_percent_used]
+                logging.info('  batch {}/{}  loss: {:8.8g}  lr: {:4.4g}  cpu_mem: {:2.1f}%  gpu_mem: {}% of {}MiB'.format(batch_idx, batch_count, batch_loss.item(), optimizer.param_groups[0]['lr'], cpu_mem_percent_used, gpu_mem_percent_used, memory_total_info))
 
-        # Scales loss.  Calls backward() on scaled loss to create scaled gradients.
-        # Backward passes under autocast are not recommended.
-        # Backward ops run in the same dtype autocast chose for corresponding forward ops.
-        scaler.scale(batch_train_loss).backward()
-        avg_train_loss += batch_train_loss.item()
-
-        # scaler.step() first unscales the gradients of the optimizer's assigned params.
-        # If these gradients do not contain infs or NaNs, optimizer.step() is then called,
-        # otherwise, optimizer.step() is skipped.
-        scaler.step(optimizer)
-        # Updates the scale for next iteration.
-        scaler.update()
-
-        if lr_scheduler is not None:
-            lr_scheduler.step()
-
-    avg_train_loss /= batch_count
-    wall_time = time.time() - start_time
-
-    stats.add(epoch, 'train_wall_time', wall_time)
-    stats.add(epoch, 'train_loss', avg_train_loss)
-    return model
+    # close out the accumulating stats with the specified method
+    train_stats.close_accumulate(epoch, 'train_loss', method='avg')  # this adds the avg loss to the train stats
+    train_stats.close_accumulate(epoch, 'train_accuracy', method='avg')
+    train_stats.add(epoch, 'train_wall_time', time.time() - start_time)
 
 
-def train(train_dataset, val_dataset, test_dataset, model, output_filepath, learning_rate, batch_size, weight_decay, num_io_workers, early_stopping_epoch_count=5, loss_eps=1e-3, adv_prob=0.0, adv_eps=4.0/255.0, use_CycleLR=True):
-    if not os.path.exists(output_filepath):
-        os.makedirs(output_filepath)
+def train(args):
+    if os.path.exists(args.output_dirpath):
+        logging.info("output directory exists, deleting")
+        shutil.rmtree(args.output_dirpath)
+    os.makedirs(args.output_dirpath)
+    # add the file based handler to the logger
+    logging.getLogger().addHandler(logging.FileHandler(filename=os.path.join(args.output_dirpath, 'log.txt')))
 
+    try:
+        # attempt to get the slurm job id and log it
+        logging.info("Slurm JobId: {}".format(os.environ['SLURM_JOB_ID']))
+    except KeyError:
+        pass
 
-    train_dl = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, sampler=torch.utils.data.RandomSampler(train_dataset), num_workers=num_io_workers)
-    val_dl = torch.utils.data.DataLoader(val_dataset, batch_size=batch_size, sampler=torch.utils.data.RandomSampler(val_dataset), num_workers=num_io_workers)
-    if test_dataset is not None:
-        test_dl = torch.utils.data.DataLoader(test_dataset, batch_size=batch_size, sampler=torch.utils.data.RandomSampler(test_dataset), num_workers=num_io_workers)
+    try:
+        # attempt to get the hostname and log it
+        import socket
+        hn = socket.gethostname()
+        logging.info("Job running on host: {}".format(hn))
+    except RuntimeError:
+        pass
 
-    optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate, weight_decay=weight_decay)
+    logging.info("Starting model train with args:")
+    logging.info(vars(args))  # log the args
 
-    lr_scheduler = None
-    if use_CycleLR:
-        cycle_factor = 5.0
-        lr_scheduler_args = {'base_lr': learning_rate / cycle_factor,
-                             'max_lr': learning_rate * cycle_factor,
-                             'step_size_up': int(len(train_dl) / 2),
-                             'cycle_momentum': False}
-        lr_scheduler = torch.optim.lr_scheduler.CyclicLR(optimizer, **lr_scheduler_args)
+    # write the args configuration to disk
+    logging.info("writing args to config.json")
+    with open(os.path.join(args.output_dirpath, 'config.json'), 'w') as fh:
+        json.dump(vars(args), fh, ensure_ascii=True, indent=2)
 
+    # figure out what compute device to use
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    train_start_time = time.time()
+
+    if args.val_image_dirpath is not None:
+        train_dataset = dataset.SemanticSegmentationDataset(image_dirpath=args.train_image_dirpath,
+                                                           mask_dirpath=args.train_mask_dirpath,
+                                                           img_ext=args.image_extension,
+                                                           mask_ext=args.mask_extension,
+                                                           transform=dataset.SemanticSegmentationDataset.TRANSFORM_TRAIN,
+                                                           tile_size=args.tile_size)
+        val_dataset = dataset.SemanticSegmentationDataset(image_dirpath=args.val_image_dirpath,
+                                                            mask_dirpath=args.val_mask_dirpath,
+                                                            img_ext=args.image_extension,
+                                                            mask_ext=args.mask_extension,
+                                                            transform=dataset.SemanticSegmentationDataset.TRANSFORM_TEST,
+                                                            tile_size=args.tile_size)
+    else:
+        full_dataset = dataset.SemanticSegmentationDataset(image_dirpath=args.train_image_dirpath,
+                                                           mask_dirpath=args.train_mask_dirpath,
+                                                           img_ext=args.image_extension,
+                                                           mask_ext=args.mask_extension,
+                                                           transform=None,
+                                                           tile_size=args.tile_size)
+        # split the dataset into train/val
+        logging.info("No validation dataset provided, splitting train dataset into train/val using a val_fraction={}".format(args.val_fraction))
+        train_dataset, val_dataset = full_dataset.train_val_split(val_fraction=args.val_fraction)
+        train_dataset.set_transforms(dataset.SemanticSegmentationDataset.TRANSFORM_TRAIN)
+        val_dataset.set_transforms(dataset.SemanticSegmentationDataset.TRANSFORM_TEST)
+
+    # this will only do anything if args.test_every_n_steps is not None and > 0
+    train_dataset.set_test_every_n_steps(args.test_every_n_steps, args.batch_size)
+    logging.info("Training dataset size: {} images".format(len(train_dataset)))
+    logging.info("Validation dataset size: {} images".format(len(val_dataset)))
+
+    # create the model
+    model = unet_model.UNet(n_channels=train_dataset.get_number_channels(), n_classes=args.num_classes)
+    # Move model to device
+    model.to(device)
+
+    # setup the optimizer
+    optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay)
+    # Setup loss criteria
     criterion = torch.nn.CrossEntropyLoss()
 
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    model = model.to(device)
+    plateau_scheduler = lr_scheduler.ReduceLROnPlateau(optimizer, mode='max', factor=args.lr_reduction_factor, patience=args.patience, threshold=args.loss_eps, max_num_lr_reductions=args.num_lr_reductions, lr_reduction_callback=None)
 
-    epoch = 0
-    done = False
-    best_model = model
-    stats = metadata.TrainingStats()
+    # setup the metadata capture object
+    train_stats = metadata.TrainingStats()
 
-    start_time = time.time()
+    best_model = None
+    epoch = -1
+    # train epochs until loss or accuracy converges
+    while not plateau_scheduler.is_done():
+        epoch += 1
+        logging.info("Epoch: {}".format(epoch))
 
-    while not done:
-        print('Epoch: {}'.format(epoch))
+        train_stats.export(args.output_dirpath)  # update metrics data on disk
+        train_stats.plot_all_metrics(output_dirpath=args.output_dirpath)
 
-        model = train_epoch(model, train_dl, optimizer, criterion, lr_scheduler, device, epoch, stats, adv_prob, adv_eps)
+        train_epoch(model, train_dataset, optimizer, criterion, device, epoch, train_stats, args)
 
-        eval_model(model, val_dl, criterion, device, epoch, stats, 'val')
+        eval_model(model, val_dataset, criterion, device, epoch, train_stats, 'val', args)
 
-        # handle recording the best model stopping
-        val_loss = stats.get('{}_loss'.format('val'))
-        error_from_best = np.abs(val_loss - np.min(val_loss))
-        error_from_best[error_from_best < np.abs(loss_eps)] = 0
-        # if this epoch is with convergence tolerance of the global best, save the weights
-        if error_from_best[epoch] == 0:
-            print('Updating best model with epoch: {} loss: {}, as its less than the best loss plus eps {}.'.format(epoch, val_loss[epoch], loss_eps))
+        # val_loss = train_stats.get_epoch('val_loss', epoch=epoch)
+        val_accuracy = train_stats.get_epoch('val_accuracy', epoch=epoch)
+        plateau_scheduler.step(val_accuracy)
+
+        # update global metadata stats
+        train_stats.add_global('train_wall_time', train_stats.get('train_wall_time', aggregator='sum'))
+        train_stats.add_global('val_wall_time', train_stats.get('val_wall_time', aggregator='sum'))
+        train_stats.add_global('num_epochs_trained', epoch)
+
+        # handle early stopping when loss converges
+        if plateau_scheduler.is_equiv_to_best_epoch:
+            logging.info('Updating best model with epoch: {} accuracy: {}'.format(epoch, val_accuracy))
             best_model = copy.deepcopy(model)
-
             # update the global metrics with the best epoch
-            stats.update_global(epoch)
+            train_stats.update_global(epoch)
+            # save a state dict (weights only) version of the model
+            torch.save(best_model.state_dict(), os.path.join(args.output_dirpath, 'model-state-dict.pt'))
 
-        stats.add_global('training_wall_time', sum(stats.get('train_wall_time')))
-        stats.add_global('val_wall_time', sum(stats.get('val_wall_time')))
+    # move the model back to the GPU (saving moved the best model back to the cpu)
+    if args.test_image_dirpath is not None:
+        logging.info("Test data dirpath provided, constructing PyTorch dataset for the provided data.")
+        test_dataset = dataset.SemanticSegmentationDataset(image_dirpath=args.test_image_dirpath,
+                                                          mask_dirpath=args.test_mask_dirpath,
+                                                          img_ext=args.image_extension,
+                                                          mask_ext=args.mask_extension,
+                                                          transform=dataset.SemanticSegmentationDataset.TRANSFORM_TEST,
+                                                          tile_size=args.tile_size)
 
-        # update the number of epochs trained
-        stats.add_global('num_epochs_trained', epoch)
-        # write copy of current metadata metrics to disk
-        stats.export(output_filepath)
+        eval_model(best_model, test_dataset, criterion, device, train_stats.best_epoch, train_stats, 'test', args)
 
-        # handle early stopping
-        best_val_loss_epoch = np.where(error_from_best == 0)[0][0]  # unpack numpy array, select first time since that value has happened
-        if epoch >= (best_val_loss_epoch + early_stopping_epoch_count):
-            print("Exiting training loop in epoch: {} - due to early stopping criterion being met".format(epoch))
-            done = True
-
-        if not done:
-            # only advance epoch if we are not done
-            epoch += 1
-
-    if test_dataset is not None:
-        print('Evaluating model against test dataset')
-        eval_model(model, test_dl, criterion, device, epoch, stats, 'test')
         # update the global metrics with the best epoch, to include test stats
-        stats.update_global(epoch)
+        train_stats.update_global(train_stats.best_epoch)
 
-    wall_time = time.time() - start_time
-    stats.add_global('wall_time', wall_time)
-    print("Total WallTime: ", stats.get_global('wall_time'), 'seconds')
+    wall_time = time.time() - train_start_time
+    train_stats.add_global('wall_time', wall_time)
+    logging.info("Total WallTime: {}seconds".format(train_stats.get_global('wall_time')))
 
-    stats.export(output_filepath)  # update metrics data on disk
+    train_stats.export(args.output_dirpath)  # update metrics data on disk
+    train_stats.plot_all_metrics(output_dirpath=args.output_dirpath)
     best_model.cpu()  # move to cpu before saving to simplify loading the model
-    torch.save(best_model, os.path.join(output_filepath, 'model.pt'))
+    # save a python class embedded version of the model
+    torch.save(best_model, os.path.join(args.output_dirpath, 'model.pt'))
+    # save a state dict (weights only) version of the model
+    torch.save(best_model.state_dict(), os.path.join(args.output_dirpath, 'model-state-dict.pt'))
+
+
+
 

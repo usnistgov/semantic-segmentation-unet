@@ -3,6 +3,7 @@ syntax: glob
 
 data
 test-model
+model
 
 .idea
 

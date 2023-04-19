@@ -1,100 +1,131 @@
-from typing import Optional, Callable
+# NIST-developed software is provided by NIST as a public service. You may use, copy and distribute copies of the software in any medium, provided that you keep intact this entire notice. You may improve, modify and create derivative works of the software or any portion of the software, and you may copy and distribute such modifications or works. Modified works should carry a notice stating that you changed the software and should note the date and nature of any such change. Please explicitly acknowledge the National Institute of Standards and Technology as the source of the software.
 
+# NIST-developed software is expressly provided "AS IS." NIST MAKES NO WARRANTY OF ANY KIND, EXPRESS, IMPLIED, IN FACT OR ARISING BY OPERATION OF LAW, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTY OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, NON-INFRINGEMENT AND DATA ACCURACY. NIST NEITHER REPRESENTS NOR WARRANTS THAT THE OPERATION OF THE SOFTWARE WILL BE UNINTERRUPTED OR ERROR-FREE, OR THAT ANY DEFECTS WILL BE CORRECTED. NIST DOES NOT WARRANT OR MAKE ANY REPRESENTATIONS REGARDING THE USE OF THE SOFTWARE OR THE RESULTS THEREOF, INCLUDING BUT NOT LIMITED TO THE CORRECTNESS, ACCURACY, RELIABILITY, OR USEFULNESS OF THE SOFTWARE.
+
+# You are solely responsible for determining the appropriateness of using and distributing the software and you assume all risks associated with its use, including but not limited to the risks and costs of program errors, compliance with applicable laws, damage to or loss of data, programs or equipment, and the unavailability or interruption of operation. This software is not intended to be used in any situation where a failure could cause risk of injury or damage to property. The software developed by NIST employees is not subject to copyright protection within the United States.
+
+from typing import Optional, Callable
 import os
 import numpy as np
 import skimage.io
 import copy
 import torch
-import torchvision
-import albumentations
+import random
 import albumentations.pytorch
+import logging
+
+# local imports
+import augment
+
 
 class SemanticSegmentationDataset(torch.utils.data.Dataset):
-    default_tensor_transform = albumentations.Compose(
+    TRANSFORM_TRAIN = albumentations.Compose(
         [
-            albumentations.pytorch.ToTensorV2(),
+            albumentations.ShiftScaleRotate(shift_limit=0.2, scale_limit=0.2, rotate_limit=30, p=0.5),
+            albumentations.RandomBrightnessContrast(brightness_limit=0.3, contrast_limit=0.3, p=0.5),
+            augment.ZScoreNorm(),
+            albumentations.pytorch.ToTensorV2()
+
         ]
     )
+    TRANSFORM_TEST = albumentations.Compose([
+        augment.ZScoreNorm(),
+        albumentations.pytorch.ToTensorV2()
+    ])
 
-    def __init__(self, image_filepath: str, mask_filepath: str, extension: str, transform: Optional[Callable] = None, preload_into_memory: bool = False, cast_grayscale_to_color=False, disable_zscore_norm=False):
-        self.image_filepath = image_filepath
-        self.mask_filepath = mask_filepath
-        self.extension = extension
+    def __init__(self, image_dirpath: str, mask_dirpath: str, img_ext: str, mask_ext: str, transform: Optional[Callable] = None, tile_size:int = None):
+        self.image_dirpath = image_dirpath
+        self.mask_dirpath = mask_dirpath
+        self.img_ext = img_ext
+        self.mask_ext = mask_ext
         self.transform = transform
-        self.cast_grayscale_to_color = cast_grayscale_to_color
-        self.disable_zscore_norm = disable_zscore_norm
-
-        self.preload_into_memory = preload_into_memory
+        self.tile_size = tile_size  # None means no tiling
+        self.test_every_n_steps = None
 
         self.image_filepath_list = list()
-        for root, dirs, files in os.walk(self.image_filepath):
+        for root, dirs, files in os.walk(self.image_dirpath):
             for fn in files:
-                if fn.endswith(self.extension):
+                if fn.endswith(self.img_ext):
                     self.image_filepath_list.append(os.path.join(root, fn))
+        self.image_filepath_list.sort()
 
         self.mask_filepath_list = list()
-        for fn in self.image_filepath_list:
-            self.mask_filepath_list.append(fn.replace(self.image_filepath, self.mask_filepath))
+        for root, dirs, files in os.walk(self.mask_dirpath):
+            for fn in files:
+                if fn.endswith(self.mask_ext):
+                    self.mask_filepath_list.append(os.path.join(root, fn))
+        self.mask_filepath_list.sort()
 
-        self.image_list = None
-        self.mask_list = None
-        # preload the image data if requested
+        assert len(self.image_filepath_list) == len(self.mask_filepath_list)
+
+        self.image_list = list()
+        self.mask_list = list()
         self.preload_data()
 
+    def set_test_every_n_steps(self, N: int, batch_size: int):
+        if N is not None and N > 0:
+            new_len = N * batch_size
+            logging.info("Setting len(dataset) = {} from {}, due to test_every_n_steps={} and batch_size={}.".format(new_len, len(self.image_list), N, batch_size))
+            self.test_every_n_steps = new_len
+
+    def __len__(self):
+        if self.test_every_n_steps is not None:
+            return int(self.test_every_n_steps)
+        else:
+            return len(self.image_list)
+
     def __getitem__(self, index: int):
-        if self.preload_into_memory:
-            image = self.image_list[index]
-            mask = self.mask_list[index]
-        else:
-            image = SemanticSegmentationDataset.read_image(self.image_filepath_list[index])
-            mask = SemanticSegmentationDataset.read_image(self.mask_filepath_list[index])
 
-        image = image.astype(np.float32)
-        if mask.dtype == np.floating:
-            mask = mask.astype(np.float32)
-        else:
-            mask = mask.astype(np.int32)
+        # ensure the index is within the valid range of the list
+        # this index math enables setting the dataset "len()" longer than the real data
+        index = index % len(self.image_list)
 
-        if not self.disable_zscore_norm:
-            image = self.zscore_normalize(image)
+        image = self.image_list[index]
+        mask = self.mask_list[index]
 
-        is_1_channel = len(image.shape) == 2 or image.shape[2] == 1
-        if is_1_channel and self.cast_grayscale_to_color:
-            image = np.dstack((image, image, image))
-
+        # apply augmentation
         if self.transform is not None:
             transformed = self.transform(image=image, mask=mask)
-        else:
-            # get a default transform to generate tensors
-            transformed = SemanticSegmentationDataset.default_tensor_transform(image=image, mask=mask)
-        image = transformed["image"]
-        mask = transformed["mask"]
+            image = transformed["image"]
+            mask = transformed["mask"]
+
+        # loss needs a long type tensor
+        mask = mask.type(torch.LongTensor)
+        image = image.type(torch.FloatTensor)
 
         return image, mask
 
-    def __len__(self):
-        return len(self.image_filepath_list)
-
     def get_number_channels(self):
-        if len(self.image_filepath_list) == 0:
-            return None
-        # TODO this assumes HWC dimension ordering
-        img = SemanticSegmentationDataset.read_image(self.image_filepath_list[0])
+        # this assumes HWC dimension ordering
+        img = self.image_list[0]
         if len(img.shape) == 2:
             return 1
         else:
             return img.shape[2]
 
     def preload_data(self):
-        print("Pre-Loading image data into memory as part of caching")
-        self.image_list = list()
-        self.mask_list = list()
-        if self.preload_into_memory:
-            for fn in self.image_filepath_list:
-                image = SemanticSegmentationDataset.read_image(fn)
+        logging.info("Loading the image data into memory")
+        use_tiling = False
+        if self.tile_size is not None and self.tile_size > 0:
+            use_tiling = True
+            logging.info("Tiling the images to {}x{}".format(self.tile_size, self.tile_size))
+
+        for i in range(len(self.image_filepath_list)):
+            if len(self.image_filepath_list) > 20 and i % int(len(self.image_filepath_list) / 10) == 0:
+                logging.info("  loaded {}/{}".format(i, len(self.image_filepath_list)))
+            img_fn = self.image_filepath_list[i]
+            image = SemanticSegmentationDataset.read_image(img_fn)
+            msk_fn = self.mask_filepath_list[i]
+            mask = SemanticSegmentationDataset.read_image(msk_fn)
+
+            if use_tiling:
+                # break the image into tiles
+                i_tile_list, m_tile_list, _ = self.tile_image_mask_pair(image, mask, self.tile_size)
+                # extend the pixel data (np.ndarray) lists with the tiles
+                self.image_list.extend(i_tile_list)
+                self.mask_list.extend(m_tile_list)
+            else:
                 self.image_list.append(image)
-            for fn in self.mask_filepath_list:
-                mask = SemanticSegmentationDataset.read_image(fn)
                 self.mask_list.append(mask)
 
     @staticmethod
@@ -103,16 +134,87 @@ class SemanticSegmentationDataset(torch.utils.data.Dataset):
         # return PIL.Image.open(fp)
 
     @staticmethod
-    def zscore_normalize(x):
-        x = x.astype(np.float32)
+    def tile_image_mask_pair(img: np.ndarray, msk: np.ndarray, tile_size, tile_overlap: float = 0.1) -> (list[np.ndarray], list[np.ndarray]):
+        tile_overlap = np.clip(tile_overlap, 0.0, 0.99)
 
-        std = np.std(x)
-        mv = np.mean(x)
-        if std <= 1.0:
-            # normalize (but dont divide by zero)
-            x = (x - mv)
-        else:
-            # z-score normalize
-            x = (x - mv) / std
-        return x
+        # get the height of the image
+        height = img.shape[0]
+        width = img.shape[1]
+
+        img_list = list()
+        msk_list = list()
+
+        location_list = list()
+
+        delta = int(tile_size - int(tile_overlap * tile_size))
+        for x_st in range(0, width, delta):
+            for y_st in range(0, height, delta):
+                x_end = x_st + tile_size
+                y_end = y_st + tile_size
+                if x_st < 0 or y_st < 0:
+                    # should never happen, but stranger things and all...
+                    continue
+                if x_end > width:
+                    # slide box to fit within image
+                    dx = width - x_end
+                    x_st = x_st + dx
+                    x_end = x_end + dx
+                if y_end > height:
+                    # slide box to fit within image
+                    dy = height - y_end
+                    y_st = y_st + dy
+                    y_end = y_end + dy
+
+                # handle if the image is smaller than the tile size
+                x_st = max(0, x_st)
+                y_st = max(0, y_st)
+                location_list.append((x_st, y_st))
+
+                # crop out the tile
+                img_pixels = img[y_st:y_end, x_st:x_end]
+                img_list.append(img_pixels)
+                if msk is not None:
+                    msk_pixels = msk[y_st:y_end, x_st:x_end]
+                    msk_list.append(msk_pixels)
+
+        return img_list, msk_list, location_list
+
+    def set_transforms(self, transforms):
+        self.transform = transforms
+
+    def train_val_split(self, val_fraction: float = 0.1):
+        if val_fraction is None:
+            raise RuntimeError("Requesting train/val split with a val_fraction = None")
+        if val_fraction < 0.0 or val_fraction > 1.0:
+            raise RuntimeError("Impossible validation fraction {}.".format(val_fraction))
+
+        val_size = int(val_fraction * len(self.image_list))
+
+        idx = list(range(len(self.image_list)))
+        random.shuffle(idx)
+        v_idx = idx[0:val_size]
+        t_idx = idx[val_size:]
+        t_idx.sort()
+        v_idx.sort()
+
+        train_dataset = copy.deepcopy(self)
+        val_dataset = copy.deepcopy(self)
+        train_dataset.image_list = list()
+        train_dataset.mask_list = list()
+        for i in t_idx:
+            train_dataset.image_list.append(self.image_list[i])
+            train_dataset.mask_list.append(self.mask_list[i])
+
+        val_dataset.image_list = list()
+        val_dataset.msks = list()
+        for i in v_idx:
+            val_dataset.image_list.append(self.image_list[i])
+            val_dataset.mask_list.append(self.mask_list[i])
+
+        assert len(train_dataset.image_list) > 0
+        assert len(train_dataset.mask_list) > 0
+        assert len(val_dataset.image_list) > 0
+        assert len(val_dataset.mask_list) > 0
+
+        return train_dataset, val_dataset
 

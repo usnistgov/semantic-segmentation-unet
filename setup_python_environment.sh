@@ -5,22 +5,21 @@
 # You are solely responsible for determining the appropriateness of using and distributing the software and you assume all risks associated with its use, including but not limited to the risks and costs of program errors, compliance with applicable laws, damage to or loss of data, programs or equipment, and the unavailability or interruption of operation. This software is not intended to be used in any situation where a failure could cause risk of injury or damage to property. The software developed by NIST employees is not subject to copyright protection within the United States.
 
 
-# Install anaconda3
-# https://www.anaconda.com/distribution/
+# Install miniconda3
+# https://docs.conda.io/en/latest/miniconda.html
 # conda config --set auto_activate_base false
 
 # create a virtual environment to stuff all these packages into
-conda create -n unet python=3.8 -y
+conda create -n pytorch-unet python=3.9 -y
 
 # activate the virtual environment
-conda activate unet
+conda activate pytorch-unet
 
-# install pytorch (best done through conda to handle cuda dependencies)
-conda install pytorch torchvision cudatoolkit=11.1 -c pytorch-lts -c nvidia
-
-conda install scikit-image pandas imagecodecs
+# install other required packages
+conda install scikit-image scikit-learn matplotlib pandas psutil -y
 pip install albumentations
 
+conda install pytorch torchvision pytorch-cuda=11.8 -c pytorch -c nvidia -y
 
-#pip install jsonpickle transformers datasets matplotlib sklearn seqeval
+
 
