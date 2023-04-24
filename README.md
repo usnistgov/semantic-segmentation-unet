@@ -6,6 +6,18 @@ This repo needs a submodule from: https://github.com/usnistgov/pytorch_utils
 
 Submodule management documentation can be found at https://git-scm.com/book/en/v2/Git-Tools-Submodules
 
+## Initialize Submodule
+
+`git submodule init`
+
+This command should be run to initialize the submodule in the repo after cloning.
+
+## Pull changes from Submodule (after init)
+
+`git submodule update`
+
+This command should be run each time you want to pull the latest version of the submodule. 
+
 # Input Data Constraints
 
 Input data assumptions:
