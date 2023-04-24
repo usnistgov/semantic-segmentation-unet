@@ -17,10 +17,9 @@ import logging
 # local imports
 import dataset
 import utils
-import metadata
+from pytorch_utils import metadata
+from pytorch_utils import lr_scheduler
 import unet_model
-import lr_scheduler
-
 
 def eval_model(model, pt_dataset, criterion, device, epoch, train_stats, split_name, args):
     logging.info('Evaluating model against {} dataset'.format(split_name))
