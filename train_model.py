@@ -207,7 +207,7 @@ def train(args):
     # Setup loss criteria
     criterion = torch.nn.CrossEntropyLoss()
 
-    plateau_scheduler = lr_scheduler.ReduceLROnPlateau(optimizer, mode='max', factor=args.lr_reduction_factor, patience=args.patience, threshold=args.loss_eps, max_num_lr_reductions=args.num_lr_reductions, lr_reduction_callback=None)
+    plateau_scheduler = lr_scheduler.EarlyStoppingReduceLROnPlateau(optimizer, mode='max', factor=args.lr_reduction_factor, patience=args.patience, threshold=args.loss_eps, max_num_lr_reductions=args.num_lr_reductions, lr_reduction_callback=None)
 
     # setup the metadata capture object
     train_stats = metadata.TrainingStats()

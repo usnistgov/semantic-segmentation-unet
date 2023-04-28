@@ -14,7 +14,7 @@ This command should be run to initialize the submodule in the repo after cloning
 
 ## Pull changes from Submodule (after init)
 
-`git submodule update`
+`git submodule update --remote`
 
 This command should be run each time you want to pull the latest version of the submodule. 
 
