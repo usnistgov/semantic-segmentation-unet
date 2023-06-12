@@ -61,7 +61,9 @@ def train_epoch(model, pt_dataset, optimizer, criterion, device, epoch, train_st
     if args.cycle_factor is None or args.cycle_factor == 0:
         cyclic_lr_scheduler = None
     else:
-        cyclic_lr_scheduler = torch.optim.lr_scheduler.CyclicLR(optimizer, base_lr=(args.learning_rate / args.cycle_factor), max_lr=(args.learning_rate * args.cycle_factor), step_size_up=int(batch_count / 2), cycle_momentum=False)
+        # capture the current learning rate of the optimizer to enable resetting it back to that value once this epoch is done
+        epoch_init_lr = optimizer.param_groups[0]['lr']
+        cyclic_lr_scheduler = torch.optim.lr_scheduler.CyclicLR(optimizer, base_lr=(epoch_init_lr / args.cycle_factor), max_lr=(epoch_init_lr * args.cycle_factor), step_size_up=int(batch_count / 2), cycle_momentum=False)
 
     alpha = 1.2 * args.adv_eps
     scaler = torch.cuda.amp.GradScaler(enabled=args.amp)
@@ -130,6 +132,10 @@ def train_epoch(model, pt_dataset, optimizer, criterion, device, epoch, train_st
     train_stats.close_accumulate(epoch, 'train_loss', method='avg')  # this adds the avg loss to the train stats
     train_stats.close_accumulate(epoch, 'train_accuracy', method='avg')
     train_stats.add(epoch, 'train_wall_time', time.time() - start_time)
+    if cyclic_lr_scheduler is not None:
+        # reset any leftover changes to the learning rate
+        for param_group in optimizer.param_groups:
+            param_group['lr'] = epoch_init_lr
 
 
 def train(args):
