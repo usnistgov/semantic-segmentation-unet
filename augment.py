@@ -18,11 +18,7 @@ class ZScoreNorm(albumentations.core.transforms_interface.ImageOnlyTransform):
 
         std = np.std(img)
         mv = np.mean(img)
-        if std <= 1.0:
-            # normalize (but dont divide by zero)
-            img = (img - mv)
-        else:
-            # z-score normalize
-            img = (img - mv) / std
+        # z-score normalize
+        img = (img - mv) / std
 
         return img
