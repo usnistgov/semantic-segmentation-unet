@@ -6,6 +6,7 @@
 
 import numpy as np
 import albumentations.core.transforms_interface
+import torch
 
 
 class ZScoreNorm(albumentations.core.transforms_interface.ImageOnlyTransform):
@@ -20,5 +21,35 @@ class ZScoreNorm(albumentations.core.transforms_interface.ImageOnlyTransform):
         mv = np.mean(img)
         # z-score normalize
         img = (img - mv) / std
+
+        return img
+
+
+
+class ZScoreNorm2(torch.nn.Module):
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, img):
+        assert torch.is_tensor(img)
+        assert torch.is_floating_point(img)
+        # # checks are not required as we are not doing per-channel zscore
+        # if len(img.shape) == 3:
+        #     batch_size = 0
+        # elif len(img.shape) == 4:
+        #     batch_size = img.shape[0]
+        # else:
+        #     raise RuntimeError("Invalid img shape {}, expected either CHW or NCHW.".format(img.shape))
+        #
+        # if batch_size == 0:
+        #     img = torch.unsqueeze(img, dim=0)
+
+        std = torch.std(img)
+        mv = torch.mean(img)
+        # z-score normalize
+        img = (img - mv) / std
+
+        # if batch_size == 0:
+        #     img = torch.squeeze(img, dim=0)
 
         return img
