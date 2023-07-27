@@ -25,7 +25,7 @@ def eval_model(model, pt_dataset, criterion, device, epoch, train_stats, split_n
     logging.info('Evaluating model against {} dataset'.format(split_name))
     start_time = time.time()
 
-    dataloader = torch.utils.data.DataLoader(pt_dataset, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers, worker_init_fn=utils.worker_init_fn)
+    dataloader = torch.utils.data.DataLoader(pt_dataset, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers)
     model.eval()
 
     with torch.no_grad():
@@ -53,7 +53,7 @@ def eval_model(model, pt_dataset, criterion, device, epoch, train_stats, split_n
 
 def train_epoch(model, pt_dataset, optimizer, criterion, device, epoch, train_stats, args):
 
-    dataloader = torch.utils.data.DataLoader(pt_dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers, worker_init_fn=utils.worker_init_fn)
+    dataloader = torch.utils.data.DataLoader(pt_dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers)
 
     model.train()
     batch_count = len(dataloader)
@@ -209,7 +209,7 @@ def train(args):
     model.to(device)
 
     # setup the optimizer
-    optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay)
+    optimizer = utils.configure_optimizer(model, args.weight_decay, args.learning_rate, method='adamw')
     # Setup loss criteria
     criterion = torch.nn.CrossEntropyLoss()
 

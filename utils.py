@@ -7,12 +7,44 @@
 import numpy as np
 import subprocess
 import torch
+import logging
+import inspect
 
 
-# due to pytorch + numpy bug
-# https://tanelp.github.io/posts/a-bug-that-plagues-thousands-of-open-source-ml-projects/
-def worker_init_fn(worker_id):
-    np.random.seed(np.random.get_state()[1][0] + worker_id)
+# adapted from https://github.com/karpathy/nanoGPT/blob/master/model.py#L270
+def configure_optimizer(model, weight_decay, learning_rate, method='adamw'):
+    if weight_decay is None:
+        weight_decay = 0.0
+
+    # start with all of the candidate parameters
+    param_dict = {pn: p for pn, p in model.named_parameters()}
+    # filter out those that do not require grad
+    param_dict = {pn: p for pn, p in param_dict.items() if p.requires_grad}
+    # create optim groups. Any parameters that is 2D will be weight decayed, otherwise no.
+    # i.e. all weight tensors in matmuls + embeddings decay, all biases and layernorms don't.
+    decay_params = [p for n, p in param_dict.items() if p.dim() >= 2]
+    nodecay_params = [p for n, p in param_dict.items() if p.dim() < 2]
+    optim_groups = [
+        {'params': decay_params, 'weight_decay': weight_decay},
+        {'params': nodecay_params, 'weight_decay': 0.0}
+    ]
+    num_decay_params = sum(p.numel() for p in decay_params)
+    num_nodecay_params = sum(p.numel() for p in nodecay_params)
+    logging.info("num decayed parameter tensors: {}, with {} parameters".format(len(decay_params), num_decay_params))
+    logging.info("num non-decayed parameter tensors: {}, with {} parameters".format(len(nodecay_params), num_nodecay_params))
+
+    if method == 'sgd':
+        optimizer = torch.optim.SGD(optim_groups, lr=learning_rate, momentum=0.9, nesterov=False)
+        logging.info("Using SGD")
+    elif method == 'adamw':
+        # Create AdamW optimizer and use the fused version if it is available
+        fused_available = 'fused' in inspect.signature(torch.optim.AdamW).parameters
+        extra_args = dict(fused=True) if fused_available else dict()
+        optimizer = torch.optim.AdamW(optim_groups, lr=learning_rate, **extra_args)
+        logging.info("Using fused AdamW: {}".format(fused_available))
+    else:
+        raise RuntimeError("Invalid optimizer: {}".format(method))
+    return optimizer
 
 
 def is_ide_debug():

@@ -26,3 +26,15 @@ class ZScoreNorm(albumentations.core.transforms_interface.ImageOnlyTransform):
             img = (img - mv) / std
 
         return img
+
+class DivideByMaxNorm(albumentations.core.transforms_interface.ImageOnlyTransform):
+    def __init__(self, always_apply: bool = False, p: float = 1.0):
+        # default p of 1.0 ensures it always called, unless the user overrides
+        super().__init__(always_apply=always_apply, p=p)
+
+    def apply(self, img, **params):
+        img = img.astype(np.float32)
+        img = img / np.max(img)
+
+        return img
+
