@@ -6,6 +6,7 @@
 
 import numpy as np
 import albumentations.core.transforms_interface
+import torch
 
 
 class ZScoreNorm(albumentations.core.transforms_interface.ImageOnlyTransform):
@@ -18,14 +19,11 @@ class ZScoreNorm(albumentations.core.transforms_interface.ImageOnlyTransform):
 
         std = np.std(img)
         mv = np.mean(img)
-        if std <= 1.0:
-            # normalize (but dont divide by zero)
-            img = (img - mv)
-        else:
-            # z-score normalize
-            img = (img - mv) / std
+        # z-score normalize
+        img = (img - mv) / std
 
         return img
+
 
 class DivideByMaxNorm(albumentations.core.transforms_interface.ImageOnlyTransform):
     def __init__(self, always_apply: bool = False, p: float = 1.0):
@@ -35,6 +33,22 @@ class DivideByMaxNorm(albumentations.core.transforms_interface.ImageOnlyTransfor
     def apply(self, img, **params):
         img = img.astype(np.float32)
         img = img / np.max(img)
+
+        return img
+
+
+class ZScoreNorm2(torch.nn.Module):
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, img):
+        assert torch.is_tensor(img)
+        assert torch.is_floating_point(img)
+
+        std = torch.std(img)
+        mv = torch.mean(img)
+        # z-score normalize
+        img = (img - mv) / std
 
         return img
 
