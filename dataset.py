@@ -197,8 +197,16 @@ class SemanticSegmentationDataset(torch.utils.data.Dataset):
         t_idx.sort()
         v_idx.sort()
 
+        # duplicate this instance, but don't deep copy the loaded image data
+        img_list = self.image_list
+        msk_list = self.mask_list
+        self.image_list = None
+        self.mask_list = None
         train_dataset = copy.deepcopy(self)
         val_dataset = copy.deepcopy(self)
+        self.image_list = img_list
+        self.mask_list = msk_list
+
         train_dataset.image_list = list()
         train_dataset.mask_list = list()
         for i in t_idx:
