@@ -214,7 +214,7 @@ class SemanticSegmentationDataset(torch.utils.data.Dataset):
             train_dataset.mask_list.append(self.mask_list[i])
 
         val_dataset.image_list = list()
-        val_dataset.msks = list()
+        val_dataset.mask_list = list()
         for i in v_idx:
             val_dataset.image_list.append(self.image_list[i])
             val_dataset.mask_list.append(self.mask_list[i])
